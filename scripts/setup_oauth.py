@@ -148,24 +148,31 @@ def setup_oauth():
             if update_env.lower() == 'y':
                 env_path = Path(__file__).parent.parent / '.env'
                 with open(env_path, 'r') as f:
-                    env_content = f.read()
-                
-                # Update OAuth configuration
-                env_content = env_content.replace('SERVICENOW_AUTH_TYPE=basic', 'SERVICENOW_AUTH_TYPE=oauth')
-                env_content = env_content.replace('# SERVICENOW_CLIENT_ID=your-client-id', f'SERVICENOW_CLIENT_ID={client_id}')
-                env_content = env_content.replace('# SERVICENOW_CLIENT_SECRET=your-client-secret', f'SERVICENOW_CLIENT_SECRET={client_secret}')
-                env_content = env_content.replace('# SERVICENOW_TOKEN_URL=https://your-instance.service-now.com/oauth_token.do', f'SERVICENOW_TOKEN_URL={token_url}')
-                
-                # Also update username and password if they were entered
-                if username and username != "your-username":
-                    env_content = env_content.replace('SERVICENOW_USERNAME=your-username', f'SERVICENOW_USERNAME={username}')
-                
-                if password and password != "your-password":
-                    env_content = env_content.replace('SERVICENOW_PASSWORD=your-password', f'SERVICENOW_PASSWORD={password}')
-                
+                    env_lines = f.readlines()
+
+                # Helper to update or insert a key
+                def set_env_var(lines, key, value):
+                    found = False
+                    for i, line in enumerate(lines):
+                        if line.strip().startswith(f'{key}=') or line.strip().startswith(f'#{key}='):
+                            lines[i] = f'{key}={value}\n'
+                            found = True
+                            break
+                    if not found:
+                        lines.append(f'{key}={value}\n')
+                    return lines
+
+                # Update or insert OAuth configuration
+                env_lines = set_env_var(env_lines, 'SERVICENOW_AUTH_TYPE', 'oauth')
+                env_lines = set_env_var(env_lines, 'SERVICENOW_CLIENT_ID', client_id)
+                env_lines = set_env_var(env_lines, 'SERVICENOW_CLIENT_SECRET', client_secret)
+                env_lines = set_env_var(env_lines, 'SERVICENOW_TOKEN_URL', token_url)
+                env_lines = set_env_var(env_lines, 'SERVICENOW_USERNAME', username)
+                env_lines = set_env_var(env_lines, 'SERVICENOW_PASSWORD', password)
+
                 with open(env_path, 'w') as f:
-                    f.write(env_content)
-                
+                    f.writelines(env_lines)
+
                 print("✅ Updated .env file with OAuth configuration!")
                 print("\nYou can now use OAuth authentication with the ServiceNow MCP server.")
                 print("To test it, run: python scripts/test_connection.py")
