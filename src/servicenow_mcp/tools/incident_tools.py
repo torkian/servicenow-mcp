@@ -77,6 +77,12 @@ class ListIncidentsParams(BaseModel):
     query: Optional[str] = Field(None, description="Search query for incidents")
 
 
+class GetIncidentByNumberParams(BaseModel):
+    """Parameters for fetching an incident by its number."""
+
+    incident_number: str = Field(..., description="The number of the incident to fetch")
+
+
 class IncidentResponse(BaseModel):
     """Response from incident operations."""
 
@@ -536,4 +542,82 @@ def list_incidents(
             "success": False,
             "message": f"Failed to list incidents: {str(e)}",
             "incidents": []
+        }
+
+
+def get_incident_by_number(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: GetIncidentByNumberParams,
+) -> dict:
+    """
+    Fetch a single incident from ServiceNow by its number.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for fetching the incident.
+
+    Returns:
+        Dictionary with the incident details.
+    """
+    api_url = f"{config.api_url}/table/incident"
+
+    # Build query parameters
+    query_params = {
+        "sysparm_query": f"number={params.incident_number}",
+        "sysparm_limit": 1,
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    # Make request
+    try:
+        response = requests.get(
+            api_url,
+            params=query_params,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        result = data.get("result", [])
+
+        if not result:
+            return {
+                "success": False,
+                "message": f"Incident not found: {params.incident_number}",
+            }
+
+        incident_data = result[0]
+        assigned_to = incident_data.get("assigned_to")
+        if isinstance(assigned_to, dict):
+            assigned_to = assigned_to.get("display_value")
+
+        incident = {
+            "sys_id": incident_data.get("sys_id"),
+            "number": incident_data.get("number"),
+            "short_description": incident_data.get("short_description"),
+            "description": incident_data.get("description"),
+            "state": incident_data.get("state"),
+            "priority": incident_data.get("priority"),
+            "assigned_to": assigned_to,
+            "category": incident_data.get("category"),
+            "subcategory": incident_data.get("subcategory"),
+            "created_on": incident_data.get("sys_created_on"),
+            "updated_on": incident_data.get("sys_updated_on"),
+        }
+
+        return {
+            "success": True,
+            "message": f"Incident {params.incident_number} found",
+            "incident": incident,
+        }
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to fetch incident: {e}")
+        return {
+            "success": False,
+            "message": f"Failed to fetch incident: {str(e)}",
         }

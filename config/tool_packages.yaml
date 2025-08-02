@@ -15,6 +15,7 @@ service_desk:
   - add_comment
   - resolve_incident
   - list_incidents
+  - get_incident_by_number
   # User Lookup
   - get_user
   - list_users
@@ -152,6 +153,7 @@ full:
   - add_comment
   - resolve_incident
   - list_incidents
+  - get_incident_by_number
   # Catalog (Core)
   - list_catalogs
   - list_catalog_items
