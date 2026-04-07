@@ -1,16 +1,32 @@
-[![MseeP.ai Security Assessment Badge](https://mseep.net/pr/osomai-servicenow-mcp-badge.png)](https://mseep.ai/app/osomai-servicenow-mcp)
-
 # ServiceNow MCP Server
 
-A Model Completion Protocol (MCP) server implementation for ServiceNow, allowing Claude to interact with ServiceNow instances.
+A Model Completion Protocol (MCP) server implementation for ServiceNow, allowing AI assistants to interact with ServiceNow instances.
 
-<a href="https://glama.ai/mcp/servers/@osomai/servicenow-mcp">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@osomai/servicenow-mcp/badge" alt="ServiceNow Server MCP server" />
-</a>
+> **This is a maintained fork of [echelon-ai-labs/servicenow-mcp](https://github.com/echelon-ai-labs/servicenow-mcp)** with active development, bug fixes, and new features.
+
+## What's New (v2.0)
+
+### New Tools
+- **Service Catalog Task (SCTASK) Management** — `get_sctask`, `list_sctasks`, `update_sctask` for managing service catalog tasks with state tracking, assignment, and time logging
+- **Time Card Management** — `list_time_cards`, `create_time_card`, `update_time_card` for tracking hours worked per day against tasks
+- **create_catalog_item** — Create new service catalog items (cherry-picked from upstream PR #60)
+
+### Bug Fixes
+- Fixed boolean logic bug in `update_sctask` where sys_id resolution always ran regardless of input format
+- Fixed Dockerfile not copying `config/` directory, which broke tool package loading in Docker
+- Fixed OAuth token response bodies being logged in plaintext (security fix, cherry-picked from upstream PR #59)
+- Commented out 11 ghost tools in `tool_packages.yaml` that were listed but had no implementation
+
+### Improvements
+- Added missing `sse_server_example.py` referenced in README
+- Added `.DS_Store` to `.gitignore` and removed tracked instances
+- Updated README with accurate tool listings and usage examples
+- Added `service_desk` and `agile_management` tool packages with SCTASK and time card support
+- Corrected workflow tools documentation (was listing non-existent tools)
 
 ## Overview
 
-This project implements an MCP server that enables Claude to connect to ServiceNow instances, retrieve data, and perform actions through the ServiceNow API. It serves as a bridge between Claude and ServiceNow, allowing for seamless integration.
+This project implements an MCP server that enables AI assistants to connect to ServiceNow instances, retrieve data, and perform actions through the ServiceNow API. It serves as a bridge between AI tools and ServiceNow, allowing for seamless integration.
 
 ## Features
 
@@ -18,8 +34,10 @@ This project implements an MCP server that enables Claude to connect to ServiceN
 - Query ServiceNow records and tables
 - Create, update, and delete ServiceNow records
 - Execute ServiceNow scripts and workflows
+- Manage service catalog tasks (SCTASKs) and time cards
 - Access and query the ServiceNow Service Catalog
 - Analyze and optimize the ServiceNow Service Catalog
+- Role-based tool packages for scoped access
 - Debug mode for troubleshooting
 - Support for both stdio and Server-Sent Events (SSE) communication
 
