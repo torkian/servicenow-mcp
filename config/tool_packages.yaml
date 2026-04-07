@@ -33,10 +33,10 @@ service_desk:
 
 catalog_builder:
   # Core Catalog
-  - list_catalogs
+  # - list_catalogs  # TODO: not yet implemented
   - list_catalog_items
   - get_catalog_item
-  - create_catalog_item
+  # - create_catalog_item  # TODO: not yet implemented
   - update_catalog_item
   # Categories
   - list_catalog_categories
@@ -47,13 +47,13 @@ catalog_builder:
   - create_catalog_item_variable
   - list_catalog_item_variables
   - update_catalog_item_variable
-  - delete_catalog_item_variable
-  - create_catalog_variable_choice
+  # - delete_catalog_item_variable  # TODO: not yet implemented
+  # - create_catalog_variable_choice  # TODO: not yet implemented
   # Basic Scripting (UI Policy & User Criteria)
-  - create_ui_policy
-  - create_ui_policy_action
-  - create_user_criteria
-  - create_user_criteria_condition
+  # - create_ui_policy  # TODO: not yet implemented
+  # - create_ui_policy_action  # TODO: not yet implemented
+  # - create_user_criteria  # TODO: not yet implemented
+  # - create_user_criteria_condition  # TODO: not yet implemented
   # Optimization
   - get_optimization_recommendations
 
@@ -90,7 +90,7 @@ platform_developer:
   - create_script_include
   - update_script_include
   - delete_script_include
-  - execute_script_include
+  # - execute_script_include  # TODO: not yet implemented
   # Workflows
   - list_workflows
   - get_workflow_details
@@ -106,8 +106,8 @@ platform_developer:
   - reorder_workflow_activities
   - get_workflow_activities
   # General UI Policies
-  - create_ui_policy
-  - create_ui_policy_action
+  # - create_ui_policy  # TODO: not yet implemented
+  # - create_ui_policy_action  # TODO: not yet implemented
   # Changesets
   - list_changesets
   - get_changeset_details
@@ -159,8 +159,8 @@ system_administrator:
   - add_group_members
   - remove_group_members
   # System Logs
-  - list_syslog_entries
-  - get_syslog_entry
+  # - list_syslog_entries  # TODO: not yet implemented
+  # - get_syslog_entry  # TODO: not yet implemented
 
 full:
   # Incident Management
@@ -171,10 +171,10 @@ full:
   - list_incidents
   - get_incident_by_number
   # Catalog (Core)
-  - list_catalogs
+  # - list_catalogs  # TODO: not yet implemented
   - list_catalog_items
   - get_catalog_item
-  - create_catalog_item
+  # - create_catalog_item  # TODO: not yet implemented
   - update_catalog_item
   # Catalog (Categories)
   - list_catalog_categories
@@ -187,8 +187,8 @@ full:
   - create_catalog_item_variable
   - list_catalog_item_variables
   - update_catalog_item_variable
-  - delete_catalog_item_variable
-  - create_catalog_variable_choice
+  # - delete_catalog_item_variable  # TODO: not yet implemented
+  # - create_catalog_variable_choice  # TODO: not yet implemented
   # Change Management
   - create_change_request
   - update_change_request
@@ -225,7 +225,7 @@ full:
   - create_script_include
   - update_script_include
   - delete_script_include
-  - execute_script_include
+  # - execute_script_include  # TODO: not yet implemented
   # Knowledge Base
   - create_knowledge_base
   - list_knowledge_bases
@@ -247,14 +247,14 @@ full:
   - remove_group_members
   - list_groups
   # Syslog
-  - list_syslog_entries
-  - get_syslog_entry
+  # - list_syslog_entries  # TODO: not yet implemented
+  # - get_syslog_entry  # TODO: not yet implemented
   # Catalog Criteria
-  - create_user_criteria
-  - create_user_criteria_condition
+  # - create_user_criteria  # TODO: not yet implemented
+  # - create_user_criteria_condition  # TODO: not yet implemented
   # UI Policy
-  - create_ui_policy
-  - create_ui_policy_action
+  # - create_ui_policy  # TODO: not yet implemented
+  # - create_ui_policy_action  # TODO: not yet implemented
   # Story Management
   - create_story
   - update_story
