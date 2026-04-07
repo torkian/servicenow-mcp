@@ -79,7 +79,7 @@ def _unwrap_and_validate_params(params: Any, model_class: Type[T], required_fiel
     if not isinstance(params, dict):
         try:
             params = params.dict() if hasattr(params, "dict") else dict(params)
-        except Exception as e:
+        except Exception:
             return {"success": False, "message": f"Invalid parameters format: {type(params).__name__}"}
 
     if required_fields:
