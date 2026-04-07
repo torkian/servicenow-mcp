@@ -16,6 +16,14 @@ service_desk:
   - resolve_incident
   - list_incidents
   - get_incident_by_number
+  # Service Catalog Tasks
+  - get_sctask
+  - list_sctasks
+  - update_sctask
+  # Time Cards
+  - list_time_cards
+  - create_time_card
+  - update_time_card
   # User Lookup
   - get_user
   - list_users
@@ -129,6 +137,14 @@ agile_management:
   - create_project
   - update_project
   - list_projects
+  # Service Catalog Tasks
+  - get_sctask
+  - list_sctasks
+  - update_sctask
+  # Time Cards
+  - list_time_cards
+  - create_time_card
+  - update_time_card
 
 system_administrator:
   # User Management
@@ -258,3 +274,11 @@ full:
   - create_project
   - update_project
   - list_projects
+  # Service Catalog Tasks
+  - get_sctask
+  - list_sctasks
+  - update_sctask
+  # Time Cards
+  - list_time_cards
+  - create_time_card
+  - update_time_card
