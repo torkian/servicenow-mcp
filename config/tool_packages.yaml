@@ -36,7 +36,7 @@ catalog_builder:
   # - list_catalogs  # TODO: not yet implemented
   - list_catalog_items
   - get_catalog_item
-  # - create_catalog_item  # TODO: not yet implemented
+  - create_catalog_item
   - update_catalog_item
   # Categories
   - list_catalog_categories
@@ -174,7 +174,7 @@ full:
   # - list_catalogs  # TODO: not yet implemented
   - list_catalog_items
   - get_catalog_item
-  # - create_catalog_item  # TODO: not yet implemented
+  - create_catalog_item
   - update_catalog_item
   # Catalog (Categories)
   - list_catalog_categories
