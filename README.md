@@ -1,5 +1,11 @@
 # ServiceNow MCP Server
 
+[![CI](https://github.com/torkian/servicenow-mcp/actions/workflows/ci.yml/badge.svg)](https://github.com/torkian/servicenow-mcp/actions/workflows/ci.yml)
+[![CodeQL](https://github.com/torkian/servicenow-mcp/actions/workflows/codeql.yml/badge.svg)](https://github.com/torkian/servicenow-mcp/actions/workflows/codeql.yml)
+[![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+[![GitHub stars](https://img.shields.io/github/stars/torkian/servicenow-mcp)](https://github.com/torkian/servicenow-mcp/stargazers)
+
 A Model Completion Protocol (MCP) server implementation for ServiceNow, allowing AI assistants to interact with ServiceNow instances.
 
 > **This is a maintained fork of [echelon-ai-labs/servicenow-mcp](https://github.com/echelon-ai-labs/servicenow-mcp)** with active development, bug fixes, and new features.
