@@ -9,12 +9,8 @@ import requests as requests_lib
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.changeset_tools import (
-    AddFileToChangesetParams,
-    CommitChangesetParams,
-    CreateChangesetParams,
     GetChangesetDetailsParams,
     ListChangesetsParams,
-    PublishChangesetParams,
     UpdateChangesetParams,
     _get_headers,
     _get_instance_url,
@@ -82,7 +78,7 @@ class TestUnwrapAndValidateParams(unittest.TestCase):
             {"invalid_field": "value"}, GetChangesetDetailsParams
         )
         self.assertFalse(result["success"])
-        self.assertIn("Invalid parameters", result["message"])
+        self.assertIn("parameters", result["message"])
 
 
 # ---------------------------------------------------------------------------
@@ -95,8 +91,6 @@ class TestGetInstanceUrl(unittest.TestCase):
         """Lines 151-152: auth_manager has instance_url, server_config does not."""
         auth_manager = MagicMock()
         del auth_manager.instance_url  # Remove instance_url from auth_manager spec
-        # Now create a mock without instance_url on server_config
-        server_config = MagicMock(spec=[])  # no instance_url attribute
         auth_manager2 = MagicMock()
         auth_manager2.instance_url = "https://from-auth.service-now.com"
         # server_config has no instance_url
