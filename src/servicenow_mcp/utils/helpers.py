@@ -1,0 +1,122 @@
+"""
+Shared helper utilities for ServiceNow MCP tool modules.
+
+These functions were previously duplicated across 8 tool files. Import them
+from here instead of redefining them locally.
+"""
+
+import logging
+from typing import Any, Dict, List, Optional, Type, TypeVar
+
+from pydantic import BaseModel
+
+logger = logging.getLogger(__name__)
+
+T = TypeVar("T", bound=BaseModel)
+
+
+def _unwrap_and_validate_params(
+    params: Any,
+    model_class: Type[T],
+    required_fields: List[str] = None,
+) -> Dict[str, Any]:
+    """Unwrap and validate tool parameters against a Pydantic model.
+
+    Handles three input shapes:
+    - Already a Pydantic model instance (passed through or re-validated).
+    - A dict whose sole key is ``"params"`` wrapping the real dict.
+    - A plain dict.
+
+    Args:
+        params: Raw parameters from the MCP call.
+        model_class: Pydantic model to validate against.
+        required_fields: Optional list of field names that must be present.
+
+    Returns:
+        ``{"success": True, "params": <model_instance>}`` on success, or
+        ``{"success": False, "message": <str>}`` on failure.
+    """
+    # If already a Pydantic model, re-use or convert
+    if isinstance(params, BaseModel):
+        if isinstance(params, model_class):
+            model_instance = params
+        else:
+            try:
+                model_instance = model_class(**params.dict())
+            except Exception as e:
+                return {"success": False, "message": f"Error converting parameters: {e}"}
+        if required_fields:
+            missing = [f for f in required_fields if getattr(model_instance, f, None) is None]
+            if missing:
+                return {"success": False, "message": f"Missing required fields: {', '.join(missing)}"}
+        return {"success": True, "params": model_instance}
+
+    # Unwrap {"params": {...}} envelope
+    if isinstance(params, dict) and list(params.keys()) == ["params"] and isinstance(params["params"], dict):
+        logger.warning("Detected params wrapped in a 'params' key. Unwrapping...")
+        params = params["params"]
+
+    # Coerce non-dict to dict
+    if not isinstance(params, dict):
+        try:
+            logger.warning("Params is not a dictionary. Attempting to convert...")
+            params = params.dict() if hasattr(params, "dict") else dict(params)
+        except Exception as e:
+            logger.error("Failed to convert params to dictionary: %s", e)
+            return {
+                "success": False,
+                "message": f"Invalid parameters format. Expected a dictionary, got {type(params).__name__}",
+            }
+
+    # Validate required fields before model construction
+    if required_fields:
+        for field in required_fields:
+            if field not in params:
+                return {"success": False, "message": f"Missing required parameter '{field}'"}
+
+    try:
+        validated = model_class(**params)
+        return {"success": True, "params": validated}
+    except Exception as e:
+        logger.error("Error validating parameters: %s", e)
+        return {"success": False, "message": f"Error validating parameters: {e}"}
+
+
+def _get_instance_url(auth_manager: Any, server_config: Any) -> Optional[str]:
+    """Return the ServiceNow instance URL from config or auth manager.
+
+    Checks ``server_config.instance_url`` first, then ``auth_manager.instance_url``.
+
+    Args:
+        auth_manager: Authentication manager object.
+        server_config: Server configuration object.
+
+    Returns:
+        Instance URL string, or ``None`` if not found.
+    """
+    if hasattr(server_config, "instance_url"):
+        return server_config.instance_url
+    if hasattr(auth_manager, "instance_url"):
+        return auth_manager.instance_url
+    logger.error("Cannot find instance_url in either server_config or auth_manager")
+    return None
+
+
+def _get_headers(auth_manager: Any, server_config: Any) -> Optional[Dict[str, str]]:
+    """Return HTTP headers for ServiceNow API requests.
+
+    Tries ``auth_manager.get_headers()`` first, then ``server_config.get_headers()``.
+
+    Args:
+        auth_manager: Authentication manager object.
+        server_config: Server configuration object.
+
+    Returns:
+        Headers dict, or ``None`` if not found.
+    """
+    if hasattr(auth_manager, "get_headers"):
+        return auth_manager.get_headers()
+    if hasattr(server_config, "get_headers"):
+        return server_config.get_headers()
+    logger.error("Cannot find get_headers method in either auth_manager or server_config")
+    return None

@@ -5,17 +5,16 @@ This module provides tools for managing Time Cards (time_card table) in ServiceN
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, Optional
 
 import requests
 from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T", bound=BaseModel)
 
 # Day name to field name mapping
 DAY_FIELDS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday", "sunday"]
@@ -60,43 +59,6 @@ class UpdateTimeCardParams(BaseModel):
     sunday: Optional[float] = Field(None, description="Hours for Sunday")
     short_description: Optional[str] = Field(None, description="Description of work done")
     state: Optional[str] = Field(None, description="State of the time card")
-
-
-def _get_instance_url(auth_manager: Any, server_config: Any) -> Optional[str]:
-    if hasattr(server_config, "instance_url"):
-        return server_config.instance_url
-    elif hasattr(auth_manager, "instance_url"):
-        return auth_manager.instance_url
-    logger.error("Cannot find instance_url")
-    return None
-
-
-def _get_headers(auth_manager: Any, server_config: Any) -> Optional[Dict[str, str]]:
-    if hasattr(auth_manager, "get_headers"):
-        return auth_manager.get_headers()
-    if hasattr(server_config, "get_headers"):
-        return server_config.get_headers()
-    logger.error("Cannot find get_headers method")
-    return None
-
-
-def _unwrap_and_validate_params(params: Any, model_class: Type[T], required_fields: List[str] = None) -> Dict[str, Any]:
-    if isinstance(params, dict) and len(params) == 1 and "params" in params and isinstance(params["params"], dict):
-        params = params["params"]
-    if not isinstance(params, dict):
-        try:
-            params = params.dict() if hasattr(params, "dict") else dict(params)
-        except Exception:
-            return {"success": False, "message": f"Invalid parameters format: {type(params).__name__}"}
-    if required_fields:
-        for field in required_fields:
-            if field not in params:
-                return {"success": False, "message": f"Missing required parameter '{field}'"}
-    try:
-        validated = model_class(**params)
-        return {"success": True, "params": validated}
-    except Exception as e:
-        return {"success": False, "message": f"Error validating parameters: {str(e)}"}
 
 
 def _resolve_task_sys_id(instance_url: str, headers: Dict, task_number: str) -> Optional[str]:

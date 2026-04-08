@@ -5,17 +5,16 @@ This module provides tools for managing Service Catalog Tasks (sc_task table).
 """
 
 import logging
-from typing import Any, Dict, List, Optional, Type, TypeVar
+from typing import Any, Dict, Optional
 
 import requests
 from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
-
-T = TypeVar("T", bound=BaseModel)
 
 
 class GetSCTaskParams(BaseModel):
@@ -52,46 +51,6 @@ class ListSCTasksParams(BaseModel):
     assigned_to: Optional[str] = Field(None, description="Filter by assigned user (username or sys_id)")
     assignment_group: Optional[str] = Field(None, description="Filter by assignment group")
     query: Optional[str] = Field(None, description="Additional ServiceNow query string")
-
-
-def _get_instance_url(auth_manager: Any, server_config: Any) -> Optional[str]:
-    if hasattr(server_config, "instance_url"):
-        return server_config.instance_url
-    elif hasattr(auth_manager, "instance_url"):
-        return auth_manager.instance_url
-    logger.error("Cannot find instance_url in either server_config or auth_manager")
-    return None
-
-
-def _get_headers(auth_manager: Any, server_config: Any) -> Optional[Dict[str, str]]:
-    if hasattr(auth_manager, "get_headers"):
-        return auth_manager.get_headers()
-    if hasattr(server_config, "get_headers"):
-        return server_config.get_headers()
-    logger.error("Cannot find get_headers method in either auth_manager or server_config")
-    return None
-
-
-def _unwrap_and_validate_params(params: Any, model_class: Type[T], required_fields: List[str] = None) -> Dict[str, Any]:
-    if isinstance(params, dict) and len(params) == 1 and "params" in params and isinstance(params["params"], dict):
-        params = params["params"]
-
-    if not isinstance(params, dict):
-        try:
-            params = params.dict() if hasattr(params, "dict") else dict(params)
-        except Exception:
-            return {"success": False, "message": f"Invalid parameters format: {type(params).__name__}"}
-
-    if required_fields:
-        for field in required_fields:
-            if field not in params:
-                return {"success": False, "message": f"Missing required parameter '{field}'"}
-
-    try:
-        validated = model_class(**params)
-        return {"success": True, "params": validated}
-    except Exception as e:
-        return {"success": False, "message": f"Error validating parameters: {str(e)}"}
 
 
 def get_sctask(
