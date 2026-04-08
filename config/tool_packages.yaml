@@ -159,8 +159,8 @@ system_administrator:
   - add_group_members
   - remove_group_members
   # System Logs
-  # - list_syslog_entries  # TODO: not yet implemented
-  # - get_syslog_entry  # TODO: not yet implemented
+  - list_syslog_entries
+  - get_syslog_entry
 
 full:
   # Incident Management
@@ -247,8 +247,8 @@ full:
   - remove_group_members
   - list_groups
   # Syslog
-  # - list_syslog_entries  # TODO: not yet implemented
-  # - get_syslog_entry  # TODO: not yet implemented
+  - list_syslog_entries
+  - get_syslog_entry
   # Catalog Criteria
   # - create_user_criteria  # TODO: not yet implemented
   # - create_user_criteria_condition  # TODO: not yet implemented

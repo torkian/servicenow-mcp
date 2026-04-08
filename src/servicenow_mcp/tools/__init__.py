@@ -124,6 +124,10 @@ from servicenow_mcp.tools.time_card_tools import (
     create_time_card,
     update_time_card,
 )
+from servicenow_mcp.tools.syslog_tools import (
+    list_syslog_entries,
+    get_syslog_entry,
+)
 # from servicenow_mcp.tools.problem_tools import create_problem, update_problem
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
@@ -244,6 +248,10 @@ __all__ = [
     "list_time_cards",
     "create_time_card",
     "update_time_card",
+
+    # Syslog tools
+    "list_syslog_entries",
+    "get_syslog_entry",
 
     # Future tools
     # "create_problem",

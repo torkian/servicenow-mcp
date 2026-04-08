@@ -1,8 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-2. Implement list_syslog_entries tool (TODO in tool_packages.yaml)
-3. Implement get_syslog_entry tool
 4. Implement delete_catalog_item_variable tool
 5. Implement create_catalog_variable_choice tool
 6. Implement create_ui_policy tool
@@ -23,3 +21,5 @@
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
+2. 2026-04-08 — Implement list_syslog_entries tool (sys_log table, with filters for level/source/message/date range)
+3. 2026-04-08 — Implement get_syslog_entry tool (fetch single entry by sys_id)

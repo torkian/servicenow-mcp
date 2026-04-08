@@ -361,6 +361,14 @@ from servicenow_mcp.tools.time_card_tools import (
     create_time_card as create_time_card_tool,
     update_time_card as update_time_card_tool,
 )
+from servicenow_mcp.tools.syslog_tools import (
+    ListSyslogEntriesParams,
+    GetSyslogEntryParams,
+)
+from servicenow_mcp.tools.syslog_tools import (
+    list_syslog_entries as list_syslog_entries_tool,
+    get_syslog_entry as get_syslog_entry_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1026,6 +1034,21 @@ def get_tool_definitions(
             UpdateTimeCardParams,
             str,
             "Update an existing time card entry in ServiceNow",
+            "json",
+        ),
+        # Syslog Tools
+        "list_syslog_entries": (
+            list_syslog_entries_tool,
+            ListSyslogEntriesParams,
+            str,
+            "List syslog entries from ServiceNow, with optional filters for level, source, and date range",
+            "json",
+        ),
+        "get_syslog_entry": (
+            get_syslog_entry_tool,
+            GetSyslogEntryParams,
+            str,
+            "Retrieve a single syslog entry by its sys_id",
             "json",
         ),
     }
