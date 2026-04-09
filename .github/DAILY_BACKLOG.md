@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-4. Implement delete_catalog_item_variable tool
 5. Implement create_catalog_variable_choice tool
 6. Implement create_ui_policy tool
 7. Implement create_ui_policy_action tool
@@ -23,3 +22,4 @@
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
 2. 2026-04-08 — Implement list_syslog_entries tool (sys_log table, with filters for level/source/message/date range)
 3. 2026-04-08 — Implement get_syslog_entry tool (fetch single entry by sys_id)
+4. 2026-04-09 — Implement delete_catalog_item_variable tool (DELETE item_option_new/{sys_id})

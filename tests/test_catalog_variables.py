@@ -8,9 +8,11 @@ import requests
 
 from servicenow_mcp.tools.catalog_variables import (
     CreateCatalogItemVariableParams,
+    DeleteCatalogItemVariableParams,
     ListCatalogItemVariablesParams,
     UpdateCatalogItemVariableParams,
     create_catalog_item_variable,
+    delete_catalog_item_variable,
     list_catalog_item_variables,
     update_catalog_item_variable,
 )
@@ -346,6 +348,74 @@ class TestCatalogVariablesTools(unittest.TestCase):
         # Verify result
         self.assertFalse(result.success)
         self.assertTrue("failed" in result.message.lower())
+
+
+class TestDeleteCatalogItemVariable(unittest.TestCase):
+    """Tests for the delete_catalog_item_variable function."""
+
+    def setUp(self):
+        """Set up the test environment."""
+        self.config = ServerConfig(
+            instance_url="https://test.service-now.com",
+            timeout=10,
+            auth=AuthConfig(
+                type=AuthType.BASIC,
+                basic=BasicAuthConfig(
+                    username="test_user",
+                    password="test_password"
+                )
+            ),
+        )
+        self.auth_manager = MagicMock()
+        self.auth_manager.get_headers.return_value = {"Content-Type": "application/json"}
+
+    @patch("requests.delete")
+    def test_delete_catalog_item_variable_success(self, mock_delete):
+        """Test successful deletion of a catalog item variable."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_delete.return_value = mock_response
+
+        params = DeleteCatalogItemVariableParams(variable_id="var123")
+
+        result = delete_catalog_item_variable(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.variable_id, "var123")
+        self.assertIn("var123", result.message)
+
+        mock_delete.assert_called_once()
+        call_args = mock_delete.call_args
+        self.assertEqual(
+            call_args[0][0],
+            f"{self.config.instance_url}/api/now/table/item_option_new/var123",
+        )
+
+    @patch("requests.delete")
+    def test_delete_catalog_item_variable_error(self, mock_delete):
+        """Test delete_catalog_item_variable when an error occurs."""
+        mock_delete.side_effect = requests.RequestException("Connection error")
+
+        params = DeleteCatalogItemVariableParams(variable_id="var123")
+
+        result = delete_catalog_item_variable(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("failed", result.message.lower())
+
+    @patch("requests.delete")
+    def test_delete_catalog_item_variable_http_error(self, mock_delete):
+        """Test delete_catalog_item_variable when HTTP 404 is returned."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError("404 Not Found")
+        mock_delete.return_value = mock_response
+
+        params = DeleteCatalogItemVariableParams(variable_id="nonexistent")
+
+        result = delete_catalog_item_variable(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("failed", result.message.lower())
 
 
 if __name__ == "__main__":

@@ -44,11 +44,15 @@ from servicenow_mcp.tools.catalog_tools import (
 )
 from servicenow_mcp.tools.catalog_variables import (
     CreateCatalogItemVariableParams,
+    DeleteCatalogItemVariableParams,
     ListCatalogItemVariablesParams,
     UpdateCatalogItemVariableParams,
 )
 from servicenow_mcp.tools.catalog_variables import (
     create_catalog_item_variable as create_catalog_item_variable_tool,
+)
+from servicenow_mcp.tools.catalog_variables import (
+    delete_catalog_item_variable as delete_catalog_item_variable_tool,
 )
 from servicenow_mcp.tools.catalog_variables import (
     list_catalog_item_variables as list_catalog_item_variables_tool,
@@ -523,6 +527,13 @@ def get_tool_definitions(
             UpdateCatalogItemVariableParams,
             Dict[str, Any],  # Expects dict
             "Update a catalog item variable",
+            "dict",  # Tool returns Pydantic model
+        ),
+        "delete_catalog_item_variable": (
+            delete_catalog_item_variable_tool,
+            DeleteCatalogItemVariableParams,
+            Dict[str, Any],  # Expects dict
+            "Delete a catalog item variable by sys_id",
             "dict",  # Tool returns Pydantic model
         ),
         # Change Management Tools

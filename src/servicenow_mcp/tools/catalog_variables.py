@@ -62,6 +62,12 @@ class ListCatalogItemVariablesResponse(BaseModel):
     count: int = Field(0, description="Total number of variables found")
 
 
+class DeleteCatalogItemVariableParams(BaseModel):
+    """Parameters for deleting a catalog item variable."""
+
+    variable_id: str = Field(..., description="The sys_id of the variable to delete")
+
+
 class UpdateCatalogItemVariableParams(BaseModel):
     """Parameters for updating a catalog item variable."""
 
@@ -286,4 +292,44 @@ def update_catalog_item_variable(
         return CatalogItemVariableResponse(
             success=False,
             message=f"Failed to update catalog item variable: {str(e)}",
-        ) 
+        )
+
+
+def delete_catalog_item_variable(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: DeleteCatalogItemVariableParams,
+) -> CatalogItemVariableResponse:
+    """
+    Delete a variable (form field) from a catalog item.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for deleting a catalog item variable.
+
+    Returns:
+        Response indicating whether the deletion was successful.
+    """
+    api_url = f"{config.instance_url}/api/now/table/item_option_new/{params.variable_id}"
+
+    try:
+        response = requests.delete(
+            api_url,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        return CatalogItemVariableResponse(
+            success=True,
+            message=f"Catalog item variable {params.variable_id} deleted successfully",
+            variable_id=params.variable_id,
+        )
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to delete catalog item variable: {e}")
+        return CatalogItemVariableResponse(
+            success=False,
+            message=f"Failed to delete catalog item variable: {str(e)}",
+        )
