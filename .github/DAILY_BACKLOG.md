@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-5. Implement create_catalog_variable_choice tool
 6. Implement create_ui_policy tool
 7. Implement create_ui_policy_action tool
 8. Implement create_user_criteria tool
@@ -23,3 +22,4 @@
 2. 2026-04-08 — Implement list_syslog_entries tool (sys_log table, with filters for level/source/message/date range)
 3. 2026-04-08 — Implement get_syslog_entry tool (fetch single entry by sys_id)
 4. 2026-04-09 — Implement delete_catalog_item_variable tool (DELETE item_option_new/{sys_id})
+5. 2026-04-11 — Implement create_catalog_variable_choice tool (POST question_choice; links choices to select-type variables)

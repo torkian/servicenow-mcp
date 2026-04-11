@@ -8,10 +8,12 @@ import requests
 
 from servicenow_mcp.tools.catalog_variables import (
     CreateCatalogItemVariableParams,
+    CreateCatalogVariableChoiceParams,
     DeleteCatalogItemVariableParams,
     ListCatalogItemVariablesParams,
     UpdateCatalogItemVariableParams,
     create_catalog_item_variable,
+    create_catalog_variable_choice,
     delete_catalog_item_variable,
     list_catalog_item_variables,
     update_catalog_item_variable,
@@ -413,6 +415,189 @@ class TestDeleteCatalogItemVariable(unittest.TestCase):
         params = DeleteCatalogItemVariableParams(variable_id="nonexistent")
 
         result = delete_catalog_item_variable(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("failed", result.message.lower())
+
+
+class TestCreateCatalogVariableChoice(unittest.TestCase):
+    """Tests for the create_catalog_variable_choice function."""
+
+    def setUp(self):
+        """Set up the test environment."""
+        self.config = ServerConfig(
+            instance_url="https://test.service-now.com",
+            timeout=10,
+            auth=AuthConfig(
+                type=AuthType.BASIC,
+                basic=BasicAuthConfig(
+                    username="test_user",
+                    password="test_password",
+                ),
+            ),
+        )
+        self.auth_manager = MagicMock()
+        self.auth_manager.get_headers.return_value = {"Content-Type": "application/json"}
+
+    @patch("requests.post")
+    def test_create_choice_success(self, mock_post):
+        """Test successful creation of a catalog variable choice."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": {
+                "sys_id": "choice123",
+                "question": "var456",
+                "text": "Option A",
+                "value": "option_a",
+                "inactive": "false",
+            }
+        }
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogVariableChoiceParams(
+            variable_id="var456",
+            text="Option A",
+            value="option_a",
+        )
+
+        result = create_catalog_variable_choice(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.choice_id, "choice123")
+        self.assertIsNotNone(result.details)
+
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        self.assertEqual(
+            call_args[0][0],
+            f"{self.config.instance_url}/api/now/table/question_choice",
+        )
+        self.assertEqual(call_args[1]["json"]["question"], "var456")
+        self.assertEqual(call_args[1]["json"]["text"], "Option A")
+        self.assertEqual(call_args[1]["json"]["value"], "option_a")
+        self.assertEqual(call_args[1]["json"]["inactive"], "false")
+
+    @patch("requests.post")
+    def test_create_choice_with_optional_params(self, mock_post):
+        """Test creation of a catalog variable choice with all optional fields."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": {
+                "sys_id": "choice789",
+                "question": "var456",
+                "text": "Premium Option",
+                "value": "premium",
+                "order": "100",
+                "price": "25.00",
+                "price_type": "flat_fee",
+                "inactive": "false",
+            }
+        }
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogVariableChoiceParams(
+            variable_id="var456",
+            text="Premium Option",
+            value="premium",
+            order=100,
+            price="25.00",
+            price_type="flat_fee",
+            inactive=False,
+        )
+
+        result = create_catalog_variable_choice(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.choice_id, "choice789")
+
+        call_args = mock_post.call_args
+        self.assertEqual(call_args[1]["json"]["order"], 100)
+        self.assertEqual(call_args[1]["json"]["price"], "25.00")
+        self.assertEqual(call_args[1]["json"]["price_type"], "flat_fee")
+
+    @patch("requests.post")
+    def test_create_choice_inactive(self, mock_post):
+        """Test that an inactive choice is sent with inactive=true."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": {
+                "sys_id": "choice999",
+                "question": "var456",
+                "text": "Disabled Option",
+                "value": "disabled",
+                "inactive": "true",
+            }
+        }
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogVariableChoiceParams(
+            variable_id="var456",
+            text="Disabled Option",
+            value="disabled",
+            inactive=True,
+        )
+
+        result = create_catalog_variable_choice(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        call_args = mock_post.call_args
+        self.assertEqual(call_args[1]["json"]["inactive"], "true")
+
+    @patch("requests.post")
+    def test_create_choice_omits_none_optional_fields(self, mock_post):
+        """Optional fields not provided should not be included in the POST body."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"result": {"sys_id": "choiceX"}}
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogVariableChoiceParams(
+            variable_id="var1",
+            text="Basic",
+            value="basic",
+        )
+
+        create_catalog_variable_choice(self.config, self.auth_manager, params)
+
+        call_args = mock_post.call_args
+        body = call_args[1]["json"]
+        self.assertNotIn("order", body)
+        self.assertNotIn("price", body)
+        self.assertNotIn("price_type", body)
+
+    @patch("requests.post")
+    def test_create_choice_error(self, mock_post):
+        """Test create_catalog_variable_choice when a request error occurs."""
+        mock_post.side_effect = requests.RequestException("Connection refused")
+
+        params = CreateCatalogVariableChoiceParams(
+            variable_id="var456",
+            text="Option A",
+            value="option_a",
+        )
+
+        result = create_catalog_variable_choice(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("failed", result.message.lower())
+
+    @patch("requests.post")
+    def test_create_choice_http_error(self, mock_post):
+        """Test create_catalog_variable_choice when an HTTP error is returned."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError("403 Forbidden")
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogVariableChoiceParams(
+            variable_id="var456",
+            text="Option A",
+            value="option_a",
+        )
+
+        result = create_catalog_variable_choice(self.config, self.auth_manager, params)
 
         self.assertFalse(result.success)
         self.assertIn("failed", result.message.lower())

@@ -48,7 +48,7 @@ catalog_builder:
   - list_catalog_item_variables
   - update_catalog_item_variable
   # - delete_catalog_item_variable  # TODO: not yet implemented
-  # - create_catalog_variable_choice  # TODO: not yet implemented
+  - create_catalog_variable_choice
   # Basic Scripting (UI Policy & User Criteria)
   # - create_ui_policy  # TODO: not yet implemented
   # - create_ui_policy_action  # TODO: not yet implemented
@@ -188,7 +188,7 @@ full:
   - list_catalog_item_variables
   - update_catalog_item_variable
   # - delete_catalog_item_variable  # TODO: not yet implemented
-  # - create_catalog_variable_choice  # TODO: not yet implemented
+  - create_catalog_variable_choice
   # Change Management
   - create_change_request
   - update_change_request

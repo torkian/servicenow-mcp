@@ -295,6 +295,96 @@ def update_catalog_item_variable(
         )
 
 
+class CreateCatalogVariableChoiceParams(BaseModel):
+    """Parameters for creating a choice option for a catalog item variable."""
+
+    variable_id: str = Field(
+        ...,
+        description="The sys_id of the catalog item variable (item_option_new) to add the choice to",
+    )
+    text: str = Field(..., description="The display text shown to the user for this choice")
+    value: str = Field(..., description="The internal value stored when this choice is selected")
+    order: Optional[int] = Field(None, description="Display order of the choice (lower numbers appear first)")
+    price: Optional[str] = Field(None, description="Optional price modifier for this choice (e.g., '10.00')")
+    price_type: Optional[str] = Field(
+        None,
+        description="How the price is applied: 'flat_fee' adds a fixed amount, 'one_time' is a one-time charge",
+    )
+    inactive: bool = Field(False, description="Whether this choice is inactive/disabled")
+
+
+class CatalogVariableChoiceResponse(BaseModel):
+    """Response from catalog variable choice operations."""
+
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Message describing the result")
+    choice_id: Optional[str] = Field(None, description="The sys_id of the created choice")
+    details: Optional[Dict[str, Any]] = Field(None, description="Additional details about the choice")
+
+
+def create_catalog_variable_choice(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateCatalogVariableChoiceParams,
+) -> CatalogVariableChoiceResponse:
+    """
+    Create a choice option for a select-type catalog item variable.
+
+    In ServiceNow, select/checkbox/radio variables get their dropdown options
+    from the ``question_choice`` table.  Each choice record is linked to a
+    variable via the ``question`` field (which holds the sys_id of the
+    ``item_option_new`` record).
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for creating the variable choice.
+
+    Returns:
+        Response with information about the created choice.
+    """
+    api_url = f"{config.instance_url}/api/now/table/question_choice"
+
+    data: Dict[str, Any] = {
+        "question": params.variable_id,
+        "text": params.text,
+        "value": params.value,
+        "inactive": str(params.inactive).lower(),
+    }
+
+    if params.order is not None:
+        data["order"] = params.order
+    if params.price is not None:
+        data["price"] = params.price
+    if params.price_type is not None:
+        data["price_type"] = params.price_type
+
+    try:
+        response = requests.post(
+            api_url,
+            json=data,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        result = response.json().get("result", {})
+
+        return CatalogVariableChoiceResponse(
+            success=True,
+            message="Catalog variable choice created successfully",
+            choice_id=result.get("sys_id"),
+            details=result,
+        )
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to create catalog variable choice: {e}")
+        return CatalogVariableChoiceResponse(
+            success=False,
+            message=f"Failed to create catalog variable choice: {str(e)}",
+        )
+
+
 def delete_catalog_item_variable(
     config: ServerConfig,
     auth_manager: AuthManager,

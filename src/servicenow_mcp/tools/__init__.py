@@ -18,6 +18,7 @@ from servicenow_mcp.tools.catalog_tools import (
 )
 from servicenow_mcp.tools.catalog_variables import (
     create_catalog_item_variable,
+    create_catalog_variable_choice,
     delete_catalog_item_variable,
     list_catalog_item_variables,
     update_catalog_item_variable,
@@ -155,6 +156,7 @@ __all__ = [
     "list_catalog_item_variables",
     "update_catalog_item_variable",
     "delete_catalog_item_variable",
+    "create_catalog_variable_choice",
     
     # Change management tools
     "create_change_request",

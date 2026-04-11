@@ -43,13 +43,18 @@ from servicenow_mcp.tools.catalog_tools import (
     update_catalog_category as update_catalog_category_tool,
 )
 from servicenow_mcp.tools.catalog_variables import (
+    CatalogVariableChoiceResponse,
     CreateCatalogItemVariableParams,
+    CreateCatalogVariableChoiceParams,
     DeleteCatalogItemVariableParams,
     ListCatalogItemVariablesParams,
     UpdateCatalogItemVariableParams,
 )
 from servicenow_mcp.tools.catalog_variables import (
     create_catalog_item_variable as create_catalog_item_variable_tool,
+)
+from servicenow_mcp.tools.catalog_variables import (
+    create_catalog_variable_choice as create_catalog_variable_choice_tool,
 )
 from servicenow_mcp.tools.catalog_variables import (
     delete_catalog_item_variable as delete_catalog_item_variable_tool,
@@ -535,6 +540,13 @@ def get_tool_definitions(
             Dict[str, Any],  # Expects dict
             "Delete a catalog item variable by sys_id",
             "dict",  # Tool returns Pydantic model
+        ),
+        "create_catalog_variable_choice": (
+            create_catalog_variable_choice_tool,
+            CreateCatalogVariableChoiceParams,
+            CatalogVariableChoiceResponse,
+            "Create a choice option for a select-type catalog item variable",
+            "dict",
         ),
         # Change Management Tools
         "create_change_request": (
