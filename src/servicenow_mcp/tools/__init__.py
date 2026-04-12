@@ -130,6 +130,9 @@ from servicenow_mcp.tools.syslog_tools import (
     list_syslog_entries,
     get_syslog_entry,
 )
+from servicenow_mcp.tools.ui_policy_tools import (
+    create_ui_policy,
+)
 # from servicenow_mcp.tools.problem_tools import create_problem, update_problem
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
@@ -256,6 +259,9 @@ __all__ = [
     # Syslog tools
     "list_syslog_entries",
     "get_syslog_entry",
+
+    # UI Policy tools
+    "create_ui_policy",
 
     # Future tools
     # "create_problem",

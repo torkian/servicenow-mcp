@@ -50,7 +50,7 @@ catalog_builder:
   # - delete_catalog_item_variable  # TODO: not yet implemented
   - create_catalog_variable_choice
   # Basic Scripting (UI Policy & User Criteria)
-  # - create_ui_policy  # TODO: not yet implemented
+  - create_ui_policy
   # - create_ui_policy_action  # TODO: not yet implemented
   # - create_user_criteria  # TODO: not yet implemented
   # - create_user_criteria_condition  # TODO: not yet implemented
@@ -106,7 +106,7 @@ platform_developer:
   - reorder_workflow_activities
   - get_workflow_activities
   # General UI Policies
-  # - create_ui_policy  # TODO: not yet implemented
+  - create_ui_policy
   # - create_ui_policy_action  # TODO: not yet implemented
   # Changesets
   - list_changesets
@@ -253,7 +253,7 @@ full:
   # - create_user_criteria  # TODO: not yet implemented
   # - create_user_criteria_condition  # TODO: not yet implemented
   # UI Policy
-  # - create_ui_policy  # TODO: not yet implemented
+  - create_ui_policy
   # - create_ui_policy_action  # TODO: not yet implemented
   # Story Management
   - create_story

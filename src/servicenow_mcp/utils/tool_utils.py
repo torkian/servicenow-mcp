@@ -378,6 +378,12 @@ from servicenow_mcp.tools.syslog_tools import (
     list_syslog_entries as list_syslog_entries_tool,
     get_syslog_entry as get_syslog_entry_tool,
 )
+from servicenow_mcp.tools.ui_policy_tools import (
+    CreateUIPolicyParams,
+)
+from servicenow_mcp.tools.ui_policy_tools import (
+    create_ui_policy as create_ui_policy_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1073,6 +1079,14 @@ def get_tool_definitions(
             str,
             "Retrieve a single syslog entry by its sys_id",
             "json",
+        ),
+        # UI Policy Tools
+        "create_ui_policy": (
+            create_ui_policy_tool,
+            CreateUIPolicyParams,
+            Dict[str, Any],
+            "Create a UI policy that controls field behaviour (mandatory/visible/read-only) on a ServiceNow form",
+            "dict",
         ),
     }
     return tool_definitions
