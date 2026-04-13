@@ -7,7 +7,7 @@ on configurable conditions.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -136,4 +136,122 @@ def create_ui_policy(
         return UIPolicyResponse(
             success=False,
             message=f"Failed to create UI policy: {str(e)}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# create_ui_policy_action
+# ---------------------------------------------------------------------------
+
+FieldBehaviour = Literal["true", "false", "leave_alone"]
+
+
+class CreateUIPolicyActionParams(BaseModel):
+    """Parameters for creating a UI policy action in ServiceNow."""
+
+    ui_policy_id: str = Field(
+        ...,
+        description=(
+            "The sys_id of the parent UI policy (sys_ui_policy) that this action belongs to"
+        ),
+    )
+    field_name: str = Field(
+        ...,
+        description=(
+            "The element (field) name on the form that this action targets "
+            "(e.g., 'short_description', 'priority', 'assignment_group')"
+        ),
+    )
+    mandatory: FieldBehaviour = Field(
+        "leave_alone",
+        description=(
+            "Whether the field should be mandatory when the policy condition is true. "
+            "'true' = make mandatory, 'false' = make optional, 'leave_alone' = no change"
+        ),
+    )
+    visible: FieldBehaviour = Field(
+        "leave_alone",
+        description=(
+            "Whether the field should be visible when the policy condition is true. "
+            "'true' = show, 'false' = hide, 'leave_alone' = no change"
+        ),
+    )
+    disabled: FieldBehaviour = Field(
+        "leave_alone",
+        description=(
+            "Whether the field should be read-only when the policy condition is true. "
+            "'true' = read-only, 'false' = editable, 'leave_alone' = no change"
+        ),
+    )
+
+
+class UIPolicyActionResponse(BaseModel):
+    """Response from UI policy action operations."""
+
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Message describing the result")
+    action_id: Optional[str] = Field(
+        None, description="The sys_id of the created UI policy action"
+    )
+    details: Optional[Dict[str, Any]] = Field(
+        None, description="Additional details returned by ServiceNow"
+    )
+
+
+def create_ui_policy_action(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateUIPolicyActionParams,
+) -> UIPolicyActionResponse:
+    """
+    Create a new UI policy action in ServiceNow.
+
+    A UI policy action (``sys_ui_policy_action``) specifies what happens to a
+    single form field when its parent UI policy's condition evaluates to true.
+    Each action controls up to three independent field behaviours: mandatory,
+    visible, and disabled (read-only).
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for creating the UI policy action.
+
+    Returns:
+        Response with information about the created UI policy action.
+    """
+    api_url = f"{config.instance_url}/api/now/table/sys_ui_policy_action"
+
+    data: Dict[str, Any] = {
+        "ui_policy": params.ui_policy_id,
+        "field_name": params.field_name,
+        "mandatory": params.mandatory,
+        "visible": params.visible,
+        "disabled": params.disabled,
+    }
+
+    try:
+        response = requests.post(
+            api_url,
+            json=data,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        result = response.json().get("result", {})
+
+        return UIPolicyActionResponse(
+            success=True,
+            message=(
+                f"UI policy action for field '{params.field_name}' created successfully"
+            ),
+            action_id=result.get("sys_id"),
+            details=result,
+        )
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to create UI policy action: {e}")
+        return UIPolicyActionResponse(
+            success=False,
+            message=f"Failed to create UI policy action: {str(e)}",
         )

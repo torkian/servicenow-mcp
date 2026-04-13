@@ -11,6 +11,9 @@ from servicenow_mcp.tools.ui_policy_tools import (
     CreateUIPolicyParams,
     UIPolicyResponse,
     create_ui_policy,
+    CreateUIPolicyActionParams,
+    UIPolicyActionResponse,
+    create_ui_policy_action,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
@@ -219,6 +222,193 @@ class TestCreateUIPolicy(unittest.TestCase):
         self.assertIsNone(params.conditions)
         self.assertIsNone(params.short_description)
         self.assertIsNone(params.catalog_item_id)
+
+
+class TestCreateUIPolicyAction(unittest.TestCase):
+    """Tests for the create_ui_policy_action function."""
+
+    def setUp(self):
+        self.config = ServerConfig(
+            instance_url="https://test.service-now.com",
+            timeout=10,
+            auth=AuthConfig(
+                type=AuthType.BASIC,
+                basic=BasicAuthConfig(username="test_user", password="test_password"),
+            ),
+        )
+        self.auth_manager = MagicMock()
+        self.auth_manager.get_headers.return_value = {"Content-Type": "application/json"}
+
+    @patch("requests.post")
+    def test_create_action_defaults(self, mock_post):
+        """Create an action with only required fields; behaviour fields default to leave_alone."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": {
+                "sys_id": "action_001",
+                "ui_policy": "pol_001",
+                "field_name": "priority",
+            }
+        }
+        mock_post.return_value = mock_response
+
+        params = CreateUIPolicyActionParams(
+            ui_policy_id="pol_001",
+            field_name="priority",
+        )
+        result = create_ui_policy_action(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.action_id, "action_001")
+        self.assertIn("priority", result.message)
+        self.assertIn("created successfully", result.message)
+
+        sent_data = mock_post.call_args.kwargs["json"]
+        self.assertEqual(sent_data["ui_policy"], "pol_001")
+        self.assertEqual(sent_data["field_name"], "priority")
+        self.assertEqual(sent_data["mandatory"], "leave_alone")
+        self.assertEqual(sent_data["visible"], "leave_alone")
+        self.assertEqual(sent_data["disabled"], "leave_alone")
+
+    @patch("requests.post")
+    def test_create_action_make_mandatory_and_visible(self, mock_post):
+        """Create an action that forces a field to be mandatory and visible."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": {"sys_id": "action_002", "field_name": "approval_notes"}
+        }
+        mock_post.return_value = mock_response
+
+        params = CreateUIPolicyActionParams(
+            ui_policy_id="pol_002",
+            field_name="approval_notes",
+            mandatory="true",
+            visible="true",
+            disabled="false",
+        )
+        result = create_ui_policy_action(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.action_id, "action_002")
+
+        sent_data = mock_post.call_args.kwargs["json"]
+        self.assertEqual(sent_data["mandatory"], "true")
+        self.assertEqual(sent_data["visible"], "true")
+        self.assertEqual(sent_data["disabled"], "false")
+
+    @patch("requests.post")
+    def test_create_action_hide_field(self, mock_post):
+        """Create an action that hides a field and makes it read-only."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": {"sys_id": "action_003", "field_name": "close_code"}
+        }
+        mock_post.return_value = mock_response
+
+        params = CreateUIPolicyActionParams(
+            ui_policy_id="pol_003",
+            field_name="close_code",
+            visible="false",
+            disabled="true",
+        )
+        result = create_ui_policy_action(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        sent_data = mock_post.call_args.kwargs["json"]
+        self.assertEqual(sent_data["visible"], "false")
+        self.assertEqual(sent_data["disabled"], "true")
+
+    @patch("requests.post")
+    def test_create_action_posts_to_correct_endpoint(self, mock_post):
+        """Verifies the request targets sys_ui_policy_action table."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"result": {"sys_id": "x"}}
+        mock_post.return_value = mock_response
+
+        params = CreateUIPolicyActionParams(ui_policy_id="pol_x", field_name="state")
+        create_ui_policy_action(self.config, self.auth_manager, params)
+
+        url = mock_post.call_args.args[0]
+        self.assertIn("/api/now/table/sys_ui_policy_action", url)
+
+    @patch("requests.post")
+    def test_create_action_http_error(self, mock_post):
+        """Returns failure response on HTTP error."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError("403 Forbidden")
+        mock_post.return_value = mock_response
+
+        params = CreateUIPolicyActionParams(ui_policy_id="pol_x", field_name="state")
+        result = create_ui_policy_action(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("Failed to create UI policy action", result.message)
+        self.assertIsNone(result.action_id)
+
+    @patch("requests.post")
+    def test_create_action_connection_error(self, mock_post):
+        """Returns failure response on connection error."""
+        mock_post.side_effect = requests.ConnectionError("Connection refused")
+
+        params = CreateUIPolicyActionParams(ui_policy_id="pol_x", field_name="state")
+        result = create_ui_policy_action(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("Failed to create UI policy action", result.message)
+
+    def test_action_params_defaults(self):
+        """Default behaviour values are leave_alone."""
+        params = CreateUIPolicyActionParams(ui_policy_id="p", field_name="f")
+        self.assertEqual(params.mandatory, "leave_alone")
+        self.assertEqual(params.visible, "leave_alone")
+        self.assertEqual(params.disabled, "leave_alone")
+
+    def test_action_response_model(self):
+        """UIPolicyActionResponse can be constructed with all fields."""
+        r = UIPolicyActionResponse(
+            success=True,
+            message="ok",
+            action_id="abc",
+            details={"key": "value"},
+        )
+        self.assertTrue(r.success)
+        self.assertEqual(r.action_id, "abc")
+
+    def test_action_params_invalid_behaviour_rejected(self):
+        """Invalid behaviour literal values are rejected by Pydantic."""
+        with self.assertRaises(Exception):
+            CreateUIPolicyActionParams(
+                ui_policy_id="p",
+                field_name="f",
+                mandatory="maybe",  # not a valid FieldBehaviour
+            )
+
+    @patch("requests.post")
+    def test_create_action_result_details_populated(self, mock_post):
+        """Details field in response contains the full ServiceNow result."""
+        payload = {
+            "sys_id": "action_010",
+            "ui_policy": "pol_010",
+            "field_name": "category",
+            "mandatory": "true",
+        }
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"result": payload}
+        mock_post.return_value = mock_response
+
+        params = CreateUIPolicyActionParams(
+            ui_policy_id="pol_010",
+            field_name="category",
+            mandatory="true",
+        )
+        result = create_ui_policy_action(self.config, self.auth_manager, params)
+
+        self.assertEqual(result.details, payload)
 
 
 if __name__ == "__main__":

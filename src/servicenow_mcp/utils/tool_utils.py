@@ -380,9 +380,11 @@ from servicenow_mcp.tools.syslog_tools import (
 )
 from servicenow_mcp.tools.ui_policy_tools import (
     CreateUIPolicyParams,
+    CreateUIPolicyActionParams,
 )
 from servicenow_mcp.tools.ui_policy_tools import (
     create_ui_policy as create_ui_policy_tool,
+    create_ui_policy_action as create_ui_policy_action_tool,
 )
 
 # Define a type alias for the Pydantic models or dataclasses used for params
@@ -1086,6 +1088,13 @@ def get_tool_definitions(
             CreateUIPolicyParams,
             Dict[str, Any],
             "Create a UI policy that controls field behaviour (mandatory/visible/read-only) on a ServiceNow form",
+            "dict",
+        ),
+        "create_ui_policy_action": (
+            create_ui_policy_action_tool,
+            CreateUIPolicyActionParams,
+            Dict[str, Any],
+            "Create a UI policy action that sets the mandatory/visible/read-only state of a form field when a UI policy condition fires",
             "dict",
         ),
     }
