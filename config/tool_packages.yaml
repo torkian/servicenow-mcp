@@ -52,7 +52,7 @@ catalog_builder:
   # Basic Scripting (UI Policy & User Criteria)
   - create_ui_policy
   - create_ui_policy_action
-  # - create_user_criteria  # TODO: not yet implemented
+  - create_user_criteria
   # - create_user_criteria_condition  # TODO: not yet implemented
   # Optimization
   - get_optimization_recommendations
@@ -250,7 +250,7 @@ full:
   - list_syslog_entries
   - get_syslog_entry
   # Catalog Criteria
-  # - create_user_criteria  # TODO: not yet implemented
+  - create_user_criteria
   # - create_user_criteria_condition  # TODO: not yet implemented
   # UI Policy
   - create_ui_policy

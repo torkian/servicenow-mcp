@@ -386,6 +386,12 @@ from servicenow_mcp.tools.ui_policy_tools import (
     create_ui_policy as create_ui_policy_tool,
     create_ui_policy_action as create_ui_policy_action_tool,
 )
+from servicenow_mcp.tools.user_criteria_tools import (
+    CreateUserCriteriaParams,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    create_user_criteria as create_user_criteria_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1095,6 +1101,14 @@ def get_tool_definitions(
             CreateUIPolicyActionParams,
             Dict[str, Any],
             "Create a UI policy action that sets the mandatory/visible/read-only state of a form field when a UI policy condition fires",
+            "dict",
+        ),
+        # User Criteria Tools
+        "create_user_criteria": (
+            create_user_criteria_tool,
+            CreateUserCriteriaParams,
+            Dict[str, Any],
+            "Create a User Criteria record that controls who can see or request Service Catalog items based on role, group, department, company, location, or a custom script",
             "dict",
         ),
     }

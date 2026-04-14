@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-8. Implement create_user_criteria tool
 9. Implement create_user_criteria_condition tool
 10. Implement execute_script_include tool
 11. Add tests for changeset_tools.py (73% coverage)
@@ -23,3 +22,4 @@
 5. 2026-04-11 — Implement create_catalog_variable_choice tool (POST question_choice; links choices to select-type variables)
 6. 2026-04-12 — Implement create_ui_policy tool (POST sys_ui_policy; supports conditions, on_load, reverse_if_false, catalog scoping)
 7. 2026-04-13 — Implement create_ui_policy_action tool (POST sys_ui_policy_action; mandatory/visible/disabled field behaviours with leave_alone default)
+8. 2026-04-14 — Implement create_user_criteria tool (POST user_criteria; role/group/department/company/location/script conditions with match_all flag)
