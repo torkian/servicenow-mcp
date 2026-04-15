@@ -8,7 +8,7 @@ location) or a custom script.
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, Literal, Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -167,4 +167,133 @@ def create_user_criteria(
         return UserCriteriaResponse(
             success=False,
             message=f"Failed to create user criteria: {str(e)}",
+        )
+
+
+# ---------------------------------------------------------------------------
+# create_user_criteria_condition
+# ---------------------------------------------------------------------------
+
+_ENTITY_TABLES = {
+    # (entity_type, visibility) -> (table_name, entity_field_name)
+    ("catalog_item", "can_see"): ("sc_cat_item_user_criteria_mtom", "sc_cat_item"),
+    ("catalog_item", "cannot_see"): ("sc_cat_item_user_criteria_no_mtom", "sc_cat_item"),
+    ("category", "can_see"): ("sc_category_user_criteria_mtom", "sc_category"),
+    ("category", "cannot_see"): ("sc_category_user_criteria_no_mtom", "sc_category"),
+    ("catalog", "can_see"): ("sc_catalog_user_criteria_mtom", "sc_catalog"),
+    ("catalog", "cannot_see"): ("sc_catalog_user_criteria_no_mtom", "sc_catalog"),
+}
+
+
+class CreateUserCriteriaConditionParams(BaseModel):
+    """Parameters for applying a User Criteria record to a catalog entity."""
+
+    user_criteria_id: str = Field(
+        ...,
+        description="sys_id of the User Criteria record to apply",
+    )
+    entity_type: Literal["catalog_item", "category", "catalog"] = Field(
+        ...,
+        description=(
+            "The type of catalog entity to restrict: "
+            "'catalog_item' for a specific item (sc_cat_item), "
+            "'category' for a catalog category (sc_category), "
+            "or 'catalog' for an entire catalog (sc_catalog)"
+        ),
+    )
+    entity_id: str = Field(
+        ...,
+        description="sys_id of the catalog entity (item, category, or catalog) to restrict",
+    )
+    visibility: Literal["can_see", "cannot_see"] = Field(
+        "can_see",
+        description=(
+            "'can_see' grants access to users who match the criteria (allow-list); "
+            "'cannot_see' blocks access for users who match the criteria (deny-list)"
+        ),
+    )
+
+
+class UserCriteriaConditionResponse(BaseModel):
+    """Response from User Criteria condition operations."""
+
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Message describing the result")
+    condition_id: Optional[str] = Field(
+        None, description="The sys_id of the created junction record"
+    )
+    details: Optional[Dict[str, Any]] = Field(
+        None, description="Additional details returned by ServiceNow"
+    )
+
+
+def create_user_criteria_condition(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateUserCriteriaConditionParams,
+) -> UserCriteriaConditionResponse:
+    """
+    Apply a User Criteria record to a Service Catalog entity.
+
+    This creates a junction record in the appropriate ServiceNow relationship
+    table, linking an existing ``user_criteria`` record to a catalog item,
+    category, or catalog.  Two visibility modes are supported:
+
+    * ``can_see`` (default) — users who match the criteria are *allowed* to
+      see / request the entity.  Uses the ``*_mtom`` tables:
+
+      - ``sc_cat_item_user_criteria_mtom``
+      - ``sc_category_user_criteria_mtom``
+      - ``sc_catalog_user_criteria_mtom``
+
+    * ``cannot_see`` — users who match the criteria are *denied* access to
+      the entity.  Uses the ``*_no_mtom`` tables:
+
+      - ``sc_cat_item_user_criteria_no_mtom``
+      - ``sc_category_user_criteria_no_mtom``
+      - ``sc_catalog_user_criteria_no_mtom``
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters identifying the criteria, entity, and visibility.
+
+    Returns:
+        Response with the sys_id of the created junction record.
+    """
+    table_name, entity_field = _ENTITY_TABLES[(params.entity_type, params.visibility)]
+    api_url = f"{config.instance_url}/api/now/table/{table_name}"
+
+    data: Dict[str, Any] = {
+        "user_criteria": params.user_criteria_id,
+        entity_field: params.entity_id,
+    }
+
+    try:
+        response = requests.post(
+            api_url,
+            json=data,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        result = response.json().get("result", {})
+
+        return UserCriteriaConditionResponse(
+            success=True,
+            message=(
+                f"User criteria condition created: criteria '{params.user_criteria_id}' "
+                f"applied to {params.entity_type} '{params.entity_id}' "
+                f"({params.visibility})"
+            ),
+            condition_id=result.get("sys_id"),
+            details=result,
+        )
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to create user criteria condition: {e}")
+        return UserCriteriaConditionResponse(
+            success=False,
+            message=f"Failed to create user criteria condition: {str(e)}",
         )

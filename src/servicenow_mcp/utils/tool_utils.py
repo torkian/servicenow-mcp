@@ -387,10 +387,14 @@ from servicenow_mcp.tools.ui_policy_tools import (
     create_ui_policy_action as create_ui_policy_action_tool,
 )
 from servicenow_mcp.tools.user_criteria_tools import (
+    CreateUserCriteriaConditionParams,
     CreateUserCriteriaParams,
 )
 from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria as create_user_criteria_tool,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    create_user_criteria_condition as create_user_criteria_condition_tool,
 )
 
 # Define a type alias for the Pydantic models or dataclasses used for params
@@ -1109,6 +1113,13 @@ def get_tool_definitions(
             CreateUserCriteriaParams,
             Dict[str, Any],
             "Create a User Criteria record that controls who can see or request Service Catalog items based on role, group, department, company, location, or a custom script",
+            "dict",
+        ),
+        "create_user_criteria_condition": (
+            create_user_criteria_condition_tool,
+            CreateUserCriteriaConditionParams,
+            Dict[str, Any],
+            "Apply a User Criteria record to a Service Catalog entity (item, category, or catalog) to grant or deny access for matching users",
             "dict",
         ),
     }

@@ -53,7 +53,7 @@ catalog_builder:
   - create_ui_policy
   - create_ui_policy_action
   - create_user_criteria
-  # - create_user_criteria_condition  # TODO: not yet implemented
+  - create_user_criteria_condition
   # Optimization
   - get_optimization_recommendations
 
@@ -251,7 +251,7 @@ full:
   - get_syslog_entry
   # Catalog Criteria
   - create_user_criteria
-  # - create_user_criteria_condition  # TODO: not yet implemented
+  - create_user_criteria_condition
   # UI Policy
   - create_ui_policy
   - create_ui_policy_action

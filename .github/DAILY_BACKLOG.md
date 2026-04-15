@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-9. Implement create_user_criteria_condition tool
 10. Implement execute_script_include tool
 11. Add tests for changeset_tools.py (73% coverage)
 12. Add tests for auth_manager.py (70% coverage)
@@ -23,3 +22,4 @@
 6. 2026-04-12 — Implement create_ui_policy tool (POST sys_ui_policy; supports conditions, on_load, reverse_if_false, catalog scoping)
 7. 2026-04-13 — Implement create_ui_policy_action tool (POST sys_ui_policy_action; mandatory/visible/disabled field behaviours with leave_alone default)
 8. 2026-04-14 — Implement create_user_criteria tool (POST user_criteria; role/group/department/company/location/script conditions with match_all flag)
+9. 2026-04-15 — Implement create_user_criteria_condition tool (junction records linking user_criteria to catalog item/category/catalog; can_see and cannot_see visibility modes)
