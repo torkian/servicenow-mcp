@@ -90,7 +90,7 @@ platform_developer:
   - create_script_include
   - update_script_include
   - delete_script_include
-  # - execute_script_include  # TODO: not yet implemented
+  - execute_script_include
   # Workflows
   - list_workflows
   - get_workflow_details
@@ -225,7 +225,7 @@ full:
   - create_script_include
   - update_script_include
   - delete_script_include
-  # - execute_script_include  # TODO: not yet implemented
+  - execute_script_include
   # Knowledge Base
   - create_knowledge_base
   - list_knowledge_bases

@@ -4,8 +4,9 @@ Script Include tools for the ServiceNow MCP server.
 This module provides tools for managing script includes in ServiceNow.
 """
 
+import json
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -484,4 +485,183 @@ def delete_script_include(
         return ScriptIncludeResponse(
             success=False,
             message=f"Error deleting script include: {str(e)}",
-        ) 
+        )
+
+
+class ExecuteScriptIncludeParams(BaseModel):
+    """Parameters for executing a script include method."""
+
+    script_include_id: str = Field(
+        ...,
+        description=(
+            "Name or sys_id of the script include to execute. "
+            "Prefix with 'sys_id:' to look up by sys_id, otherwise looked up by name."
+        ),
+    )
+    method_name: str = Field(
+        ...,
+        description="Name of the method to call on the script include class.",
+    )
+    method_params: Optional[List[Any]] = Field(
+        None,
+        description=(
+            "Positional arguments to pass to the method, serialised as a JSON array. "
+            "Each element may be a string, number, boolean, object, or null."
+        ),
+    )
+
+
+def execute_script_include(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ExecuteScriptIncludeParams,
+) -> Dict[str, Any]:
+    """Execute a method on a ServiceNow Script Include.
+
+    The tool first resolves the script include by name or sys_id to obtain its
+    class name, then constructs a server-side JavaScript snippet that:
+      1. Instantiates the class.
+      2. Calls the requested method with the supplied arguments.
+      3. Returns the result serialised as JSON via ``gs.print``.
+
+    Execution uses the ServiceNow scripting evaluation endpoint
+    ``POST /api/now/v1/scripting/eval``, which is available on Madrid (2019) and
+    later instances for users with the ``admin`` or ``script_include`` role.
+
+    Args:
+        config: The server configuration.
+        auth_manager: The authentication manager.
+        params: Parameters describing which method to run.
+
+    Returns:
+        A dictionary with keys:
+            - ``success`` (bool)
+            - ``message`` (str)
+            - ``script_include_name`` (str | None)
+            - ``method_name`` (str)
+            - ``result`` (any) — deserialised return value from the method, or
+              ``None`` when the method produced no output.
+            - ``output`` (str | None) — raw text printed to the server log.
+    """
+    # ------------------------------------------------------------------
+    # Step 1: resolve the script include so we know the class name
+    # ------------------------------------------------------------------
+    get_params = GetScriptIncludeParams(script_include_id=params.script_include_id)
+    get_result = get_script_include(config, auth_manager, get_params)
+
+    if not get_result["success"]:
+        return {
+            "success": False,
+            "message": get_result["message"],
+            "script_include_name": None,
+            "method_name": params.method_name,
+            "result": None,
+            "output": None,
+        }
+
+    script_include = get_result["script_include"]
+    class_name: str = script_include["name"]
+
+    if not script_include.get("active"):
+        return {
+            "success": False,
+            "message": f"Script include '{class_name}' is not active and cannot be executed.",
+            "script_include_name": class_name,
+            "method_name": params.method_name,
+            "result": None,
+            "output": None,
+        }
+
+    # ------------------------------------------------------------------
+    # Step 2: build the server-side JavaScript to run
+    # ------------------------------------------------------------------
+    # Serialise method arguments as a JS argument list.
+    arg_list = ""
+    if params.method_params:
+        arg_list = ", ".join(json.dumps(a) for a in params.method_params)
+
+    script = (
+        "(function() {\n"
+        f"    var obj = new {class_name}();\n"
+        f"    var result = obj.{params.method_name}({arg_list});\n"
+        "    gs.print(JSON.stringify(result));\n"
+        "})()"
+    )
+
+    # ------------------------------------------------------------------
+    # Step 3: POST to the scripting eval endpoint
+    # ------------------------------------------------------------------
+    url = f"{config.instance_url}/api/now/v1/scripting/eval"
+    headers = auth_manager.get_headers()
+
+    try:
+        response = requests.post(
+            url,
+            json={"script": script},
+            headers=headers,
+            timeout=60,
+        )
+        response.raise_for_status()
+
+        data = response.json()
+        api_result = data.get("result", {})
+
+        # The eval endpoint returns printed output in 'print_output' or 'output'.
+        raw_output: str = ""
+        if isinstance(api_result, dict):
+            raw_output = api_result.get("output") or ""
+            if not raw_output and api_result.get("print_output"):
+                raw_output = "\n".join(api_result["print_output"])
+        elif isinstance(api_result, str):
+            raw_output = api_result
+
+        # Try to deserialise the JSON that our script printed.
+        parsed_result: Any = None
+        if raw_output.strip():
+            try:
+                parsed_result = json.loads(raw_output.strip())
+            except (json.JSONDecodeError, ValueError):
+                parsed_result = raw_output.strip()
+
+        return {
+            "success": True,
+            "message": (
+                f"Successfully executed {class_name}.{params.method_name}()"
+            ),
+            "script_include_name": class_name,
+            "method_name": params.method_name,
+            "result": parsed_result,
+            "output": raw_output or None,
+        }
+
+    except requests.HTTPError as exc:
+        status = exc.response.status_code if exc.response is not None else "unknown"
+        body = ""
+        if exc.response is not None:
+            try:
+                body = exc.response.json().get("error", {}).get("message", "")
+            except Exception:
+                body = exc.response.text[:200]
+        msg = f"HTTP {status} from scripting eval endpoint"
+        if body:
+            msg += f": {body}"
+        logger.error("Error executing script include '%s': %s", class_name, msg)
+        return {
+            "success": False,
+            "message": msg,
+            "script_include_name": class_name,
+            "method_name": params.method_name,
+            "result": None,
+            "output": None,
+        }
+
+    except Exception as exc:
+        logger.error("Error executing script include '%s': %s", class_name, exc)
+        return {
+            "success": False,
+            "message": f"Error executing script include: {exc}",
+            "script_include_name": class_name,
+            "method_name": params.method_name,
+            "result": None,
+            "output": None,
+        }
