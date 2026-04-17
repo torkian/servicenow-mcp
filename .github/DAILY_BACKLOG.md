@@ -1,8 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-11. Add tests for changeset_tools.py (73% coverage)
-12. Add tests for auth_manager.py (70% coverage)
 13. Add tests for catalog_optimization.py (78% coverage)
 14. Improve error messages across all tools
 15. Add input validation for date fields across tools
@@ -23,3 +21,4 @@
 8. 2026-04-14 — Implement create_user_criteria tool (POST user_criteria; role/group/department/company/location/script conditions with match_all flag)
 9. 2026-04-15 — Implement create_user_criteria_condition tool (junction records linking user_criteria to catalog item/category/catalog; can_see and cannot_see visibility modes)
 10. 2026-04-16 — Implement execute_script_include tool (POST /api/now/v1/scripting/eval; resolves class by name/sys_id, constructs JS snippet, deserialises JSON output)
+11. 2026-04-17 — Add tests for changeset_tools.py and auth_manager.py; both modules reach 100% coverage (timeframe="recent" branch, update_changeset error paths, basic auth header encoding)

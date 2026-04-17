@@ -26,6 +26,21 @@ class TestAuthManagerGetHeaders(unittest.TestCase):
         with self.assertRaises(ValueError, msg="Basic auth configuration is required"):
             manager.get_headers()
 
+    def test_basic_auth_valid_config_returns_header(self):
+        """Lines 54-56: valid basic auth config produces correct Authorization header."""
+        import base64
+        config = AuthConfig(
+            type=AuthType.BASIC,
+            basic=BasicAuthConfig(username="admin", password="secret"),
+        )
+        manager = AuthManager(config)
+        headers = manager.get_headers()
+        self.assertIn("Authorization", headers)
+        expected = "Basic " + base64.b64encode(b"admin:secret").decode()
+        self.assertEqual(headers["Authorization"], expected)
+        self.assertEqual(headers["Accept"], "application/json")
+        self.assertEqual(headers["Content-Type"], "application/json")
+
     def test_api_key_auth_returns_headers(self):
         """Lines 58-68: API key auth type adds header_name to headers."""
         api_key_config = ApiKeyConfig(header_name="X-API-Key", api_key="my-secret-key")

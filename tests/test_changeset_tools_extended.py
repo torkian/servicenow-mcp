@@ -158,6 +158,18 @@ class TestListChangesetsErrors(unittest.TestCase):
         self.assertIn("get_headers", result["message"])
 
     @patch("servicenow_mcp.tools.changeset_tools.requests.get")
+    def test_timeframe_recent(self, mock_get):
+        """Line 139: timeframe='recent' appends the last-7-days query part."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": []}
+        mock_response.raise_for_status.return_value = None
+        mock_get.return_value = mock_response
+
+        list_changesets(self.auth_manager, self.server_config, {"timeframe": "recent"})
+        _, kwargs = mock_get.call_args
+        self.assertIn("beginningOfLast7Days", kwargs["params"]["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.changeset_tools.requests.get")
     def test_timeframe_last_week(self, mock_get):
         """Line 253: timeframe='last_week' appends the correct query part."""
         mock_response = MagicMock()
@@ -301,6 +313,28 @@ class TestUpdateChangesetErrors(unittest.TestCase):
         bad_server = MagicMock(spec=[])
         result = update_changeset(bad_server, self.auth_manager, {"changeset_id": "123"})
         self.assertFalse(result["success"])
+
+    def test_no_instance_url_with_update_field_returns_error(self):
+        """Lines 387-390: instance_url missing but update fields present."""
+        bad_server_config = MagicMock(spec=[])
+        result = update_changeset(
+            self.auth_manager,
+            bad_server_config,
+            {"changeset_id": "123", "name": "CS"},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    def test_no_headers_with_update_field_returns_error(self):
+        """Lines 395-398: headers missing but update fields present."""
+        bad_auth = MagicMock(spec=[])
+        result = update_changeset(
+            bad_auth,
+            self.server_config,
+            {"changeset_id": "123", "name": "CS"},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
 
     def test_no_headers_returns_error(self):
         """Line 488: _get_headers returns None."""
