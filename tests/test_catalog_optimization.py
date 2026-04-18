@@ -11,6 +11,7 @@ from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.catalog_optimization import (
     OptimizationRecommendationsParams,
     UpdateCatalogItemParams,
+    _get_high_abandonment_items,
     _get_inactive_items,
     _get_low_usage_items,
     _get_poor_description_items,
@@ -575,6 +576,195 @@ class TestCatalogOptimizationTools(unittest.TestCase):
         self.assertFalse(result["success"])
         self.assertIn("Error updating catalog item", result["message"])
         self.assertIsNone(result["data"])
+
+
+    @patch("servicenow_mcp.tools.catalog_optimization._get_inactive_items")
+    def test_get_optimization_recommendations_error(self, mock_inactive):
+        """Test error handling in get_optimization_recommendations."""
+        mock_inactive.side_effect = RuntimeError("unexpected failure")
+
+        params = OptimizationRecommendationsParams(recommendation_types=["inactive_items"])
+        result = get_optimization_recommendations(self.config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error getting optimization recommendations", result["message"])
+        self.assertEqual(result["recommendations"], [])
+
+    @patch("requests.patch")
+    def test_update_catalog_item_all_fields(self, mock_patch):
+        """Test updating a catalog item with all optional fields set."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "result": {
+                "sys_id": "item1",
+                "name": "Full Laptop",
+                "short_description": "Short desc",
+                "description": "Long desc",
+                "category": "hardware",
+                "price": "500.00",
+                "active": "true",
+                "order": "10",
+            }
+        }
+        mock_patch.return_value = mock_response
+
+        params = UpdateCatalogItemParams(
+            item_id="item1",
+            name="Full Laptop",
+            short_description="Short desc",
+            description="Long desc",
+            category="hardware",
+            price="500.00",
+            active=True,
+            order=10,
+        )
+
+        result = update_catalog_item(self.config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        args, kwargs = mock_patch.call_args
+        body = kwargs["json"]
+        self.assertEqual(body["description"], "Long desc")
+        self.assertEqual(body["category"], "hardware")
+        self.assertEqual(body["active"], "true")
+        self.assertEqual(body["order"], "10")
+
+    @patch("requests.get")
+    @patch("random.sample")
+    @patch("random.randint")
+    def test_get_low_usage_items_with_category(self, mock_randint, mock_sample, mock_get):
+        """Test getting low usage items filtered by category."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "result": [
+                {"sys_id": "item1", "name": "Niche Item", "short_description": "Rarely used", "category": "software"},
+            ]
+        }
+        mock_get.return_value = mock_response
+        mock_sample.return_value = [
+            {"sys_id": "item1", "name": "Niche Item", "short_description": "Rarely used", "category": "software"},
+        ]
+        mock_randint.return_value = 1
+
+        result = _get_low_usage_items(self.config, self.auth_manager, "software")
+
+        args, kwargs = mock_get.call_args
+        self.assertEqual(kwargs["params"]["sysparm_query"], "active=true^category=software")
+        self.assertEqual(result[0]["order_count"], 1)
+
+    @patch("requests.get")
+    def test_get_low_usage_items_error(self, mock_get):
+        """Test error handling in _get_low_usage_items."""
+        mock_get.side_effect = requests.exceptions.RequestException("API Error")
+        result = _get_low_usage_items(self.config, self.auth_manager)
+        self.assertEqual(result, [])
+
+    @patch("requests.get")
+    @patch("random.sample")
+    @patch("random.randint")
+    def test_get_high_abandonment_items(self, mock_randint, mock_sample, mock_get):
+        """Test getting catalog items with high abandonment rates."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "result": [
+                {"sys_id": "item1", "name": "Complex Form", "short_description": "Hard to complete", "category": "hr"},
+            ]
+        }
+        mock_get.return_value = mock_response
+        item = {"sys_id": "item1", "name": "Complex Form", "short_description": "Hard to complete", "category": "hr"}
+        mock_sample.return_value = [item]
+        mock_randint.side_effect = [60, 50]
+
+        result = _get_high_abandonment_items(self.config, self.auth_manager)
+
+        self.assertEqual(len(result), 1)
+        self.assertEqual(result[0]["abandonment_rate"], 60)
+        self.assertEqual(result[0]["cart_adds"], 50)
+        self.assertEqual(result[0]["orders"], int(50 * (1 - 60 / 100)))
+
+    @patch("requests.get")
+    @patch("random.sample")
+    @patch("random.randint")
+    def test_get_high_abandonment_items_with_category(self, mock_randint, mock_sample, mock_get):
+        """Test getting high abandonment items filtered by category."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+        mock_sample.return_value = []
+
+        _get_high_abandonment_items(self.config, self.auth_manager, "hardware")
+
+        args, kwargs = mock_get.call_args
+        self.assertEqual(kwargs["params"]["sysparm_query"], "active=true^category=hardware")
+
+    @patch("requests.get")
+    def test_get_high_abandonment_items_error(self, mock_get):
+        """Test error handling in _get_high_abandonment_items."""
+        mock_get.side_effect = requests.exceptions.RequestException("API Error")
+        result = _get_high_abandonment_items(self.config, self.auth_manager)
+        self.assertEqual(result, [])
+
+    @patch("requests.get")
+    @patch("random.sample")
+    @patch("random.uniform")
+    def test_get_slow_fulfillment_items_with_category(self, mock_uniform, mock_sample, mock_get):
+        """Test getting slow fulfillment items filtered by category."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+        mock_sample.return_value = []
+
+        _get_slow_fulfillment_items(self.config, self.auth_manager, "hardware")
+
+        args, kwargs = mock_get.call_args
+        self.assertEqual(kwargs["params"]["sysparm_query"], "active=true^category=hardware")
+
+    @patch("requests.get")
+    def test_get_slow_fulfillment_items_error(self, mock_get):
+        """Test error handling in _get_slow_fulfillment_items."""
+        mock_get.side_effect = requests.exceptions.RequestException("API Error")
+        result = _get_slow_fulfillment_items(self.config, self.auth_manager)
+        self.assertEqual(result, [])
+
+    @patch("requests.get")
+    def test_get_poor_description_items_with_category(self, mock_get):
+        """Test getting poor description items filtered by category."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        _get_poor_description_items(self.config, self.auth_manager, "services")
+
+        args, kwargs = mock_get.call_args
+        self.assertEqual(kwargs["params"]["sysparm_query"], "active=true^category=services")
+
+    @patch("requests.get")
+    def test_get_poor_description_items_vague_terms(self, mock_get):
+        """Test detection of vague terms in item descriptions."""
+        mock_response = MagicMock()
+        mock_response.json.return_value = {
+            "result": [
+                {
+                    "sys_id": "item1",
+                    "name": "Vague Item",
+                    "short_description": "This item includes computers and more stuff etc",
+                    "category": "hardware",
+                },
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        result = _get_poor_description_items(self.config, self.auth_manager)
+
+        self.assertEqual(len(result), 1)
+        self.assertIn("Contains vague terms", result[0]["quality_issues"])
+
+    @patch("requests.get")
+    def test_get_poor_description_items_error(self, mock_get):
+        """Test error handling in _get_poor_description_items."""
+        mock_get.side_effect = requests.exceptions.RequestException("API Error")
+        result = _get_poor_description_items(self.config, self.auth_manager)
+        self.assertEqual(result, [])
 
 
 if __name__ == "__main__":
