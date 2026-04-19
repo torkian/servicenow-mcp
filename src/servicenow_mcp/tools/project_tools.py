@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -149,7 +149,7 @@ def create_project(
         logger.error(f"Error creating project: {e}")
         return {
             "success": False,
-            "message": f"Error creating project: {str(e)}",
+            "message": f"Error creating project: {_format_http_error(e)}",
         }
 
 def update_project(
@@ -242,7 +242,7 @@ def update_project(
         logger.error(f"Error updating project: {e}")
         return {
             "success": False,
-            "message": f"Error updating project: {str(e)}",
+            "message": f"Error updating project: {_format_http_error(e)}",
         }
 
 def list_projects(
@@ -343,5 +343,5 @@ def list_projects(
         logger.error(f"Error listing projects: {e}")
         return {
             "success": False,
-            "message": f"Error listing projects: {str(e)}",
+            "message": f"Error listing projects: {_format_http_error(e)}",
         }

@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-14. Improve error messages across all tools
 15. Add input validation for date fields across tools
 16. Add pagination helpers for list operations
 17. Add bulk operations support
@@ -22,3 +21,4 @@
 10. 2026-04-16 — Implement execute_script_include tool (POST /api/now/v1/scripting/eval; resolves class by name/sys_id, constructs JS snippet, deserialises JSON output)
 11. 2026-04-17 — Add tests for changeset_tools.py and auth_manager.py; both modules reach 100% coverage (timeframe="recent" branch, update_changeset error paths, basic auth header encoding)
 12. 2026-04-18 — Add tests for catalog_optimization.py; module reaches 100% coverage (error paths, category filters, vague-term detection, all optional update fields, _get_high_abandonment_items direct call)
+13. 2026-04-19 — Improve error messages across all tools; added _format_http_error() to helpers.py that extracts ServiceNow JSON error body (error.message + error.detail), applied to all 19 tool files (140 call-sites); standardised logger format in syslog_tools.py and helpers.py

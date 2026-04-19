@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ def get_sctask(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error fetching SCTASK: {e}")
-        return {"success": False, "message": f"Error fetching SCTASK: {str(e)}"}
+        return {"success": False, "message": f"Error fetching SCTASK: {_format_http_error(e)}"}
 
 
 def list_sctasks(
@@ -168,7 +168,7 @@ def list_sctasks(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing SCTASKs: {e}")
-        return {"success": False, "message": f"Error listing SCTASKs: {str(e)}"}
+        return {"success": False, "message": f"Error listing SCTASKs: {_format_http_error(e)}"}
 
 
 def update_sctask(
@@ -209,7 +209,7 @@ def update_sctask(
                 return {"success": False, "message": f"SCTASK not found: {task_id}"}
             task_id = records[0]["sys_id"]
         except requests.exceptions.RequestException as e:
-            return {"success": False, "message": f"Error resolving SCTASK number: {str(e)}"}
+            return {"success": False, "message": f"Error resolving SCTASK number: {_format_http_error(e)}"}
 
     data: Dict[str, Any] = {}
     if validated.state is not None:
@@ -263,4 +263,4 @@ def update_sctask(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating SCTASK: {e}")
-        return {"success": False, "message": f"Error updating SCTASK: {str(e)}"}
+        return {"success": False, "message": f"Error updating SCTASK: {_format_http_error(e)}"}

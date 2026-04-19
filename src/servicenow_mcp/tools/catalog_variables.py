@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -153,7 +154,7 @@ def create_catalog_item_variable(
         logger.error(f"Failed to create catalog item variable: {e}")
         return CatalogItemVariableResponse(
             success=False,
-            message=f"Failed to create catalog item variable: {str(e)}",
+            message=f"Failed to create catalog item variable: {_format_http_error(e)}",
         )
 
 
@@ -215,7 +216,7 @@ def list_catalog_item_variables(
         logger.error(f"Failed to list catalog item variables: {e}")
         return ListCatalogItemVariablesResponse(
             success=False,
-            message=f"Failed to list catalog item variables: {str(e)}",
+            message=f"Failed to list catalog item variables: {_format_http_error(e)}",
         )
 
 
@@ -291,7 +292,7 @@ def update_catalog_item_variable(
         logger.error(f"Failed to update catalog item variable: {e}")
         return CatalogItemVariableResponse(
             success=False,
-            message=f"Failed to update catalog item variable: {str(e)}",
+            message=f"Failed to update catalog item variable: {_format_http_error(e)}",
         )
 
 
@@ -381,7 +382,7 @@ def create_catalog_variable_choice(
         logger.error(f"Failed to create catalog variable choice: {e}")
         return CatalogVariableChoiceResponse(
             success=False,
-            message=f"Failed to create catalog variable choice: {str(e)}",
+            message=f"Failed to create catalog variable choice: {_format_http_error(e)}",
         )
 
 
@@ -421,5 +422,5 @@ def delete_catalog_item_variable(
         logger.error(f"Failed to delete catalog item variable: {e}")
         return CatalogItemVariableResponse(
             success=False,
-            message=f"Failed to delete catalog item variable: {str(e)}",
+            message=f"Failed to delete catalog item variable: {_format_http_error(e)}",
         )

@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -122,7 +122,7 @@ def list_time_cards(
                 return {"success": False, "message": f"Task not found: {validated.task_number}"}
             query_parts.append(f"task={task_sys_id}")
         except requests.exceptions.RequestException as e:
-            return {"success": False, "message": f"Error resolving task: {str(e)}"}
+            return {"success": False, "message": f"Error resolving task: {_format_http_error(e)}"}
     elif validated.task_sys_id:
         query_parts.append(f"task={validated.task_sys_id}")
 
@@ -152,7 +152,7 @@ def list_time_cards(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing time cards: {e}")
-        return {"success": False, "message": f"Error listing time cards: {str(e)}"}
+        return {"success": False, "message": f"Error listing time cards: {_format_http_error(e)}"}
 
 
 def create_time_card(
@@ -180,7 +180,7 @@ def create_time_card(
         if not task_sys_id:
             return {"success": False, "message": f"Task not found: {validated.task_number}"}
     except requests.exceptions.RequestException as e:
-        return {"success": False, "message": f"Error resolving task: {str(e)}"}
+        return {"success": False, "message": f"Error resolving task: {_format_http_error(e)}"}
 
     data: Dict[str, Any] = {
         "task": task_sys_id,
@@ -208,7 +208,7 @@ def create_time_card(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error creating time card: {e}")
-        return {"success": False, "message": f"Error creating time card: {str(e)}"}
+        return {"success": False, "message": f"Error creating time card: {_format_http_error(e)}"}
 
 
 def update_time_card(
@@ -252,4 +252,4 @@ def update_time_card(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating time card: {e}")
-        return {"success": False, "message": f"Error updating time card: {str(e)}"}
+        return {"success": False, "message": f"Error updating time card: {_format_http_error(e)}"}

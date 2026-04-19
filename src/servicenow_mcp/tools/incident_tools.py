@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -157,7 +158,7 @@ def create_incident(
         logger.error(f"Failed to create incident: {e}")
         return IncidentResponse(
             success=False,
-            message=f"Failed to create incident: {str(e)}",
+            message=f"Failed to create incident: {_format_http_error(e)}",
         )
 
 
@@ -214,7 +215,7 @@ def update_incident(
             logger.error(f"Failed to find incident: {e}")
             return IncidentResponse(
                 success=False,
-                message=f"Failed to find incident: {str(e)}",
+                message=f"Failed to find incident: {_format_http_error(e)}",
             )
 
     # Build request data
@@ -270,7 +271,7 @@ def update_incident(
         logger.error(f"Failed to update incident: {e}")
         return IncidentResponse(
             success=False,
-            message=f"Failed to update incident: {str(e)}",
+            message=f"Failed to update incident: {_format_http_error(e)}",
         )
 
 
@@ -327,7 +328,7 @@ def add_comment(
             logger.error(f"Failed to find incident: {e}")
             return IncidentResponse(
                 success=False,
-                message=f"Failed to find incident: {str(e)}",
+                message=f"Failed to find incident: {_format_http_error(e)}",
             )
 
     # Build request data
@@ -361,7 +362,7 @@ def add_comment(
         logger.error(f"Failed to add comment: {e}")
         return IncidentResponse(
             success=False,
-            message=f"Failed to add comment: {str(e)}",
+            message=f"Failed to add comment: {_format_http_error(e)}",
         )
 
 
@@ -418,7 +419,7 @@ def resolve_incident(
             logger.error(f"Failed to find incident: {e}")
             return IncidentResponse(
                 success=False,
-                message=f"Failed to find incident: {str(e)}",
+                message=f"Failed to find incident: {_format_http_error(e)}",
             )
 
     # Build request data
@@ -452,7 +453,7 @@ def resolve_incident(
         logger.error(f"Failed to resolve incident: {e}")
         return IncidentResponse(
             success=False,
-            message=f"Failed to resolve incident: {str(e)}",
+            message=f"Failed to resolve incident: {_format_http_error(e)}",
         )
 
 
@@ -540,7 +541,7 @@ def list_incidents(
         logger.error(f"Failed to list incidents: {e}")
         return {
             "success": False,
-            "message": f"Failed to list incidents: {str(e)}",
+            "message": f"Failed to list incidents: {_format_http_error(e)}",
             "incidents": []
         }
 
@@ -619,5 +620,5 @@ def get_incident_by_number(
         logger.error(f"Failed to fetch incident: {e}")
         return {
             "success": False,
-            "message": f"Failed to fetch incident: {str(e)}",
+            "message": f"Failed to fetch incident: {_format_http_error(e)}",
         }

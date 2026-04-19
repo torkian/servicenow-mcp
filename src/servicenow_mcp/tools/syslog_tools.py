@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -141,8 +141,8 @@ def list_syslog_entries(
             "count": len(entries),
         }
     except requests.exceptions.RequestException as e:
-        logger.error("Error listing syslog entries: %s", e)
-        return {"success": False, "message": f"Error listing syslog entries: {str(e)}"}
+        logger.error(f"Error listing syslog entries: {e}")
+        return {"success": False, "message": f"Error listing syslog entries: {_format_http_error(e)}"}
 
 
 def get_syslog_entry(
@@ -191,5 +191,5 @@ def get_syslog_entry(
             "entry": _format_syslog_entry(record),
         }
     except requests.exceptions.RequestException as e:
-        logger.error("Error retrieving syslog entry: %s", e)
-        return {"success": False, "message": f"Error retrieving syslog entry: {str(e)}"}
+        logger.error(f"Error retrieving syslog entry: {e}")
+        return {"success": False, "message": f"Error retrieving syslog entry: {_format_http_error(e)}"}

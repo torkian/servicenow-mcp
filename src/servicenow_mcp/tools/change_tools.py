@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +191,7 @@ def create_change_request(
         logger.error(f"Error creating change request: {e}")
         return {
             "success": False,
-            "message": f"Error creating change request: {str(e)}",
+            "message": f"Error creating change request: {_format_http_error(e)}",
         }
 
 
@@ -285,7 +285,7 @@ def update_change_request(
         logger.error(f"Error updating change request: {e}")
         return {
             "success": False,
-            "message": f"Error updating change request: {str(e)}",
+            "message": f"Error updating change request: {_format_http_error(e)}",
         }
 
 
@@ -391,7 +391,7 @@ def list_change_requests(
         logger.error(f"Error listing change requests: {e}")
         return {
             "success": False,
-            "message": f"Error listing change requests: {str(e)}",
+            "message": f"Error listing change requests: {_format_http_error(e)}",
         }
 
 
@@ -473,7 +473,7 @@ def get_change_request_details(
         logger.error(f"Error getting change request details: {e}")
         return {
             "success": False,
-            "message": f"Error getting change request details: {str(e)}",
+            "message": f"Error getting change request details: {_format_http_error(e)}",
         }
 
 
@@ -558,7 +558,7 @@ def add_change_task(
         logger.error(f"Error adding change task: {e}")
         return {
             "success": False,
-            "message": f"Error adding change task: {str(e)}",
+            "message": f"Error adding change task: {_format_http_error(e)}",
         }
 
 
@@ -647,7 +647,7 @@ def submit_change_for_approval(
         logger.error(f"Error submitting change for approval: {e}")
         return {
             "success": False,
-            "message": f"Error submitting change for approval: {str(e)}",
+            "message": f"Error submitting change for approval: {_format_http_error(e)}",
         }
 
 
@@ -749,7 +749,7 @@ def approve_change(
         logger.error(f"Error approving change: {e}")
         return {
             "success": False,
-            "message": f"Error approving change: {str(e)}",
+            "message": f"Error approving change: {_format_http_error(e)}",
         }
 
 
@@ -850,5 +850,5 @@ def reject_change(
         logger.error(f"Error rejecting change: {e}")
         return {
             "success": False,
-            "message": f"Error rejecting change: {str(e)}",
+            "message": f"Error rejecting change: {_format_http_error(e)}",
         } 

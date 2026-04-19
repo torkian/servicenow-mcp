@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +167,7 @@ def create_user_criteria(
         logger.error(f"Failed to create user criteria: {e}")
         return UserCriteriaResponse(
             success=False,
-            message=f"Failed to create user criteria: {str(e)}",
+            message=f"Failed to create user criteria: {_format_http_error(e)}",
         )
 
 
@@ -295,5 +296,5 @@ def create_user_criteria_condition(
         logger.error(f"Failed to create user criteria condition: {e}")
         return UserCriteriaConditionResponse(
             success=False,
-            message=f"Failed to create user criteria condition: {str(e)}",
+            message=f"Failed to create user criteria condition: {_format_http_error(e)}",
         )

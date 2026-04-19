@@ -14,6 +14,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -135,7 +136,7 @@ def create_ui_policy(
         logger.error(f"Failed to create UI policy: {e}")
         return UIPolicyResponse(
             success=False,
-            message=f"Failed to create UI policy: {str(e)}",
+            message=f"Failed to create UI policy: {_format_http_error(e)}",
         )
 
 
@@ -253,5 +254,5 @@ def create_ui_policy_action(
         logger.error(f"Failed to create UI policy action: {e}")
         return UIPolicyActionResponse(
             success=False,
-            message=f"Failed to create UI policy action: {str(e)}",
+            message=f"Failed to create UI policy action: {_format_http_error(e)}",
         )

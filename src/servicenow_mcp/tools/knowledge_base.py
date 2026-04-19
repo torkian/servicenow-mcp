@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -191,7 +192,7 @@ def create_knowledge_base(
         logger.error(f"Failed to create knowledge base: {e}")
         return KnowledgeBaseResponse(
             success=False,
-            message=f"Failed to create knowledge base: {str(e)}",
+            message=f"Failed to create knowledge base: {_format_http_error(e)}",
         )
 
 
@@ -314,7 +315,7 @@ def list_knowledge_bases(
         logger.error(f"Failed to list knowledge bases: {e}")
         return {
             "success": False,
-            "message": f"Failed to list knowledge bases: {str(e)}",
+            "message": f"Failed to list knowledge bases: {_format_http_error(e)}",
             "knowledge_bases": [],
             "count": 0,
             "limit": params.limit,
@@ -390,7 +391,7 @@ def create_category(
         logger.error(f"Failed to create category: {e}")
         return CategoryResponse(
             success=False,
-            message=f"Failed to create category: {str(e)}",
+            message=f"Failed to create category: {_format_http_error(e)}",
         )
 
 
@@ -450,7 +451,7 @@ def create_article(
         logger.error(f"Failed to create article: {e}")
         return ArticleResponse(
             success=False,
-            message=f"Failed to create article: {str(e)}",
+            message=f"Failed to create article: {_format_http_error(e)}",
         )
 
 
@@ -510,7 +511,7 @@ def update_article(
         logger.error(f"Failed to update article: {e}")
         return ArticleResponse(
             success=False,
-            message=f"Failed to update article: {str(e)}",
+            message=f"Failed to update article: {_format_http_error(e)}",
         )
 
 
@@ -564,7 +565,7 @@ def publish_article(
         logger.error(f"Failed to publish article: {e}")
         return ArticleResponse(
             success=False,
-            message=f"Failed to publish article: {str(e)}",
+            message=f"Failed to publish article: {_format_http_error(e)}",
         )
 
 
@@ -695,7 +696,7 @@ def list_articles(
         logger.error(f"Failed to list articles: {e}")
         return {
             "success": False,
-            "message": f"Failed to list articles: {str(e)}",
+            "message": f"Failed to list articles: {_format_http_error(e)}",
             "articles": [],
             "count": 0,
             "limit": params.limit,
@@ -808,7 +809,7 @@ def get_article(
         logger.error(f"Failed to get article: {e}")
         return {
             "success": False,
-            "message": f"Failed to get article: {str(e)}",
+            "message": f"Failed to get article: {_format_http_error(e)}",
         }
 
 
@@ -966,7 +967,7 @@ def list_categories(
         logger.error(f"Failed to list categories: {e}")
         return {
             "success": False,
-            "message": f"Failed to list categories: {str(e)}",
+            "message": f"Failed to list categories: {_format_http_error(e)}",
             "categories": [],
             "count": 0,
             "limit": params.limit,

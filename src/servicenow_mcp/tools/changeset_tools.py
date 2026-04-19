@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -166,7 +166,7 @@ def list_changesets(
         logger.error(f"Error listing changesets: {e}")
         return {
             "success": False,
-            "message": f"Error listing changesets: {str(e)}",
+            "message": f"Error listing changesets: {_format_http_error(e)}",
         }
 
 
@@ -248,7 +248,7 @@ def get_changeset_details(
         logger.error(f"Error getting changeset details: {e}")
         return {
             "success": False,
-            "message": f"Error getting changeset details: {str(e)}",
+            "message": f"Error getting changeset details: {_format_http_error(e)}",
         }
 
 
@@ -329,7 +329,7 @@ def create_changeset(
         logger.error(f"Error creating changeset: {e}")
         return {
             "success": False,
-            "message": f"Error creating changeset: {str(e)}",
+            "message": f"Error creating changeset: {_format_http_error(e)}",
         }
 
 
@@ -418,7 +418,7 @@ def update_changeset(
         logger.error(f"Error updating changeset: {e}")
         return {
             "success": False,
-            "message": f"Error updating changeset: {str(e)}",
+            "message": f"Error updating changeset: {_format_http_error(e)}",
         }
 
 
@@ -496,7 +496,7 @@ def commit_changeset(
         logger.error(f"Error committing changeset: {e}")
         return {
             "success": False,
-            "message": f"Error committing changeset: {str(e)}",
+            "message": f"Error committing changeset: {_format_http_error(e)}",
         }
 
 
@@ -574,7 +574,7 @@ def publish_changeset(
         logger.error(f"Error publishing changeset: {e}")
         return {
             "success": False,
-            "message": f"Error publishing changeset: {str(e)}",
+            "message": f"Error publishing changeset: {_format_http_error(e)}",
         }
 
 
@@ -651,5 +651,5 @@ def add_file_to_changeset(
         logger.error(f"Error adding file to changeset: {e}")
         return {
             "success": False,
-            "message": f"Error adding file to changeset: {str(e)}",
+            "message": f"Error adding file to changeset: {_format_http_error(e)}",
         } 

@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -168,10 +169,10 @@ def list_catalog_items(
         }
     
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error listing catalog items: {str(e)}")
+        logger.error(f"Error listing catalog items: {_format_http_error(e)}")
         return {
             "success": False,
-            "message": f"Error listing catalog items: {str(e)}",
+            "message": f"Error listing catalog items: {_format_http_error(e)}",
             "items": [],
             "total": 0,
             "limit": params.limit,
@@ -248,10 +249,10 @@ def get_catalog_item(
         )
     
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error getting catalog item: {str(e)}")
+        logger.error(f"Error getting catalog item: {_format_http_error(e)}")
         return CatalogResponse(
             success=False,
-            message=f"Error getting catalog item: {str(e)}",
+            message=f"Error getting catalog item: {_format_http_error(e)}",
             data=None,
         )
 
@@ -313,7 +314,7 @@ def get_catalog_item_variables(
         return formatted_variables
     
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error getting catalog item variables: {str(e)}")
+        logger.error(f"Error getting catalog item variables: {_format_http_error(e)}")
         return []
 
 
@@ -377,10 +378,10 @@ def create_catalog_item(
         )
 
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error creating catalog item: {str(e)}")
+        logger.error(f"Error creating catalog item: {_format_http_error(e)}")
         return CatalogResponse(
             success=False,
-            message=f"Error creating catalog item: {str(e)}",
+            message=f"Error creating catalog item: {_format_http_error(e)}",
             data=None,
         )
 
@@ -459,10 +460,10 @@ def list_catalog_categories(
         }
     
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error listing catalog categories: {str(e)}")
+        logger.error(f"Error listing catalog categories: {_format_http_error(e)}")
         return {
             "success": False,
-            "message": f"Error listing catalog categories: {str(e)}",
+            "message": f"Error listing catalog categories: {_format_http_error(e)}",
             "categories": [],
             "total": 0,
             "limit": params.limit,
@@ -538,10 +539,10 @@ def create_catalog_category(
         )
     
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error creating catalog category: {str(e)}")
+        logger.error(f"Error creating catalog category: {_format_http_error(e)}")
         return CatalogResponse(
             success=False,
-            message=f"Error creating catalog category: {str(e)}",
+            message=f"Error creating catalog category: {_format_http_error(e)}",
             data=None,
         )
 
@@ -613,10 +614,10 @@ def update_catalog_category(
         )
     
     except requests.exceptions.RequestException as e:
-        logger.error(f"Error updating catalog category: {str(e)}")
+        logger.error(f"Error updating catalog category: {_format_http_error(e)}")
         return CatalogResponse(
             success=False,
-            message=f"Error updating catalog category: {str(e)}",
+            message=f"Error updating catalog category: {_format_http_error(e)}",
             data=None,
         )
 
@@ -662,8 +663,8 @@ def move_catalog_items(
                 response.raise_for_status()
                 success_count += 1
             except requests.exceptions.RequestException as e:
-                logger.error(f"Error moving catalog item {item_id}: {str(e)}")
-                failed_items.append({"item_id": item_id, "error": str(e)})
+                logger.error(f"Error moving catalog item {item_id}: {_format_http_error(e)}")
+                failed_items.append({"item_id": item_id, "error": _format_http_error(e)})
         
         # Prepare the response
         if success_count == len(params.item_ids):
@@ -689,9 +690,9 @@ def move_catalog_items(
             )
     
     except Exception as e:
-        logger.error(f"Error moving catalog items: {str(e)}")
+        logger.error(f"Error moving catalog items: {_format_http_error(e)}")
         return CatalogResponse(
             success=False,
-            message=f"Error moving catalog items: {str(e)}",
+            message=f"Error moving catalog items: {_format_http_error(e)}",
             data=None,
         ) 

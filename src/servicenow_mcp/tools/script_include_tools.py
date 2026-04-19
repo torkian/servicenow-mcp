@@ -13,6 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -159,7 +160,7 @@ def list_script_includes(
         logger.error(f"Error listing script includes: {e}")
         return {
             "success": False,
-            "message": f"Error listing script includes: {str(e)}",
+            "message": f"Error listing script includes: {_format_http_error(e)}",
             "script_includes": [],
             "total": 0,
             "limit": params.limit,
@@ -256,7 +257,7 @@ def get_script_include(
         logger.error(f"Error getting script include: {e}")
         return {
             "success": False,
-            "message": f"Error getting script include: {str(e)}",
+            "message": f"Error getting script include: {_format_http_error(e)}",
         }
 
 
@@ -327,7 +328,7 @@ def create_script_include(
         logger.error(f"Error creating script include: {e}")
         return ScriptIncludeResponse(
             success=False,
-            message=f"Error creating script include: {str(e)}",
+            message=f"Error creating script include: {_format_http_error(e)}",
         )
 
 
@@ -426,7 +427,7 @@ def update_script_include(
         logger.error(f"Error updating script include: {e}")
         return ScriptIncludeResponse(
             success=False,
-            message=f"Error updating script include: {str(e)}",
+            message=f"Error updating script include: {_format_http_error(e)}",
         )
 
 
@@ -484,7 +485,7 @@ def delete_script_include(
         logger.error(f"Error deleting script include: {e}")
         return ScriptIncludeResponse(
             success=False,
-            message=f"Error deleting script include: {str(e)}",
+            message=f"Error deleting script include: {_format_http_error(e)}",
         )
 
 

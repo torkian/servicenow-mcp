@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
+from servicenow_mcp.utils.helpers import _format_http_error
 
 logger = logging.getLogger(__name__)
 
@@ -220,7 +221,7 @@ def create_user(
         logger.error(f"Failed to create user: {e}")
         return UserResponse(
             success=False,
-            message=f"Failed to create user: {str(e)}",
+            message=f"Failed to create user: {_format_http_error(e)}",
         )
 
 
@@ -296,7 +297,7 @@ def update_user(
         logger.error(f"Failed to update user: {e}")
         return UserResponse(
             success=False,
-            message=f"Failed to update user: {str(e)}",
+            message=f"Failed to update user: {_format_http_error(e)}",
         )
 
 
@@ -350,7 +351,7 @@ def get_user(
 
     except requests.RequestException as e:
         logger.error(f"Failed to get user: {e}")
-        return {"success": False, "message": f"Failed to get user: {str(e)}"}
+        return {"success": False, "message": f"Failed to get user: {_format_http_error(e)}"}
 
 
 def list_users(
@@ -411,7 +412,7 @@ def list_users(
 
     except requests.RequestException as e:
         logger.error(f"Failed to list users: {e}")
-        return {"success": False, "message": f"Failed to list users: {str(e)}"}
+        return {"success": False, "message": f"Failed to list users: {_format_http_error(e)}"}
 
 
 def list_groups(
@@ -470,7 +471,7 @@ def list_groups(
 
     except requests.RequestException as e:
         logger.error(f"Failed to list groups: {e}")
-        return {"success": False, "message": f"Failed to list groups: {str(e)}"}
+        return {"success": False, "message": f"Failed to list groups: {_format_http_error(e)}"}
 
 
 def assign_roles_to_user(
@@ -678,7 +679,7 @@ def create_group(
         logger.error(f"Failed to create group: {e}")
         return GroupResponse(
             success=False,
-            message=f"Failed to create group: {str(e)}",
+            message=f"Failed to create group: {_format_http_error(e)}",
         )
 
 
@@ -740,7 +741,7 @@ def update_group(
         logger.error(f"Failed to update group: {e}")
         return GroupResponse(
             success=False,
-            message=f"Failed to update group: {str(e)}",
+            message=f"Failed to update group: {_format_http_error(e)}",
         )
 
 

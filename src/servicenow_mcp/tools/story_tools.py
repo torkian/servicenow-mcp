@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -167,7 +167,7 @@ def create_story(
         logger.error(f"Error creating story: {e}")
         return {
             "success": False,
-            "message": f"Error creating story: {str(e)}",
+            "message": f"Error creating story: {_format_http_error(e)}",
         }
 
 def update_story(
@@ -260,7 +260,7 @@ def update_story(
         logger.error(f"Error updating story: {e}")
         return {
             "success": False,
-            "message": f"Error updating story: {str(e)}",
+            "message": f"Error updating story: {_format_http_error(e)}",
         }
 
 def list_stories(
@@ -361,7 +361,7 @@ def list_stories(
         logger.error(f"Error listing stories: {e}")
         return {
             "success": False,
-            "message": f"Error listing stories: {str(e)}",
+            "message": f"Error listing stories: {_format_http_error(e)}",
         }
 
 def list_story_dependencies(
@@ -452,7 +452,7 @@ def list_story_dependencies(
         logger.error(f"Error listing story dependencies: {e}")
         return {
             "success": False,
-            "message": f"Error listing story dependencies: {str(e)}",
+            "message": f"Error listing story dependencies: {_format_http_error(e)}",
         }
 
 def create_story_dependency(
@@ -525,7 +525,7 @@ def create_story_dependency(
         logger.error(f"Error creating story dependency: {e}")
         return {
             "success": False,
-            "message": f"Error creating story dependency: {str(e)}",
+            "message": f"Error creating story dependency: {_format_http_error(e)}",
         }
 def delete_story_dependency(
     auth_manager: AuthManager,
@@ -586,5 +586,5 @@ def delete_story_dependency(
         logger.error(f"Error deleting story dependency: {e}")
         return {
             "success": False,
-            "message": f"Error deleting story dependency: {str(e)}",
+            "message": f"Error deleting story dependency: {_format_http_error(e)}",
         }

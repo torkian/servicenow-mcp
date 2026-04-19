@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -155,7 +155,7 @@ def create_scrum_task(
         logger.error(f"Error creating scrum task: {e}")
         return {
             "success": False,
-            "message": f"Error creating scrum task: {str(e)}",
+            "message": f"Error creating scrum task: {_format_http_error(e)}",
         }
 
 def update_scrum_task(
@@ -250,7 +250,7 @@ def update_scrum_task(
         logger.error(f"Error updating scrum task: {e}")
         return {
             "success": False,
-            "message": f"Error updating scrum task: {str(e)}",
+            "message": f"Error updating scrum task: {_format_http_error(e)}",
         }
 
 def list_scrum_tasks(
@@ -351,5 +351,5 @@ def list_scrum_tasks(
         logger.error(f"Error listing stories: {e}")
         return {
             "success": False,
-            "message": f"Error listing stories: {str(e)}",
+            "message": f"Error listing stories: {_format_http_error(e)}",
         }
