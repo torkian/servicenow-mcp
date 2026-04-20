@@ -8,11 +8,17 @@ import logging
 from typing import Any, Dict, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _unwrap_and_validate_params,
+    validate_duration_hhmmss,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -40,6 +46,11 @@ class UpdateSCTaskParams(BaseModel):
         None,
         description="Time worked on the task in HH:MM:SS format (e.g. '02:30:00' for 2.5 hours)",
     )
+
+    @field_validator("time_worked", mode="before")
+    @classmethod
+    def _validate_time_worked(cls, v):
+        return validate_duration_hhmmss(v)
 
 
 class ListSCTasksParams(BaseModel):

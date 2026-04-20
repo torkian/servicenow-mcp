@@ -9,11 +9,17 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _unwrap_and_validate_params,
+    validate_servicenow_datetime,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -29,9 +35,15 @@ class CreateProjectParams(BaseModel):
     percentage_complete: Optional[int] = Field(None, description="Percentage complete for the project")
     assignment_group: Optional[str] = Field(None, description="Group assigned to the project")
     assigned_to: Optional[str] = Field(None, description="User assigned to the project")
-    start_date: Optional[str] = Field(None, description="Start date for the project")
-    end_date: Optional[str] = Field(None, description="End date for the project")
-    
+    start_date: Optional[str] = Field(None, description="Start date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+    end_date: Optional[str] = Field(None, description="End date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
+
+
 class UpdateProjectParams(BaseModel):
     """Parameters for updating a project."""
 
@@ -44,8 +56,14 @@ class UpdateProjectParams(BaseModel):
     percentage_complete: Optional[int] = Field(None, description="Percentage complete for the project")
     assignment_group: Optional[str] = Field(None, description="Group assigned to the project")
     assigned_to: Optional[str] = Field(None, description="User assigned to the project")
-    start_date: Optional[str] = Field(None, description="Start date for the project")
-    end_date: Optional[str] = Field(None, description="End date for the project")
+    start_date: Optional[str] = Field(None, description="Start date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+    end_date: Optional[str] = Field(None, description="End date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
+
 
 class ListProjectsParams(BaseModel):
     """Parameters for listing projects."""

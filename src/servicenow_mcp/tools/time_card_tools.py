@@ -8,11 +8,17 @@ import logging
 from typing import Any, Dict, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _unwrap_and_validate_params,
+    validate_servicenow_date,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -30,6 +36,11 @@ class ListTimeCardsParams(BaseModel):
     limit: Optional[int] = Field(10, description="Maximum number of records to return")
     offset: Optional[int] = Field(0, description="Offset to start from")
 
+    @field_validator("week_start", mode="before")
+    @classmethod
+    def _validate_week_start(cls, v):
+        return validate_servicenow_date(v)
+
 
 class CreateTimeCardParams(BaseModel):
     """Parameters for creating a time card entry."""
@@ -44,6 +55,11 @@ class CreateTimeCardParams(BaseModel):
     saturday: Optional[float] = Field(0, description="Hours for Saturday")
     sunday: Optional[float] = Field(0, description="Hours for Sunday")
     short_description: Optional[str] = Field(None, description="Description of work done")
+
+    @field_validator("week_start", mode="before")
+    @classmethod
+    def _validate_week_start(cls, v):
+        return validate_servicenow_date(v)
 
 
 class UpdateTimeCardParams(BaseModel):

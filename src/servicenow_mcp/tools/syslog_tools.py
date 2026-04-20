@@ -9,11 +9,17 @@ import logging
 from typing import Any, Dict, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _unwrap_and_validate_params,
+    validate_servicenow_datetime,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,6 +60,11 @@ class ListSyslogEntriesParams(BaseModel):
         "DESCsys_created_on",
         description="Sort order. Use 'DESCsys_created_on' for newest first (default) or 'sys_created_on' for oldest first",
     )
+
+    @field_validator("created_after", "created_before", mode="before")
+    @classmethod
+    def _validate_datetime_fields(cls, v):
+        return validate_servicenow_datetime(v)
 
 
 class GetSyslogEntryParams(BaseModel):

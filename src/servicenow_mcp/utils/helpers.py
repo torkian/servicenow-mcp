@@ -6,6 +6,7 @@ from here instead of redefining them locally.
 """
 
 import logging
+import re
 from typing import Any, Dict, List, Optional, Type, TypeVar
 
 import requests
@@ -108,6 +109,52 @@ def _unwrap_and_validate_params(
     except Exception as e:
         logger.error(f"Error validating parameters: {e}")
         return {"success": False, "message": f"Error validating parameters: {e}"}
+
+
+_DATETIME_RE = re.compile(r"^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$")
+_DATE_RE = re.compile(r"^\d{4}-\d{2}-\d{2}$")
+_DURATION_RE = re.compile(r"^\d{2,}:\d{2}:\d{2}$")
+
+
+def validate_servicenow_datetime(v: Optional[str]) -> Optional[str]:
+    """Validate a ServiceNow datetime string (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD).
+
+    Raises ValueError if the value is present but does not match either format.
+    Returns the value unchanged when valid or None.
+    """
+    if v is None:
+        return v
+    if _DATETIME_RE.match(v) or _DATE_RE.match(v):
+        return v
+    raise ValueError(
+        f"Invalid date/datetime '{v}'. Expected format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD"
+    )
+
+
+def validate_servicenow_date(v: Optional[str]) -> Optional[str]:
+    """Validate a ServiceNow date string (YYYY-MM-DD only).
+
+    Raises ValueError if the value is present but does not match YYYY-MM-DD.
+    Returns the value unchanged when valid or None.
+    """
+    if v is None:
+        return v
+    if _DATE_RE.match(v):
+        return v
+    raise ValueError(f"Invalid date '{v}'. Expected format: YYYY-MM-DD")
+
+
+def validate_duration_hhmmss(v: Optional[str]) -> Optional[str]:
+    """Validate a duration string in HH:MM:SS format.
+
+    Raises ValueError if the value is present but does not match HH:MM:SS.
+    Returns the value unchanged when valid or None.
+    """
+    if v is None:
+        return v
+    if _DURATION_RE.match(v):
+        return v
+    raise ValueError(f"Invalid duration '{v}'. Expected format: HH:MM:SS (e.g. '02:30:00')")
 
 
 def _get_instance_url(auth_manager: Any, server_config: Any) -> Optional[str]:

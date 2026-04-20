@@ -9,11 +9,17 @@ from datetime import datetime
 from typing import Any, Dict, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _unwrap_and_validate_params,
+    validate_servicenow_datetime,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -32,6 +38,11 @@ class CreateChangeRequestParams(BaseModel):
     start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
     end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
 
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
+
 
 class UpdateChangeRequestParams(BaseModel):
     """Parameters for updating a change request."""
@@ -47,6 +58,11 @@ class UpdateChangeRequestParams(BaseModel):
     start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
     end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
     work_notes: Optional[str] = Field(None, description="Work notes to add to the change request")
+
+    @field_validator("start_date", "end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
 
 
 class ListChangeRequestsParams(BaseModel):
@@ -77,6 +93,11 @@ class AddChangeTaskParams(BaseModel):
     assigned_to: Optional[str] = Field(None, description="User assigned to the task")
     planned_start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
     planned_end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
+
+    @field_validator("planned_start_date", "planned_end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
 
 
 class SubmitChangeForApprovalParams(BaseModel):
