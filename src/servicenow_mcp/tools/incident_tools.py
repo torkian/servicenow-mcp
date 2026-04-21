@@ -12,7 +12,12 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import (
+    _build_sysparm_params,
+    _format_http_error,
+    _join_query_parts,
+    _paginated_list_response,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -475,15 +480,6 @@ def list_incidents(
     """
     api_url = f"{config.api_url}/table/incident"
 
-    # Build query parameters
-    query_params = {
-        "sysparm_limit": params.limit,
-        "sysparm_offset": params.offset,
-        "sysparm_display_value": "true",
-        "sysparm_exclude_reference_link": "true",
-    }
-    
-    # Add filters
     filters = []
     if params.state:
         filters.append(f"state={params.state}")
@@ -493,11 +489,14 @@ def list_incidents(
         filters.append(f"category={params.category}")
     if params.query:
         filters.append(f"short_descriptionLIKE{params.query}^ORdescriptionLIKE{params.query}")
-    
-    if filters:
-        query_params["sysparm_query"] = "^".join(filters)
-    
-    # Make request
+
+    query_params = _build_sysparm_params(
+        params.limit,
+        params.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+    )
+
     try:
         response = requests.get(
             api_url,
@@ -506,17 +505,13 @@ def list_incidents(
             timeout=config.timeout,
         )
         response.raise_for_status()
-        
-        data = response.json()
+
         incidents = []
-        
-        for incident_data in data.get("result", []):
-            # Handle assigned_to field which could be a string or a dictionary
+        for incident_data in response.json().get("result", []):
             assigned_to = incident_data.get("assigned_to")
             if isinstance(assigned_to, dict):
                 assigned_to = assigned_to.get("display_value")
-            
-            incident = {
+            incidents.append({
                 "sys_id": incident_data.get("sys_id"),
                 "number": incident_data.get("number"),
                 "short_description": incident_data.get("short_description"),
@@ -528,21 +523,22 @@ def list_incidents(
                 "subcategory": incident_data.get("subcategory"),
                 "created_on": incident_data.get("sys_created_on"),
                 "updated_on": incident_data.get("sys_updated_on"),
-            }
-            incidents.append(incident)
-        
-        return {
-            "success": True,
-            "message": f"Found {len(incidents)} incidents",
-            "incidents": incidents
-        }
-        
+            })
+
+        return _paginated_list_response(
+            incidents,
+            params.limit,
+            params.offset,
+            "incidents",
+            extra={"message": f"Found {len(incidents)} incidents"},
+        )
+
     except requests.RequestException as e:
         logger.error(f"Failed to list incidents: {e}")
         return {
             "success": False,
             "message": f"Failed to list incidents: {_format_http_error(e)}",
-            "incidents": []
+            "incidents": [],
         }
 
 

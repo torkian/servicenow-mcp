@@ -157,6 +157,97 @@ def validate_duration_hhmmss(v: Optional[str]) -> Optional[str]:
     raise ValueError(f"Invalid duration '{v}'. Expected format: HH:MM:SS (e.g. '02:30:00')")
 
 
+def _build_sysparm_params(
+    limit: int,
+    offset: int,
+    query: Optional[str] = None,
+    display_value: str = "true",
+    exclude_reference_link: bool = False,
+    order_by: Optional[str] = None,
+    fields: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Build sysparm_* query parameters for ServiceNow Table API list requests.
+
+    Args:
+        limit: Maximum number of records to return.
+        offset: Zero-based starting position for pagination.
+        query: ServiceNow encoded query string (filter parts already joined).
+        display_value: Value for sysparm_display_value (default ``"true"``).
+        exclude_reference_link: When True, adds sysparm_exclude_reference_link.
+        order_by: Field ordering expression for sysparm_orderby.
+        fields: Comma-separated field list for sysparm_fields.
+
+    Returns:
+        Dictionary ready to pass as the ``params`` argument of ``requests.get``.
+    """
+    p: Dict[str, Any] = {
+        "sysparm_limit": limit,
+        "sysparm_offset": offset,
+        "sysparm_display_value": display_value,
+    }
+    if exclude_reference_link:
+        p["sysparm_exclude_reference_link"] = "true"
+    if query:
+        p["sysparm_query"] = query
+    if order_by:
+        p["sysparm_orderby"] = order_by
+    if fields:
+        p["sysparm_fields"] = fields
+    return p
+
+
+def _join_query_parts(parts: List[str]) -> str:
+    """Join ServiceNow query filter parts with the ``^`` operator.
+
+    Skips empty/None entries so callers can append conditions unconditionally.
+
+    Args:
+        parts: Individual encoded-query conditions.
+
+    Returns:
+        Combined query string, or empty string when all parts are empty.
+    """
+    return "^".join(p for p in parts if p)
+
+
+def _paginated_list_response(
+    items: List[Any],
+    limit: int,
+    offset: int,
+    result_key: str,
+    extra: Optional[Dict[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Build a standardised success response for list/query operations.
+
+    Includes ``has_more`` and ``next_offset`` so callers can page through
+    results without needing to know the total record count upfront.
+
+    Args:
+        items: The records returned for this page.
+        limit: The page size that was requested.
+        offset: Zero-based starting position of this page.
+        result_key: Dict key under which items are returned.
+        extra: Optional additional fields merged into the response.
+
+    Returns:
+        Dict with success, count, limit, offset, has_more, next_offset, and *result_key*.
+    """
+    count = len(items)
+    has_more = count == limit
+    resp: Dict[str, Any] = {
+        "success": True,
+        "count": count,
+        "limit": limit,
+        "offset": offset,
+        "has_more": has_more,
+        "next_offset": offset + limit if has_more else None,
+        result_key: items,
+    }
+    if extra:
+        resp.update(extra)
+    return resp
+
+
 def _get_instance_url(auth_manager: Any, server_config: Any) -> Optional[str]:
     """Return the ServiceNow instance URL from config or auth manager.
 

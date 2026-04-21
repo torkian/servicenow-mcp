@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _paginated_list_response
 
 logger = logging.getLogger(__name__)
 
@@ -302,14 +302,13 @@ def list_knowledge_bases(
         else:
             logger.warning("Result is not a list: %s", result)
 
-        return {
-            "success": True,
-            "message": f"Found {len(knowledge_bases)} knowledge bases",
-            "knowledge_bases": knowledge_bases,
-            "count": len(knowledge_bases),
-            "limit": params.limit,
-            "offset": params.offset,
-        }
+        return _paginated_list_response(
+            knowledge_bases,
+            params.limit,
+            params.offset,
+            "knowledge_bases",
+            extra={"message": f"Found {len(knowledge_bases)} knowledge bases"},
+        )
 
     except requests.RequestException as e:
         logger.error(f"Failed to list knowledge bases: {e}")
@@ -683,14 +682,13 @@ def list_articles(
         else:
             logger.warning("Result is not a list: %s", result)
 
-        return {
-            "success": True,
-            "message": f"Found {len(articles)} articles",
-            "articles": articles,
-            "count": len(articles),
-            "limit": params.limit,
-            "offset": params.offset,
-        }
+        return _paginated_list_response(
+            articles,
+            params.limit,
+            params.offset,
+            "articles",
+            extra={"message": f"Found {len(articles)} articles"},
+        )
 
     except requests.RequestException as e:
         logger.error(f"Failed to list articles: {e}")
@@ -954,14 +952,13 @@ def list_categories(
         else:
             logger.warning("Result is not a list: %s", result)
 
-        return {
-            "success": True,
-            "message": f"Found {len(categories)} categories",
-            "categories": categories,
-            "count": len(categories),
-            "limit": params.limit,
-            "offset": params.offset,
-        }
+        return _paginated_list_response(
+            categories,
+            params.limit,
+            params.offset,
+            "categories",
+            extra={"message": f"Found {len(categories)} categories"},
+        )
 
     except requests.RequestException as e:
         logger.error(f"Failed to list categories: {e}")
