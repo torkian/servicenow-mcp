@@ -139,6 +139,9 @@ from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria,
     create_user_criteria_condition,
 )
+from servicenow_mcp.tools.bulk_tools import (
+    execute_bulk_operations,
+)
 # from servicenow_mcp.tools.problem_tools import create_problem, update_problem
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
@@ -274,6 +277,9 @@ __all__ = [
     # User Criteria tools
     "create_user_criteria",
     "create_user_criteria_condition",
+
+    # Bulk operations
+    "execute_bulk_operations",
 
     # Future tools
     # "create_problem",

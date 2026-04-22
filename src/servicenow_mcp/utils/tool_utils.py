@@ -400,6 +400,10 @@ from servicenow_mcp.tools.user_criteria_tools import (
 from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria_condition as create_user_criteria_condition_tool,
 )
+from servicenow_mcp.tools.bulk_tools import BulkOperationsParams
+from servicenow_mcp.tools.bulk_tools import (
+    execute_bulk_operations as execute_bulk_operations_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1137,6 +1141,19 @@ def get_tool_definitions(
             Dict[str, Any],
             "Apply a User Criteria record to a Service Catalog entity (item, category, or catalog) to grant or deny access for matching users",
             "dict",
+        ),
+        # Bulk Operations
+        "execute_bulk_operations": (
+            execute_bulk_operations_tool,
+            BulkOperationsParams,
+            Dict[str, Any],
+            (
+                "Execute up to 100 ServiceNow API calls in a single HTTP round-trip "
+                "using the ServiceNow Batch API. Each request specifies a method, "
+                "relative URL path, and optional body. Results are returned in the "
+                "same order with per-request status codes and parsed response bodies."
+            ),
+            "raw_dict",
         ),
     }
     return tool_definitions
