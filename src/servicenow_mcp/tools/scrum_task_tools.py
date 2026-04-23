@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _make_request, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -141,7 +141,7 @@ def create_scrum_task(
     url = f"{instance_url}/api/now/table/rm_scrum_task"
     
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
         
         result = response.json()
@@ -236,7 +236,7 @@ def update_scrum_task(
     url = f"{instance_url}/api/now/table/rm_scrum_task/{validated_params.scrum_task_id}"
     
     try:
-        response = requests.put(url, json=data, headers=headers)
+        response = _make_request("PUT", url, json=data, headers=headers)
         response.raise_for_status()
         
         result = response.json()
@@ -332,7 +332,7 @@ def list_scrum_tasks(
     }
     
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         result = response.json()

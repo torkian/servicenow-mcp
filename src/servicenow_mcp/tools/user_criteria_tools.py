@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
@@ -146,7 +146,7 @@ def create_user_criteria(
             data[field] = value
 
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -271,7 +271,7 @@ def create_user_criteria_condition(
     }
 
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),

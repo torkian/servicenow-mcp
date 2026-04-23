@@ -15,7 +15,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
@@ -111,7 +111,7 @@ def execute_bulk_operations(
     batch_url = f"{config.api_url}/v1/batch"
 
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             batch_url,
             json=batch_payload,
             headers=auth_manager.get_headers(),

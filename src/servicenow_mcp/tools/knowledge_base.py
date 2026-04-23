@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _paginated_list_response
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request, _paginated_list_response
 
 logger = logging.getLogger(__name__)
 
@@ -171,7 +171,7 @@ def create_knowledge_base(
 
     # Make request
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -233,7 +233,7 @@ def list_knowledge_bases(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -360,7 +360,7 @@ def create_category(
 
     # Make request
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -428,7 +428,7 @@ def create_article(
 
     # Make request
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -488,7 +488,7 @@ def update_article(
 
     # Make request
     try:
-        response = requests.patch(
+        response = _make_request("PATCH", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -542,7 +542,7 @@ def publish_article(
 
     # Make request
     try:
-        response = requests.patch(
+        response = _make_request("PATCH", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -614,7 +614,7 @@ def list_articles(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -727,7 +727,7 @@ def get_article(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -858,7 +858,7 @@ def list_categories(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),

@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _make_request, _unwrap_and_validate_params
 
 logger = logging.getLogger(__name__)
 
@@ -120,7 +120,7 @@ def create_epic(
     url = f"{instance_url}/api/now/table/rm_epic"
     
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
         
         result = response.json()
@@ -205,7 +205,7 @@ def update_epic(
     url = f"{instance_url}/api/now/table/rm_epic/{validated_params.epic_id}"
     
     try:
-        response = requests.put(url, json=data, headers=headers)
+        response = _make_request("PUT", url, json=data, headers=headers)
         response.raise_for_status()
         
         result = response.json()
@@ -301,7 +301,7 @@ def list_epics(
     }
     
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         result = response.json()

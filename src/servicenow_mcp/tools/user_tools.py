@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
@@ -196,7 +196,7 @@ def create_user(
 
     # Make request
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -272,7 +272,7 @@ def update_user(
 
     # Make request
     try:
-        response = requests.patch(
+        response = _make_request("PATCH", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -335,7 +335,7 @@ def get_user(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -393,7 +393,7 @@ def list_users(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -452,7 +452,7 @@ def list_groups(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -515,7 +515,7 @@ def assign_roles_to_user(
         }
 
         try:
-            response = requests.post(
+            response = _make_request("POST", 
                 api_url,
                 json=data,
                 headers=auth_manager.get_headers(),
@@ -552,7 +552,7 @@ def get_role_id(
     }
 
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -596,7 +596,7 @@ def check_user_has_role(
     }
 
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -649,7 +649,7 @@ def create_group(
 
     # Make request
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -720,7 +720,7 @@ def update_group(
 
     # Make request
     try:
-        response = requests.patch(
+        response = _make_request("PATCH", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -788,7 +788,7 @@ def add_group_members(
         }
 
         try:
-            response = requests.post(
+            response = _make_request("POST", 
                 api_url,
                 json=data,
                 headers=auth_manager.get_headers(),
@@ -855,7 +855,7 @@ def remove_group_members(
 
         try:
             # First find the membership record
-            response = requests.get(
+            response = _make_request("GET", 
                 api_url,
                 params=query_params,
                 headers=auth_manager.get_headers(),
@@ -873,7 +873,7 @@ def remove_group_members(
             membership_id = result[0].get("sys_id")
             delete_url = f"{api_url}/{membership_id}"
 
-            response = requests.delete(
+            response = _make_request("DELETE", 
                 delete_url,
                 headers=auth_manager.get_headers(),
                 timeout=config.timeout,

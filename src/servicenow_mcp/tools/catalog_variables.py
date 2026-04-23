@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
@@ -133,7 +133,7 @@ def create_catalog_item_variable(
 
     # Make request
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -195,7 +195,7 @@ def list_catalog_item_variables(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -271,7 +271,7 @@ def update_catalog_item_variable(
 
     # Make request
     try:
-        response = requests.patch(
+        response = _make_request("PATCH", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -361,7 +361,7 @@ def create_catalog_variable_choice(
         data["price_type"] = params.price_type
 
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -405,7 +405,7 @@ def delete_catalog_item_variable(
     api_url = f"{config.instance_url}/api/now/table/item_option_new/{params.variable_id}"
 
     try:
-        response = requests.delete(
+        response = _make_request("DELETE", 
             api_url,
             headers=auth_manager.get_headers(),
             timeout=config.timeout,

@@ -18,6 +18,7 @@ from servicenow_mcp.utils.helpers import (
     _get_instance_url,
     _unwrap_and_validate_params,
     validate_servicenow_date,
+    _make_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -80,7 +81,7 @@ class UpdateTimeCardParams(BaseModel):
 def _resolve_task_sys_id(instance_url: str, headers: Dict, task_number: str) -> Optional[str]:
     """Resolve a SCTASK number to its sys_id."""
     url = f"{instance_url}/api/now/table/sc_task"
-    resp = requests.get(url, headers=headers, params={
+    resp = _make_request("GET", url, headers=headers, params={
         "sysparm_query": f"number={task_number}",
         "sysparm_limit": 1,
         "sysparm_fields": "sys_id",
@@ -158,7 +159,7 @@ def list_time_cards(
         query_params["sysparm_query"] = "^".join(query_parts)
 
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         cards = response.json().get("result", [])
         return {
@@ -214,7 +215,7 @@ def create_time_card(
 
     url = f"{instance_url}/api/now/table/time_card"
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
         tc = response.json().get("result", {})
         return {
@@ -258,7 +259,7 @@ def update_time_card(
 
     url = f"{instance_url}/api/now/table/time_card/{validated.time_card_sys_id}"
     try:
-        response = requests.patch(url, json=data, headers=headers)
+        response = _make_request("PATCH", url, json=data, headers=headers)
         response.raise_for_status()
         tc = response.json().get("result", {})
         return {

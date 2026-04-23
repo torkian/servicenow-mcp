@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-18. Add retry logic with exponential backoff
 19. Add rate limiting awareness
 20. Add request/response logging in debug mode
 
@@ -22,3 +21,4 @@
 14. 2026-04-20 — Add input validation for date fields across tools; added validate_servicenow_datetime, validate_servicenow_date, validate_duration_hhmmss to helpers.py; applied @field_validator to 9 models in 5 tool files; 42 new tests
 15. 2026-04-21 — Add pagination helpers for list operations; added _build_sysparm_params, _join_query_parts, _paginated_list_response to helpers.py; refactored incident_tools, syslog_tools, knowledge_base list operations; responses now include has_more/next_offset; 46 new tests
 16. 2026-04-22 — Add bulk operations support; new execute_bulk_operations tool wraps POST /api/now/v1/batch; up to 100 sub-requests per call; auto-normalises methods and URLs; per-request ok/status_code in results; 24 new tests; bulk_tools.py at 100% coverage
+17. 2026-04-23 — Add retry logic with exponential backoff; _make_request() in helpers.py retries on 429/500/502/503/504 and ConnectionError/Timeout; honours Retry-After header; applied to all 20 tool files; 30 new tests

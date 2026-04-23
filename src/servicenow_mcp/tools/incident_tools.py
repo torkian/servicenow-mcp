@@ -17,6 +17,7 @@ from servicenow_mcp.utils.helpers import (
     _format_http_error,
     _join_query_parts,
     _paginated_list_response,
+    _make_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -142,7 +143,7 @@ def create_incident(
 
     # Make request
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -198,7 +199,7 @@ def update_incident(
                 "sysparm_limit": 1,
             }
 
-            response = requests.get(
+            response = _make_request("GET", 
                 query_url,
                 params=query_params,
                 headers=auth_manager.get_headers(),
@@ -255,7 +256,7 @@ def update_incident(
 
     # Make request
     try:
-        response = requests.put(
+        response = _make_request("PUT", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -311,7 +312,7 @@ def add_comment(
                 "sysparm_limit": 1,
             }
 
-            response = requests.get(
+            response = _make_request("GET", 
                 query_url,
                 params=query_params,
                 headers=auth_manager.get_headers(),
@@ -346,7 +347,7 @@ def add_comment(
 
     # Make request
     try:
-        response = requests.put(
+        response = _make_request("PUT", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -402,7 +403,7 @@ def resolve_incident(
                 "sysparm_limit": 1,
             }
 
-            response = requests.get(
+            response = _make_request("GET", 
                 query_url,
                 params=query_params,
                 headers=auth_manager.get_headers(),
@@ -437,7 +438,7 @@ def resolve_incident(
 
     # Make request
     try:
-        response = requests.put(
+        response = _make_request("PUT", 
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -498,7 +499,7 @@ def list_incidents(
     )
 
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -570,7 +571,7 @@ def get_incident_by_number(
 
     # Make request
     try:
-        response = requests.get(
+        response = _make_request("GET", 
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),

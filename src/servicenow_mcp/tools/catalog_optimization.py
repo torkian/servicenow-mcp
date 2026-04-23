@@ -10,12 +10,11 @@ import logging
 import random
 from typing import Dict, List, Optional
 
-import requests
 from pydantic import BaseModel
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
@@ -180,7 +179,7 @@ def update_catalog_item(
         headers = auth_manager.get_headers()
         headers["Content-Type"] = "application/json"
         
-        response = requests.patch(url, headers=headers, json=body)
+        response = _make_request("PATCH", url, headers=headers, json=body)
         response.raise_for_status()
         
         return {
@@ -227,7 +226,7 @@ def _get_inactive_items(
             "sysparm_limit": "50",
         }
         
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         return response.json()["result"]
@@ -266,7 +265,7 @@ def _get_low_usage_items(
             "sysparm_limit": "50",
         }
         
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         # In a real implementation, we would query the request table to get actual usage data
@@ -316,7 +315,7 @@ def _get_high_abandonment_items(
             "sysparm_limit": "50",
         }
         
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         # In a real implementation, we would query the request table to get actual abandonment data
@@ -372,7 +371,7 @@ def _get_slow_fulfillment_items(
             "sysparm_limit": "50",
         }
         
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         # In a real implementation, we would query the request table to get actual fulfillment data
@@ -428,7 +427,7 @@ def _get_poor_description_items(
             "sysparm_limit": "50",
         }
         
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         items = response.json()["result"]

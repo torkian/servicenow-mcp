@@ -12,7 +12,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
@@ -138,7 +138,7 @@ def list_catalog_items(
     headers["Accept"] = "application/json"
     
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         
         # Process the response
@@ -212,7 +212,7 @@ def get_catalog_item(
     headers["Accept"] = "application/json"
     
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         
         # Process the response
@@ -290,7 +290,7 @@ def get_catalog_item_variables(
     headers["Accept"] = "application/json"
     
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         
         # Process the response
@@ -358,7 +358,7 @@ def create_catalog_item(
     headers["Content-Type"] = "application/json"
 
     try:
-        response = requests.post(url, headers=headers, json=body)
+        response = _make_request("POST", url, headers=headers, json=body)
         response.raise_for_status()
 
         item = response.json().get("result", {})
@@ -430,7 +430,7 @@ def list_catalog_categories(
     headers["Accept"] = "application/json"
     
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         
         # Process the response
@@ -514,7 +514,7 @@ def create_catalog_category(
     headers["Content-Type"] = "application/json"
     
     try:
-        response = requests.post(url, headers=headers, json=body)
+        response = _make_request("POST", url, headers=headers, json=body)
         response.raise_for_status()
         
         # Process the response
@@ -589,7 +589,7 @@ def update_catalog_category(
     headers["Content-Type"] = "application/json"
     
     try:
-        response = requests.patch(url, headers=headers, json=body)
+        response = _make_request("PATCH", url, headers=headers, json=body)
         response.raise_for_status()
         
         # Process the response
@@ -659,7 +659,7 @@ def move_catalog_items(
             }
             
             try:
-                response = requests.patch(item_url, headers=headers, json=body)
+                response = _make_request("PATCH", item_url, headers=headers, json=body)
                 response.raise_for_status()
                 success_count += 1
             except requests.exceptions.RequestException as e:

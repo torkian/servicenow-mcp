@@ -13,7 +13,7 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error
+from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
@@ -119,7 +119,7 @@ def list_script_includes(
         # Make the request
         headers = auth_manager.get_headers()
         
-        response = requests.get(
+        response = _make_request("GET", 
             url,
             params=query_params,
             headers=headers,
@@ -203,7 +203,7 @@ def get_script_include(
         # Make the request
         headers = auth_manager.get_headers()
         
-        response = requests.get(
+        response = _make_request("GET", 
             url,
             params=query_params,
             headers=headers,
@@ -298,7 +298,7 @@ def create_script_include(
     headers = auth_manager.get_headers()
     
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             url,
             json=body,
             headers=headers,
@@ -397,7 +397,7 @@ def update_script_include(
     headers = auth_manager.get_headers()
     
     try:
-        response = requests.patch(
+        response = _make_request("PATCH", 
             url,
             json=body,
             headers=headers,
@@ -467,7 +467,7 @@ def delete_script_include(
     headers = auth_manager.get_headers()
     
     try:
-        response = requests.delete(
+        response = _make_request("DELETE", 
             url,
             headers=headers,
             timeout=30,
@@ -596,7 +596,7 @@ def execute_script_include(
     headers = auth_manager.get_headers()
 
     try:
-        response = requests.post(
+        response = _make_request("POST", 
             url,
             json={"script": script},
             headers=headers,

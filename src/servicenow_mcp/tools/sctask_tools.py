@@ -18,6 +18,7 @@ from servicenow_mcp.utils.helpers import (
     _get_instance_url,
     _unwrap_and_validate_params,
     validate_duration_hhmmss,
+    _make_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -93,7 +94,7 @@ def get_sctask(
     }
 
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         records = response.json().get("result", [])
 
@@ -168,7 +169,7 @@ def list_sctasks(
         query_params["sysparm_query"] = "^".join(query_parts)
 
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         tasks = response.json().get("result", [])
 
@@ -213,7 +214,7 @@ def update_sctask(
             "sysparm_fields": "sys_id",
         }
         try:
-            lookup_resp = requests.get(lookup_url, headers=headers, params=lookup_params)
+            lookup_resp = _make_request("GET", lookup_url, headers=headers, params=lookup_params)
             lookup_resp.raise_for_status()
             records = lookup_resp.json().get("result", [])
             if not records:
@@ -239,7 +240,7 @@ def update_sctask(
         # Read current time_worked and add to it instead of replacing
         try:
             lookup_url = f"{instance_url}/api/now/table/sc_task/{task_id}"
-            lookup_resp = requests.get(lookup_url, headers=headers, params={"sysparm_fields": "time_worked"})
+            lookup_resp = _make_request("GET", lookup_url, headers=headers, params={"sysparm_fields": "time_worked"})
             lookup_resp.raise_for_status()
             current_raw = lookup_resp.json().get("result", {}).get("time_worked", "")
             # Parse current value (format: "1970-01-01 HH:MM:SS")
@@ -265,7 +266,7 @@ def update_sctask(
     url = f"{instance_url}/api/now/table/sc_task/{task_id}"
 
     try:
-        response = requests.patch(url, json=data, headers=headers)
+        response = _make_request("PATCH", url, json=data, headers=headers)
         response.raise_for_status()
         return {
             "success": True,

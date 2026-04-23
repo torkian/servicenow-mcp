@@ -7,12 +7,73 @@ from here instead of redefining them locally.
 
 import logging
 import re
-from typing import Any, Dict, List, Optional, Type, TypeVar
+import time
+from typing import Any, Callable, Dict, List, Optional, Type, TypeVar
 
 import requests
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
+
+_RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
+_RETRYABLE_EXCEPTIONS = (requests.exceptions.ConnectionError, requests.exceptions.Timeout)
+
+
+def _make_request(
+    method: str,
+    url: str,
+    max_retries: int = 3,
+    backoff_factor: float = 1.0,
+    **kwargs,
+) -> requests.Response:
+    """Call the named HTTP method with exponential-backoff retry.
+
+    Retries on transient network errors (ConnectionError, Timeout) and on
+    retryable HTTP status codes (429, 500, 502, 503, 504).  Client errors
+    (4xx except 429) are returned immediately — retrying won't help.
+
+    For 429 responses, honours the ``Retry-After`` header when present.
+    Delay formula without Retry-After: backoff_factor × 2^attempt (1 s, 2 s, 4 s by default).
+
+    Args:
+        method: HTTP method name (case-insensitive): "GET", "POST", etc.
+        url: Request URL.
+        max_retries: Maximum number of retry attempts (0 = no retries).
+        backoff_factor: Multiplier for exponential delay (seconds).
+        **kwargs: Passed verbatim to the underlying requests method.
+
+    Returns:
+        The :class:`requests.Response` object from the final attempt.
+        Callers are responsible for calling ``response.raise_for_status()``.
+    """
+    fn: Callable = getattr(requests, method.lower())
+    response: Optional[requests.Response] = None
+
+    for attempt in range(max_retries + 1):
+        try:
+            response = fn(url, **kwargs)
+            if response.status_code not in _RETRYABLE_STATUS_CODES or attempt == max_retries:
+                return response
+            if response.status_code == 429:
+                delay = float(response.headers.get("Retry-After") or backoff_factor * (2 ** attempt))
+            else:
+                delay = backoff_factor * (2 ** attempt)
+            logger.warning(
+                "HTTP %s from %s; retrying in %.1fs (attempt %d/%d)",
+                response.status_code, url, delay, attempt + 1, max_retries,
+            )
+            time.sleep(delay)
+        except _RETRYABLE_EXCEPTIONS as exc:
+            if attempt == max_retries:
+                raise
+            delay = backoff_factor * (2 ** attempt)
+            logger.warning(
+                "Request error (%s); retrying in %.1fs (attempt %d/%d)",
+                exc, delay, attempt + 1, max_retries,
+            )
+            time.sleep(delay)
+
+    return response  # type: ignore[return-value]
 
 T = TypeVar("T", bound=BaseModel)
 

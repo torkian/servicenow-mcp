@@ -19,6 +19,7 @@ from servicenow_mcp.utils.helpers import (
     _get_instance_url,
     _unwrap_and_validate_params,
     validate_servicenow_datetime,
+    _make_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -153,7 +154,7 @@ def create_project(
     url = f"{instance_url}/api/now/table/pm_project"
     
     try:
-        response = requests.post(url, json=data, headers=headers)
+        response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
         
         result = response.json()
@@ -246,7 +247,7 @@ def update_project(
     url = f"{instance_url}/api/now/table/pm_project/{validated_params.project_id}"
     
     try:
-        response = requests.put(url, json=data, headers=headers)
+        response = _make_request("PUT", url, json=data, headers=headers)
         response.raise_for_status()
         
         result = response.json()
@@ -342,7 +343,7 @@ def list_projects(
     }
     
     try:
-        response = requests.get(url, headers=headers, params=params)
+        response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
         
         result = response.json()

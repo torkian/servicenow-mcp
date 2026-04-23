@@ -22,6 +22,7 @@ from servicenow_mcp.utils.helpers import (
     _paginated_list_response,
     _unwrap_and_validate_params,
     validate_servicenow_datetime,
+    _make_request,
 )
 
 logger = logging.getLogger(__name__)
@@ -143,7 +144,7 @@ def list_syslog_entries(
 
     url = f"{instance_url}/api/now/table/{SYSLOG_TABLE}"
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         entries = [_format_syslog_entry(r) for r in response.json().get("result", [])]
         return _paginated_list_response(
@@ -188,7 +189,7 @@ def get_syslog_entry(
         "sysparm_fields": ",".join(SYSLOG_FIELDS),
     }
     try:
-        response = requests.get(url, headers=headers, params=query_params)
+        response = _make_request("GET", url, headers=headers, params=query_params)
         if response.status_code == 404:
             return {"success": False, "message": f"Syslog entry not found: {validated.sys_id}"}
         response.raise_for_status()
