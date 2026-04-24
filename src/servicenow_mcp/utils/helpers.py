@@ -19,11 +19,121 @@ _RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 _RETRYABLE_EXCEPTIONS = (requests.exceptions.ConnectionError, requests.exceptions.Timeout)
 
 
+class RateLimitTracker:
+    """Tracks ServiceNow API rate limit state parsed from response headers.
+
+    Parses standard ``X-RateLimit-*`` and ``RateLimit-*`` headers from each
+    response, logs warnings when the quota is nearly exhausted, and sleeps
+    proactively before the next request when the quota is critically low.
+    """
+
+    _REMAINING_HEADERS = ("X-RateLimit-Remaining", "RateLimit-Remaining")
+    _LIMIT_HEADERS = ("X-RateLimit-Limit", "RateLimit-Limit")
+    _RESET_HEADERS = ("X-RateLimit-Reset", "RateLimit-Reset")
+
+    def __init__(self, warning_threshold: float = 0.1, throttle_threshold: float = 0.05) -> None:
+        """
+        Args:
+            warning_threshold: Warn when remaining/limit drops below this ratio (default 10%).
+            throttle_threshold: Sleep before next request below this ratio (default 5%).
+        """
+        self.remaining: Optional[int] = None
+        self.limit: Optional[int] = None
+        self.reset_at: Optional[float] = None
+        self._warning_threshold = warning_threshold
+        self._throttle_threshold = throttle_threshold
+
+    def update(self, response: requests.Response) -> None:
+        """Parse rate limit headers from a response and update internal state."""
+        for h in self._REMAINING_HEADERS:
+            val = response.headers.get(h)
+            if val is not None:
+                try:
+                    self.remaining = int(val)
+                except (ValueError, TypeError):
+                    pass
+                break
+
+        for h in self._LIMIT_HEADERS:
+            val = response.headers.get(h)
+            if val is not None:
+                try:
+                    self.limit = int(val)
+                except (ValueError, TypeError):
+                    pass
+                break
+
+        for h in self._RESET_HEADERS:
+            val = response.headers.get(h)
+            if val is not None:
+                try:
+                    self.reset_at = float(val)
+                except (ValueError, TypeError):
+                    pass
+                break
+
+        self._maybe_warn()
+
+    def _maybe_warn(self) -> None:
+        if self.remaining is None or self.limit is None or self.limit == 0:
+            return
+        ratio = self.remaining / self.limit
+        if ratio <= self._warning_threshold:
+            reset_msg = f"; resets at {self.reset_at:.0f}" if self.reset_at else ""
+            logger.warning(
+                "Rate limit warning: %d/%d requests remaining (%.0f%%)%s",
+                self.remaining,
+                self.limit,
+                ratio * 100,
+                reset_msg,
+            )
+
+    def check_and_throttle(self) -> None:
+        """Sleep proactively before a request if quota is critically low."""
+        if self.remaining is None or self.limit is None or self.limit == 0:
+            return
+        ratio = self.remaining / self.limit
+        if ratio > self._throttle_threshold:
+            return
+
+        now = time.time()
+        if self.reset_at and self.reset_at > now:
+            sleep_for = min(self.reset_at - now, 60.0)
+        else:
+            sleep_for = 1.0
+
+        logger.warning(
+            "Rate limit critical: %d/%d remaining (%.0f%%); pausing %.1fs before next request",
+            self.remaining,
+            self.limit,
+            ratio * 100,
+            sleep_for,
+        )
+        time.sleep(sleep_for)
+
+    @property
+    def utilization(self) -> Optional[float]:
+        """Fraction of rate limit consumed (0.0 = none used, 1.0 = fully exhausted)."""
+        if self.remaining is None or self.limit is None or self.limit == 0:
+            return None
+        return 1.0 - (self.remaining / self.limit)
+
+    def reset(self) -> None:
+        """Clear tracked state."""
+        self.remaining = None
+        self.limit = None
+        self.reset_at = None
+
+
+_rate_limit_tracker = RateLimitTracker()
+
+
 def _make_request(
     method: str,
     url: str,
     max_retries: int = 3,
     backoff_factor: float = 1.0,
+    rate_limit_tracker: Optional[RateLimitTracker] = None,
     **kwargs,
 ) -> requests.Response:
     """Call the named HTTP method with exponential-backoff retry.
@@ -35,23 +145,34 @@ def _make_request(
     For 429 responses, honours the ``Retry-After`` header when present.
     Delay formula without Retry-After: backoff_factor × 2^attempt (1 s, 2 s, 4 s by default).
 
+    Rate limit headers (``X-RateLimit-Remaining`` etc.) are parsed after every
+    response and forwarded to *rate_limit_tracker*.  When remaining quota is
+    critically low the tracker sleeps before the next attempt.  Pass a
+    dedicated :class:`RateLimitTracker` instance to isolate state; pass
+    ``rate_limit_tracker=None`` (default) to use the module-level shared tracker.
+
     Args:
         method: HTTP method name (case-insensitive): "GET", "POST", etc.
         url: Request URL.
         max_retries: Maximum number of retry attempts (0 = no retries).
         backoff_factor: Multiplier for exponential delay (seconds).
+        rate_limit_tracker: Tracker to update with rate limit headers.  Defaults
+            to the module-level :data:`_rate_limit_tracker` singleton.
         **kwargs: Passed verbatim to the underlying requests method.
 
     Returns:
         The :class:`requests.Response` object from the final attempt.
         Callers are responsible for calling ``response.raise_for_status()``.
     """
+    tracker: RateLimitTracker = rate_limit_tracker if rate_limit_tracker is not None else _rate_limit_tracker
     fn: Callable = getattr(requests, method.lower())
     response: Optional[requests.Response] = None
 
     for attempt in range(max_retries + 1):
+        tracker.check_and_throttle()
         try:
             response = fn(url, **kwargs)
+            tracker.update(response)
             if response.status_code not in _RETRYABLE_STATUS_CODES or attempt == max_retries:
                 return response
             if response.status_code == 429:
