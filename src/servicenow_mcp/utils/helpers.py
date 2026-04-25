@@ -5,6 +5,7 @@ These functions were previously duplicated across 8 tool files. Import them
 from here instead of redefining them locally.
 """
 
+import json
 import logging
 import re
 import time
@@ -17,6 +18,35 @@ logger = logging.getLogger(__name__)
 
 _RETRYABLE_STATUS_CODES = frozenset({429, 500, 502, 503, 504})
 _RETRYABLE_EXCEPTIONS = (requests.exceptions.ConnectionError, requests.exceptions.Timeout)
+
+_REDACTED = "<redacted>"
+_SENSITIVE_HEADERS = frozenset(
+    {"authorization", "x-servicenow-api-key", "cookie", "set-cookie", "proxy-authorization"}
+)
+_DEBUG_BODY_LIMIT = 500
+
+
+def _redact_headers(headers: Optional[Dict[str, str]]) -> Dict[str, str]:
+    """Return a copy of *headers* with sensitive values replaced by ``<redacted>``."""
+    if not headers:
+        return {}
+    return {
+        k: (_REDACTED if k.lower() in _SENSITIVE_HEADERS else v)
+        for k, v in headers.items()
+    }
+
+
+def _truncate_body(body: Any) -> str:
+    """Serialise *body* to a string and truncate at :data:`_DEBUG_BODY_LIMIT` chars."""
+    if body is None:
+        return ""
+    if isinstance(body, (dict, list)):
+        text = json.dumps(body)
+    else:
+        text = str(body)
+    if len(text) > _DEBUG_BODY_LIMIT:
+        return text[:_DEBUG_BODY_LIMIT] + " [truncated]"
+    return text
 
 
 class RateLimitTracker:
@@ -167,12 +197,35 @@ def _make_request(
     tracker: RateLimitTracker = rate_limit_tracker if rate_limit_tracker is not None else _rate_limit_tracker
     fn: Callable = getattr(requests, method.lower())
     response: Optional[requests.Response] = None
+    _debug = logger.isEnabledFor(logging.DEBUG)
 
     for attempt in range(max_retries + 1):
         tracker.check_and_throttle()
+        if _debug:
+            logger.debug(
+                ">> %s %s | params=%s headers=%s body=%s",
+                method.upper(),
+                url,
+                _truncate_body(kwargs.get("params")),
+                _redact_headers(kwargs.get("headers")),
+                _truncate_body(kwargs.get("json") or kwargs.get("data")),
+            )
         try:
+            _t0 = time.monotonic()
             response = fn(url, **kwargs)
+            _elapsed = time.monotonic() - _t0
             tracker.update(response)
+            if _debug:
+                try:
+                    resp_body = _truncate_body(response.json())
+                except Exception:
+                    resp_body = _truncate_body(response.text)
+                logger.debug(
+                    "<< %s in %.3fs | body=%s",
+                    response.status_code,
+                    _elapsed,
+                    resp_body,
+                )
             if response.status_code not in _RETRYABLE_STATUS_CODES or attempt == max_retries:
                 return response
             if response.status_code == 429:
