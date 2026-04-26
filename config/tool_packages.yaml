@@ -161,6 +161,11 @@ system_administrator:
   # System Logs
   - list_syslog_entries
   - get_syslog_entry
+  # CMDB
+  - list_cis
+  - get_ci
+  - create_ci
+  - update_ci
 
 full:
   # Incident Management
@@ -255,6 +260,11 @@ full:
   # UI Policy
   - create_ui_policy
   - create_ui_policy_action
+  # CMDB
+  - list_cis
+  - get_ci
+  - create_ci
+  - update_ci
   # Story Management
   - create_story
   - update_story

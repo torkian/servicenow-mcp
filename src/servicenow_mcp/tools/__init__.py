@@ -142,6 +142,12 @@ from servicenow_mcp.tools.user_criteria_tools import (
 from servicenow_mcp.tools.bulk_tools import (
     execute_bulk_operations,
 )
+from servicenow_mcp.tools.cmdb_tools import (
+    create_ci,
+    get_ci,
+    list_cis,
+    update_ci,
+)
 # from servicenow_mcp.tools.problem_tools import create_problem, update_problem
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
@@ -280,6 +286,12 @@ __all__ = [
 
     # Bulk operations
     "execute_bulk_operations",
+
+    # CMDB tools
+    "list_cis",
+    "get_ci",
+    "create_ci",
+    "update_ci",
 
     # Future tools
     # "create_problem",

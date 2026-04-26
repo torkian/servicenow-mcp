@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-(none — all items completed)
+(none — all original items completed; see next candidates in 2026-04-26 daily report)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -23,3 +23,4 @@
 17. 2026-04-23 — Add retry logic with exponential backoff; _make_request() in helpers.py retries on 429/500/502/503/504 and ConnectionError/Timeout; honours Retry-After header; applied to all 20 tool files; 30 new tests
 19. 2026-04-24 — Add rate limiting awareness; RateLimitTracker class parses X-RateLimit-* headers, warns below 10% quota, sleeps proactively below 5%; integrated into _make_request() as module-level singleton; 34 new tests
 20. 2026-04-25 — Add request/response logging in debug mode; _redact_headers() masks Authorization/Cookie/API-key headers; _truncate_body() serialises and truncates at 500 chars; _make_request() emits DEBUG lines before each attempt and after each response; 28 new tests
+21. 2026-04-26 — Add CMDB configuration item tools (list_cis, get_ci, create_ci, update_ci); cmdb_tools.py supports cmdb_ci base table and any subclass; filters for name/class/status/environment; 45 new tests; 98% coverage
