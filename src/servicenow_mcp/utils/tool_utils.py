@@ -416,6 +416,20 @@ from servicenow_mcp.tools.cmdb_tools import (
     list_cis as list_cis_tool,
     update_ci as update_ci_tool,
 )
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    CreateCIRelationshipParams,
+    DeleteCIRelationshipParams,
+    GetCIRelationshipParams,
+    ListCIRelationshipsParams,
+    ListCIRelationshipTypesParams,
+)
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    create_ci_relationship as create_ci_relationship_tool,
+    delete_ci_relationship as delete_ci_relationship_tool,
+    get_ci_relationship as get_ci_relationship_tool,
+    list_ci_relationships as list_ci_relationships_tool,
+    list_ci_relationship_types as list_ci_relationship_types_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1202,6 +1216,53 @@ def get_tool_definitions(
             UpdateCIParams,
             Dict[str, Any],
             "Update an existing CMDB configuration item by its sys_id",
+            "raw_dict",
+        ),
+        # CMDB Relationship Tools
+        "list_ci_relationships": (
+            list_ci_relationships_tool,
+            ListCIRelationshipsParams,
+            Dict[str, Any],
+            (
+                "List CI relationships from the cmdb_rel_ci table with optional "
+                "filters for parent CI, child CI, and relationship type. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_ci_relationship": (
+            get_ci_relationship_tool,
+            GetCIRelationshipParams,
+            Dict[str, Any],
+            "Retrieve a single CI relationship record by its sys_id",
+            "raw_dict",
+        ),
+        "create_ci_relationship": (
+            create_ci_relationship_tool,
+            CreateCIRelationshipParams,
+            Dict[str, Any],
+            (
+                "Create a directional relationship between two CIs in the CMDB. "
+                "Requires the sys_id of the parent CI, child CI, and the desired "
+                "cmdb_rel_type (use list_ci_relationship_types to find the type sys_id)."
+            ),
+            "raw_dict",
+        ),
+        "delete_ci_relationship": (
+            delete_ci_relationship_tool,
+            DeleteCIRelationshipParams,
+            Dict[str, Any],
+            "Delete a CI relationship record from the cmdb_rel_ci table by its sys_id",
+            "raw_dict",
+        ),
+        "list_ci_relationship_types": (
+            list_ci_relationship_types_tool,
+            ListCIRelationshipTypesParams,
+            Dict[str, Any],
+            (
+                "List available CI relationship types from the cmdb_rel_type table. "
+                "Each type has a parent_descriptor (e.g. 'Depends on') and a "
+                "child_descriptor (e.g. 'Used by'). Filter by name substring."
+            ),
             "raw_dict",
         ),
     }

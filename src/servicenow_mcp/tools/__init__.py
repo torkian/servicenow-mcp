@@ -148,6 +148,13 @@ from servicenow_mcp.tools.cmdb_tools import (
     list_cis,
     update_ci,
 )
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    create_ci_relationship,
+    delete_ci_relationship,
+    get_ci_relationship,
+    list_ci_relationships,
+    list_ci_relationship_types,
+)
 # from servicenow_mcp.tools.problem_tools import create_problem, update_problem
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
@@ -292,6 +299,13 @@ __all__ = [
     "get_ci",
     "create_ci",
     "update_ci",
+
+    # CMDB relationship tools
+    "list_ci_relationships",
+    "get_ci_relationship",
+    "create_ci_relationship",
+    "delete_ci_relationship",
+    "list_ci_relationship_types",
 
     # Future tools
     # "create_problem",

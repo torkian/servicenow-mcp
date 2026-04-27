@@ -166,6 +166,12 @@ system_administrator:
   - get_ci
   - create_ci
   - update_ci
+  # CMDB Relationships
+  - list_ci_relationships
+  - get_ci_relationship
+  - create_ci_relationship
+  - delete_ci_relationship
+  - list_ci_relationship_types
 
 full:
   # Incident Management
@@ -265,6 +271,12 @@ full:
   - get_ci
   - create_ci
   - update_ci
+  # CMDB Relationships
+  - list_ci_relationships
+  - get_ci_relationship
+  - create_ci_relationship
+  - delete_ci_relationship
+  - list_ci_relationship_types
   # Story Management
   - create_story
   - update_story

@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-(none — all original items completed; see next candidates in 2026-04-26 daily report)
+1. Add asset management tools (alm_asset table): list_assets, get_asset, update_asset
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -24,3 +24,4 @@
 19. 2026-04-24 — Add rate limiting awareness; RateLimitTracker class parses X-RateLimit-* headers, warns below 10% quota, sleeps proactively below 5%; integrated into _make_request() as module-level singleton; 34 new tests
 20. 2026-04-25 — Add request/response logging in debug mode; _redact_headers() masks Authorization/Cookie/API-key headers; _truncate_body() serialises and truncates at 500 chars; _make_request() emits DEBUG lines before each attempt and after each response; 28 new tests
 21. 2026-04-26 — Add CMDB configuration item tools (list_cis, get_ci, create_ci, update_ci); cmdb_tools.py supports cmdb_ci base table and any subclass; filters for name/class/status/environment; 45 new tests; 98% coverage
+22. 2026-04-27 — Add CMDB relationship tools (list_ci_relationships, get_ci_relationship, create_ci_relationship, delete_ci_relationship, list_ci_relationship_types); cmdb_relationship_tools.py manages cmdb_rel_ci and cmdb_rel_type tables; normalises reference dict values; 42 new tests; 98% coverage
