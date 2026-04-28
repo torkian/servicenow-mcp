@@ -430,6 +430,16 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
     list_ci_relationships as list_ci_relationships_tool,
     list_ci_relationship_types as list_ci_relationship_types_tool,
 )
+from servicenow_mcp.tools.asset_tools import (
+    GetAssetParams,
+    ListAssetsParams,
+    UpdateAssetParams,
+)
+from servicenow_mcp.tools.asset_tools import (
+    get_asset as get_asset_tool,
+    list_assets as list_assets_tool,
+    update_asset as update_asset_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1262,6 +1272,38 @@ def get_tool_definitions(
                 "List available CI relationship types from the cmdb_rel_type table. "
                 "Each type has a parent_descriptor (e.g. 'Depends on') and a "
                 "child_descriptor (e.g. 'Used by'). Filter by name substring."
+            ),
+            "raw_dict",
+        ),
+        # Asset Management Tools
+        "list_assets": (
+            list_assets_tool,
+            ListAssetsParams,
+            Dict[str, Any],
+            (
+                "List hardware and software assets from the ServiceNow alm_asset table "
+                "with optional filters for asset tag, display name, install status, "
+                "assigned user, and model category. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_asset": (
+            get_asset_tool,
+            GetAssetParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single asset record from the alm_asset table. "
+                "Lookup by sys_id or by asset tag."
+            ),
+            "raw_dict",
+        ),
+        "update_asset": (
+            update_asset_tool,
+            UpdateAssetParams,
+            Dict[str, Any],
+            (
+                "Update an existing asset record in the alm_asset table. "
+                "Supports updating status, cost, dates, assignment, and location fields."
             ),
             "raw_dict",
         ),

@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add asset management tools (alm_asset table): list_assets, get_asset, update_asset
+1. Add create_asset tool and alm_hardware subclass support
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -25,3 +25,4 @@
 20. 2026-04-25 — Add request/response logging in debug mode; _redact_headers() masks Authorization/Cookie/API-key headers; _truncate_body() serialises and truncates at 500 chars; _make_request() emits DEBUG lines before each attempt and after each response; 28 new tests
 21. 2026-04-26 — Add CMDB configuration item tools (list_cis, get_ci, create_ci, update_ci); cmdb_tools.py supports cmdb_ci base table and any subclass; filters for name/class/status/environment; 45 new tests; 98% coverage
 22. 2026-04-27 — Add CMDB relationship tools (list_ci_relationships, get_ci_relationship, create_ci_relationship, delete_ci_relationship, list_ci_relationship_types); cmdb_relationship_tools.py manages cmdb_rel_ci and cmdb_rel_type tables; normalises reference dict values; 42 new tests; 98% coverage
+23. 2026-04-28 — Add asset management tools (list_assets, get_asset, update_asset); asset_tools.py targets alm_asset table; filters for tag/name/status/assignee/category; get_asset resolves by sys_id or asset tag; reference fields normalised to display values; 35 new tests; 99% coverage

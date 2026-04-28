@@ -155,6 +155,11 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
     list_ci_relationships,
     list_ci_relationship_types,
 )
+from servicenow_mcp.tools.asset_tools import (
+    list_assets,
+    get_asset,
+    update_asset,
+)
 # from servicenow_mcp.tools.problem_tools import create_problem, update_problem
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
@@ -306,6 +311,11 @@ __all__ = [
     "create_ci_relationship",
     "delete_ci_relationship",
     "list_ci_relationship_types",
+
+    # Asset management tools
+    "list_assets",
+    "get_asset",
+    "update_asset",
 
     # Future tools
     # "create_problem",
