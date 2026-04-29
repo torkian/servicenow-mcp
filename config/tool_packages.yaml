@@ -173,6 +173,7 @@ system_administrator:
   - delete_ci_relationship
   - list_ci_relationship_types
   # Asset Management
+  - create_asset
   - list_assets
   - get_asset
   - update_asset
@@ -282,6 +283,7 @@ full:
   - delete_ci_relationship
   - list_ci_relationship_types
   # Asset Management
+  - create_asset
   - list_assets
   - get_asset
   - update_asset

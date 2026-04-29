@@ -6,10 +6,12 @@ from unittest.mock import MagicMock, patch
 import requests
 
 from servicenow_mcp.tools.asset_tools import (
+    CreateAssetParams,
     GetAssetParams,
     ListAssetsParams,
     UpdateAssetParams,
     _format_asset,
+    create_asset,
     get_asset,
     list_assets,
     update_asset,
@@ -456,6 +458,232 @@ class TestUpdateAsset(unittest.TestCase):
         self.assertFalse(result["success"])
 
 
+FAKE_HARDWARE_ASSET = {
+    "sys_id": "hw001",
+    "asset_tag": "HW-001",
+    "display_name": "Dell PowerEdge R740",
+    "serial_number": "SRV-SN-001",
+    "model": {"display_value": "PowerEdge R740", "value": "model002"},
+    "model_category": {"display_value": "Server", "value": "cat002"},
+    "assigned_to": {"display_value": "Ops Team", "value": "user010"},
+    "assigned": "true",
+    "install_status": "1",
+    "substatus": "active",
+    "cost": "8500.00",
+    "cost_currency": "USD",
+    "purchase_date": "2025-06-01",
+    "warranty_expiration": "2030-06-01",
+    "lease_id": "",
+    "vendor": {"display_value": "Dell", "value": "vendor001"},
+    "acquisition_method": "purchase",
+    "owned_by": {"display_value": "IT", "value": "user011"},
+    "managed_by": {"display_value": "Ops", "value": "user012"},
+    "location": {"display_value": "Data Center", "value": "loc002"},
+    "company": {"display_value": "Acme Corp", "value": "comp001"},
+    "department": {"display_value": "IT", "value": "dept002"},
+    "sys_created_on": "2025-06-01 09:00:00",
+    "sys_updated_on": "2026-01-01 00:00:00",
+    "cpu_count": "2",
+    "cpu_core_count": "16",
+    "cpu_manufacturer": "Intel",
+    "cpu_name": "Xeon Gold 6230",
+    "cpu_speed": "2100",
+    "disk_space": "2048",
+    "ram": "65536",
+    "os": "Ubuntu",
+    "os_version": "22.04 LTS",
+    "os_service_pack": "",
+    "os_domain": "example.com",
+    "mac_address": "00:1A:2B:3C:4D:5E",
+    "ip_address": "10.0.0.50",
+}
+
+
+class TestCreateAsset(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth_manager = _make_auth_manager()
+
+    @patch("requests.post")
+    def test_create_basic_asset_success(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"result": FAKE_ASSET}
+        mock_post.return_value = mock_response
+
+        result = create_asset(
+            self.auth_manager, self.config,
+            {"display_name": "Dell Laptop 001", "asset_tag": "P1000123"}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["asset"]["display_name"], "Dell Laptop 001")
+        self.assertIn("sys_id", result)
+
+    @patch("requests.post")
+    def test_create_hardware_asset_uses_alm_hardware_table(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"result": FAKE_HARDWARE_ASSET}
+        mock_post.return_value = mock_response
+
+        result = create_asset(
+            self.auth_manager, self.config,
+            {
+                "display_name": "Dell PowerEdge R740",
+                "asset_class": "alm_hardware",
+                "ram": 65536,
+                "cpu_count": 2,
+                "os": "Ubuntu",
+            }
+        )
+        self.assertTrue(result["success"])
+        call_url = mock_post.call_args[0][0]
+        self.assertIn("alm_hardware", call_url)
+
+    @patch("requests.post")
+    def test_create_hardware_asset_fields_in_body(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"result": FAKE_HARDWARE_ASSET}
+        mock_post.return_value = mock_response
+
+        create_asset(
+            self.auth_manager, self.config,
+            {
+                "display_name": "Server",
+                "asset_class": "alm_hardware",
+                "cpu_count": 4,
+                "cpu_core_count": 32,
+                "cpu_manufacturer": "Intel",
+                "cpu_name": "Xeon Platinum",
+                "cpu_speed": 3200,
+                "disk_space": 4096,
+                "ram": 131072,
+                "os": "RHEL",
+                "os_version": "9.0",
+                "os_service_pack": "SP1",
+                "os_domain": "corp.local",
+                "mac_address": "AA:BB:CC:DD:EE:FF",
+                "ip_address": "192.168.1.10",
+            }
+        )
+        body = mock_post.call_args[1].get("json") or mock_post.call_args[0][1]
+        self.assertEqual(body["cpu_count"], 4)
+        self.assertEqual(body["ram"], 131072)
+        self.assertEqual(body["os"], "RHEL")
+        self.assertEqual(body["mac_address"], "AA:BB:CC:DD:EE:FF")
+        self.assertEqual(body["ip_address"], "192.168.1.10")
+        self.assertNotIn("asset_class", body)
+
+    @patch("requests.post")
+    def test_create_defaults_to_alm_asset_table(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"result": FAKE_ASSET}
+        mock_post.return_value = mock_response
+
+        create_asset(self.auth_manager, self.config, {"display_name": "Generic Asset"})
+        call_url = mock_post.call_args[0][0]
+        self.assertIn("alm_asset", call_url)
+        self.assertNotIn("alm_hardware", call_url)
+
+    def test_create_missing_display_name(self):
+        result = create_asset(self.auth_manager, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("requests.post")
+    def test_create_http_error(self, mock_post):
+        mock_post.side_effect = requests.exceptions.ConnectionError("refused")
+        result = create_asset(
+            self.auth_manager, self.config, {"display_name": "Asset X"}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error creating asset", result["message"])
+
+    def test_create_missing_instance_url(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = {"Authorization": "Bearer x"}
+        auth.instance_url = None
+        config = MagicMock()
+        config.instance_url = None
+        result = create_asset(auth, config, {"display_name": "X"})
+        self.assertFalse(result["success"])
+
+    def test_create_missing_headers(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = None
+        auth.instance_url = "https://dev.service-now.com"
+        config = MagicMock()
+        config.instance_url = "https://dev.service-now.com"
+        result = create_asset(auth, config, {"display_name": "X"})
+        self.assertFalse(result["success"])
+
+    @patch("requests.post")
+    def test_create_all_base_fields(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"result": FAKE_ASSET}
+        mock_post.return_value = mock_response
+
+        result = create_asset(
+            self.auth_manager, self.config,
+            {
+                "display_name": "Test Asset",
+                "asset_tag": "TAG-001",
+                "serial_number": "SN-001",
+                "model": "model001",
+                "model_category": "cat001",
+                "install_status": "4",
+                "substatus": "pending_install",
+                "cost": "500.00",
+                "cost_currency": "USD",
+                "purchase_date": "2026-01-01",
+                "warranty_expiration": "2029-01-01",
+                "lease_id": "LEASE-XYZ",
+                "vendor": "vendor001",
+                "acquisition_method": "purchase",
+                "assigned_to": "user001",
+                "owned_by": "user002",
+                "managed_by": "user003",
+                "location": "loc001",
+                "company": "comp001",
+                "department": "dept001",
+            }
+        )
+        self.assertTrue(result["success"])
+        body = mock_post.call_args[1].get("json") or mock_post.call_args[0][1]
+        self.assertEqual(body["display_name"], "Test Asset")
+        self.assertEqual(body["asset_tag"], "TAG-001")
+        self.assertEqual(body["install_status"], "4")
+        self.assertNotIn("asset_class", body)
+
+    @patch("requests.post")
+    def test_create_response_includes_sys_id(self, mock_post):
+        mock_response = MagicMock()
+        mock_response.status_code = 201
+        mock_response.json.return_value = {"result": FAKE_ASSET}
+        mock_post.return_value = mock_response
+
+        result = create_asset(self.auth_manager, self.config, {"display_name": "Asset"})
+        self.assertEqual(result["sys_id"], "asset001")
+
+
+class TestFormatAssetHardware(unittest.TestCase):
+    def test_hardware_fields_included_when_present(self):
+        result = _format_asset(FAKE_HARDWARE_ASSET)
+        self.assertEqual(result["cpu_count"], "2")
+        self.assertEqual(result["ram"], "65536")
+        self.assertEqual(result["os"], "Ubuntu")
+        self.assertEqual(result["mac_address"], "00:1A:2B:3C:4D:5E")
+        self.assertEqual(result["ip_address"], "10.0.0.50")
+
+    def test_hardware_fields_absent_for_plain_asset(self):
+        result = _format_asset(FAKE_ASSET)
+        self.assertNotIn("cpu_count", result)
+        self.assertNotIn("ram", result)
+        self.assertNotIn("os", result)
+
+
 class TestParamModels(unittest.TestCase):
     def test_list_assets_defaults(self):
         p = ListAssetsParams()
@@ -472,6 +700,30 @@ class TestParamModels(unittest.TestCase):
         from pydantic import ValidationError
         with self.assertRaises(ValidationError):
             UpdateAssetParams()
+
+    def test_create_asset_requires_display_name(self):
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            CreateAssetParams()
+
+    def test_create_asset_defaults_asset_class_none(self):
+        p = CreateAssetParams(display_name="Test")
+        self.assertIsNone(p.asset_class)
+        self.assertIsNone(p.cpu_count)
+        self.assertIsNone(p.ram)
+
+    def test_create_asset_hardware_params(self):
+        p = CreateAssetParams(
+            display_name="Server",
+            asset_class="alm_hardware",
+            cpu_count=2,
+            ram=32768,
+            os="Linux",
+        )
+        self.assertEqual(p.asset_class, "alm_hardware")
+        self.assertEqual(p.cpu_count, 2)
+        self.assertEqual(p.ram, 32768)
+        self.assertEqual(p.os, "Linux")
 
 
 if __name__ == "__main__":

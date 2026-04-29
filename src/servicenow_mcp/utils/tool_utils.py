@@ -431,11 +431,13 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
     list_ci_relationship_types as list_ci_relationship_types_tool,
 )
 from servicenow_mcp.tools.asset_tools import (
+    CreateAssetParams,
     GetAssetParams,
     ListAssetsParams,
     UpdateAssetParams,
 )
 from servicenow_mcp.tools.asset_tools import (
+    create_asset as create_asset_tool,
     get_asset as get_asset_tool,
     list_assets as list_assets_tool,
     update_asset as update_asset_tool,
@@ -1276,6 +1278,17 @@ def get_tool_definitions(
             "raw_dict",
         ),
         # Asset Management Tools
+        "create_asset": (
+            create_asset_tool,
+            CreateAssetParams,
+            Dict[str, Any],
+            (
+                "Create a new asset record in the ServiceNow alm_asset table or a subclass "
+                "such as alm_hardware. For hardware assets supply asset_class='alm_hardware' "
+                "and optionally include CPU, RAM, disk, OS, and network fields."
+            ),
+            "raw_dict",
+        ),
         "list_assets": (
             list_assets_tool,
             ListAssetsParams,

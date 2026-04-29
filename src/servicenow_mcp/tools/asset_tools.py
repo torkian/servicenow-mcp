@@ -26,6 +26,7 @@ from servicenow_mcp.utils.helpers import (
 logger = logging.getLogger(__name__)
 
 ASSET_TABLE = "alm_asset"
+HARDWARE_TABLE = "alm_hardware"
 
 ASSET_FIELDS = [
     "sys_id",
@@ -52,6 +53,22 @@ ASSET_FIELDS = [
     "department",
     "sys_created_on",
     "sys_updated_on",
+]
+
+HARDWARE_EXTRA_FIELDS = [
+    "cpu_count",
+    "cpu_core_count",
+    "cpu_manufacturer",
+    "cpu_name",
+    "cpu_speed",
+    "disk_space",
+    "ram",
+    "os",
+    "os_version",
+    "os_service_pack",
+    "os_domain",
+    "mac_address",
+    "ip_address",
 ]
 
 # install_status values for the alm_asset table
@@ -117,15 +134,73 @@ class UpdateAssetParams(BaseModel):
     department: Optional[str] = Field(None, description="Updated department sys_id")
 
 
+class CreateAssetParams(BaseModel):
+    """Parameters for creating a new asset record."""
+
+    display_name: str = Field(..., description="Display name for the asset")
+    asset_class: Optional[str] = Field(
+        None,
+        description=(
+            "Asset table to create the record in. Use 'alm_hardware' for hardware assets "
+            "with CPU/RAM/OS fields. Defaults to alm_asset."
+        ),
+    )
+    asset_tag: Optional[str] = Field(None, description="Unique asset tag identifier")
+    serial_number: Optional[str] = Field(None, description="Serial number of the asset")
+    model: Optional[str] = Field(None, description="sys_id of the product model record")
+    model_category: Optional[str] = Field(None, description="sys_id of the model category record")
+    install_status: Optional[str] = Field(
+        None, description=f"Install status: {INSTALL_STATUS_VALUES}"
+    )
+    substatus: Optional[str] = Field(None, description="Substatus value")
+    cost: Optional[str] = Field(None, description="Cost value (numeric string)")
+    cost_currency: Optional[str] = Field(None, description="Currency code (e.g. USD)")
+    purchase_date: Optional[str] = Field(None, description="Purchase date (YYYY-MM-DD)")
+    warranty_expiration: Optional[str] = Field(
+        None, description="Warranty expiration date (YYYY-MM-DD)"
+    )
+    lease_id: Optional[str] = Field(None, description="Lease identifier")
+    vendor: Optional[str] = Field(None, description="sys_id of the vendor record")
+    acquisition_method: Optional[str] = Field(
+        None, description="Acquisition method (purchase, lease, rental)"
+    )
+    assigned_to: Optional[str] = Field(None, description="sys_id of the user to assign to")
+    owned_by: Optional[str] = Field(None, description="sys_id of the owning user")
+    managed_by: Optional[str] = Field(None, description="sys_id of the managing user")
+    location: Optional[str] = Field(None, description="sys_id of the location record")
+    company: Optional[str] = Field(None, description="sys_id of the company record")
+    department: Optional[str] = Field(None, description="sys_id of the department record")
+    # alm_hardware subclass fields
+    cpu_count: Optional[int] = Field(None, description="Number of CPUs (alm_hardware only)")
+    cpu_core_count: Optional[int] = Field(
+        None, description="Number of CPU cores (alm_hardware only)"
+    )
+    cpu_manufacturer: Optional[str] = Field(
+        None, description="CPU manufacturer name (alm_hardware only)"
+    )
+    cpu_name: Optional[str] = Field(None, description="CPU model name (alm_hardware only)")
+    cpu_speed: Optional[int] = Field(None, description="CPU speed in MHz (alm_hardware only)")
+    disk_space: Optional[int] = Field(None, description="Total disk space in GB (alm_hardware only)")
+    ram: Optional[int] = Field(None, description="RAM in MB (alm_hardware only)")
+    os: Optional[str] = Field(None, description="Operating system name (alm_hardware only)")
+    os_version: Optional[str] = Field(None, description="OS version string (alm_hardware only)")
+    os_service_pack: Optional[str] = Field(
+        None, description="OS service pack (alm_hardware only)"
+    )
+    os_domain: Optional[str] = Field(None, description="OS domain (alm_hardware only)")
+    mac_address: Optional[str] = Field(None, description="MAC address (alm_hardware only)")
+    ip_address: Optional[str] = Field(None, description="IP address (alm_hardware only)")
+
+
 def _format_asset(record: Dict) -> Dict:
-    """Extract and normalise relevant fields from a raw alm_asset record."""
+    """Extract and normalise relevant fields from a raw alm_asset or alm_hardware record."""
 
     def _ref(value: Any) -> Any:
         if isinstance(value, dict):
             return value.get("display_value") or value.get("value")
         return value
 
-    return {
+    result = {
         "sys_id": record.get("sys_id"),
         "asset_tag": record.get("asset_tag"),
         "display_name": record.get("display_name"),
@@ -151,6 +226,11 @@ def _format_asset(record: Dict) -> Dict:
         "created_on": record.get("sys_created_on"),
         "updated_on": record.get("sys_updated_on"),
     }
+    # Include hardware-specific fields when present in the record
+    for field in HARDWARE_EXTRA_FIELDS:
+        if field in record:
+            result[field] = record[field]
+    return result
 
 
 def _build_update_body(validated: UpdateAssetParams) -> Dict:
@@ -162,6 +242,64 @@ def _build_update_body(validated: UpdateAssetParams) -> Dict:
         "owned_by", "managed_by", "location", "company", "department",
     ]
     return {f: getattr(validated, f) for f in fields if getattr(validated, f) is not None}
+
+
+def _build_create_body(validated: "CreateAssetParams") -> Dict:
+    """Build a POST body for asset creation, excluding asset_class routing field."""
+    skip = {"asset_class"}
+    body = {}
+    for field in CreateAssetParams.model_fields:
+        if field in skip:
+            continue
+        value = getattr(validated, field)
+        if value is not None:
+            body[field] = value
+    return body
+
+
+def create_asset(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new asset record in the alm_asset table or a subclass such as alm_hardware.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateAssetParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, and ``asset`` keys.
+    """
+    result = _unwrap_and_validate_params(params, CreateAssetParams, required_fields=["display_name"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    table = validated.asset_class or ASSET_TABLE
+    body = _build_create_body(validated)
+
+    url = f"{instance_url}/api/now/table/{table}"
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "sys_id": record.get("sys_id"),
+            "asset": _format_asset(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating asset: {e}")
+        return {"success": False, "message": f"Error creating asset: {_format_http_error(e)}"}
 
 
 def list_assets(

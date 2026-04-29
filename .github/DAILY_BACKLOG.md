@@ -1,7 +1,11 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add create_asset tool and alm_hardware subclass support
+1. Implement delete_asset tool (DELETE alm_asset/{sys_id})
+2. Implement list_asset_contracts tool (alm_contract table with filters)
+3. Implement get_asset_contract tool (fetch single contract by sys_id)
+4. Add create_asset to service_desk package in tool_packages.yaml
+5. Add CI class filter to list_cis (currently only name/status/environment supported)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -26,3 +30,4 @@
 21. 2026-04-26 — Add CMDB configuration item tools (list_cis, get_ci, create_ci, update_ci); cmdb_tools.py supports cmdb_ci base table and any subclass; filters for name/class/status/environment; 45 new tests; 98% coverage
 22. 2026-04-27 — Add CMDB relationship tools (list_ci_relationships, get_ci_relationship, create_ci_relationship, delete_ci_relationship, list_ci_relationship_types); cmdb_relationship_tools.py manages cmdb_rel_ci and cmdb_rel_type tables; normalises reference dict values; 42 new tests; 98% coverage
 23. 2026-04-28 — Add asset management tools (list_assets, get_asset, update_asset); asset_tools.py targets alm_asset table; filters for tag/name/status/assignee/category; get_asset resolves by sys_id or asset tag; reference fields normalised to display values; 35 new tests; 99% coverage
+24. 2026-04-29 — Add create_asset tool with alm_hardware subclass support; CreateAssetParams covers 14 hardware-specific fields (CPU/RAM/disk/OS/network); _format_asset conditionally includes hardware fields; tool registered in __init__.py, tool_utils.py, tool_packages.yaml; 16 new tests; 99% coverage
