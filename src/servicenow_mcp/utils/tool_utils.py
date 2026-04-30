@@ -432,12 +432,14 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
 )
 from servicenow_mcp.tools.asset_tools import (
     CreateAssetParams,
+    DeleteAssetParams,
     GetAssetParams,
     ListAssetsParams,
     UpdateAssetParams,
 )
 from servicenow_mcp.tools.asset_tools import (
     create_asset as create_asset_tool,
+    delete_asset as delete_asset_tool,
     get_asset as get_asset_tool,
     list_assets as list_assets_tool,
     update_asset as update_asset_tool,
@@ -1317,6 +1319,16 @@ def get_tool_definitions(
             (
                 "Update an existing asset record in the alm_asset table. "
                 "Supports updating status, cost, dates, assignment, and location fields."
+            ),
+            "raw_dict",
+        ),
+        "delete_asset": (
+            delete_asset_tool,
+            DeleteAssetParams,
+            Dict[str, Any],
+            (
+                "Permanently delete an asset record from the alm_asset table by its sys_id. "
+                "This action is irreversible — confirm the sys_id before calling."
             ),
             "raw_dict",
         ),

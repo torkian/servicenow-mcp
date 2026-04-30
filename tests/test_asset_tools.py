@@ -7,11 +7,13 @@ import requests
 
 from servicenow_mcp.tools.asset_tools import (
     CreateAssetParams,
+    DeleteAssetParams,
     GetAssetParams,
     ListAssetsParams,
     UpdateAssetParams,
     _format_asset,
     create_asset,
+    delete_asset,
     get_asset,
     list_assets,
     update_asset,
@@ -724,6 +726,106 @@ class TestParamModels(unittest.TestCase):
         self.assertEqual(p.cpu_count, 2)
         self.assertEqual(p.ram, 32768)
         self.assertEqual(p.os, "Linux")
+
+
+class TestDeleteAsset(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth_manager = _make_auth_manager()
+
+    @patch("servicenow_mcp.tools.asset_tools._make_request")
+    def test_delete_asset_success_204(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_req.return_value = mock_resp
+
+        result = delete_asset(self.auth_manager, self.config, {"sys_id": "asset001"})
+
+        self.assertTrue(result["success"])
+        self.assertIn("asset001", result["message"])
+        self.assertIn("deleted", result["message"])
+        mock_req.assert_called_once()
+        call_args = mock_req.call_args
+        self.assertEqual(call_args[0][0], "DELETE")
+        self.assertIn("alm_asset/asset001", call_args[0][1])
+
+    @patch("servicenow_mcp.tools.asset_tools._make_request")
+    def test_delete_asset_success_200(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.raise_for_status.return_value = None
+        mock_req.return_value = mock_resp
+
+        result = delete_asset(self.auth_manager, self.config, {"sys_id": "asset002"})
+
+        self.assertTrue(result["success"])
+        self.assertIn("deleted", result["message"])
+
+    @patch("servicenow_mcp.tools.asset_tools._make_request")
+    def test_delete_asset_not_found(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_req.return_value = mock_resp
+
+        result = delete_asset(self.auth_manager, self.config, {"sys_id": "badid"})
+
+        self.assertFalse(result["success"])
+        self.assertIn("badid", result["message"])
+
+    @patch("servicenow_mcp.tools.asset_tools._make_request")
+    def test_delete_asset_request_exception(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("conn refused")
+
+        result = delete_asset(self.auth_manager, self.config, {"sys_id": "asset003"})
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting asset", result["message"])
+
+    def test_delete_asset_missing_sys_id(self):
+        result = delete_asset(self.auth_manager, self.config, {})
+        self.assertFalse(result["success"])
+
+    def test_delete_asset_no_instance_url(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = {"Authorization": "Bearer X"}
+        auth.instance_url = None
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = None
+
+        result = delete_asset(auth, config, {"sys_id": "asset001"})
+        self.assertFalse(result["success"])
+
+    def test_delete_asset_no_headers(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = None
+        auth.instance_url = "https://dev99999.service-now.com"
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = None
+
+        result = delete_asset(auth, config, {"sys_id": "asset001"})
+        self.assertFalse(result["success"])
+
+    def test_delete_asset_params_requires_sys_id(self):
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            DeleteAssetParams()
+
+    def test_delete_asset_params_accepts_sys_id(self):
+        p = DeleteAssetParams(sys_id="abc123")
+        self.assertEqual(p.sys_id, "abc123")
+
+    @patch("servicenow_mcp.tools.asset_tools._make_request")
+    def test_delete_asset_nested_params(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_req.return_value = mock_resp
+
+        result = delete_asset(
+            self.auth_manager, self.config, {"params": {"sys_id": "asset999"}}
+        )
+
+        self.assertTrue(result["success"])
+        self.assertIn("asset999", result["message"])
 
 
 if __name__ == "__main__":

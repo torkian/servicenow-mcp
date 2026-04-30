@@ -257,6 +257,56 @@ def _build_create_body(validated: "CreateAssetParams") -> Dict:
     return body
 
 
+class DeleteAssetParams(BaseModel):
+    """Parameters for deleting an asset record."""
+
+    sys_id: str = Field(..., description="sys_id of the asset to delete")
+
+
+def delete_asset(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Permanently delete an asset record from the alm_asset table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteAssetParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(params, DeleteAssetParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{ASSET_TABLE}/{validated.sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Asset not found: {validated.sys_id}"}
+        if response.status_code == 204:
+            return {
+                "success": True,
+                "message": f"Asset {validated.sys_id} deleted successfully",
+            }
+        response.raise_for_status()
+        return {"success": True, "message": f"Asset {validated.sys_id} deleted successfully"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting asset: {e}")
+        return {"success": False, "message": f"Error deleting asset: {_format_http_error(e)}"}
+
+
 def create_asset(
     auth_manager: AuthManager,
     server_config: ServerConfig,
