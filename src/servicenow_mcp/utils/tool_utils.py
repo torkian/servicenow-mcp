@@ -444,6 +444,14 @@ from servicenow_mcp.tools.asset_tools import (
     list_assets as list_assets_tool,
     update_asset as update_asset_tool,
 )
+from servicenow_mcp.tools.contract_tools import (
+    GetAssetContractParams,
+    ListAssetContractsParams,
+)
+from servicenow_mcp.tools.contract_tools import (
+    get_asset_contract as get_asset_contract_tool,
+    list_asset_contracts as list_asset_contracts_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1329,6 +1337,28 @@ def get_tool_definitions(
             (
                 "Permanently delete an asset record from the alm_asset table by its sys_id. "
                 "This action is irreversible — confirm the sys_id before calling."
+            ),
+            "raw_dict",
+        ),
+        # Contract Management Tools
+        "list_asset_contracts": (
+            list_asset_contracts_tool,
+            ListAssetContractsParams,
+            Dict[str, Any],
+            (
+                "List asset contracts from the ServiceNow alm_contract table with optional "
+                "filters for vendor, state, contract type, description, and date ranges. "
+                "Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_asset_contract": (
+            get_asset_contract_tool,
+            GetAssetContractParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single asset contract from the alm_contract table. "
+                "Lookup by sys_id or by contract number (e.g. CON0001234)."
             ),
             "raw_dict",
         ),

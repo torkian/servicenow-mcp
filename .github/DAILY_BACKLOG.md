@@ -1,10 +1,10 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Implement list_asset_contracts tool (alm_contract table with filters)
-2. Implement get_asset_contract tool (fetch single contract by sys_id)
-3. Add create_asset to service_desk package in tool_packages.yaml
-4. Add CI class filter to list_cis (currently only name/status/environment supported)
+1. Add create_asset to service_desk package in tool_packages.yaml
+2. Add CI class filter to list_cis (currently only name/status/environment supported)
+3. Add create_asset_contract tool (POST alm_contract; vendor/dates/value/type)
+4. Add update_asset_contract tool (PATCH alm_contract/{sys_id})
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -31,3 +31,4 @@
 23. 2026-04-28 — Add asset management tools (list_assets, get_asset, update_asset); asset_tools.py targets alm_asset table; filters for tag/name/status/assignee/category; get_asset resolves by sys_id or asset tag; reference fields normalised to display values; 35 new tests; 99% coverage
 24. 2026-04-29 — Add create_asset tool with alm_hardware subclass support; CreateAssetParams covers 14 hardware-specific fields (CPU/RAM/disk/OS/network); _format_asset conditionally includes hardware fields; tool registered in __init__.py, tool_utils.py, tool_packages.yaml; 16 new tests; 99% coverage
 25. 2026-04-30 — Implement delete_asset tool (DELETE alm_asset/{sys_id}); handles 204/404/errors; registered in __init__.py, tool_utils.py, tool_packages.yaml (system_administrator + full); 10 new tests; 99% asset_tools coverage
+26. 2026-05-01 — Implement list_asset_contracts and get_asset_contract tools (alm_contract table); filters for vendor/state/type/description/date-range; lookup by sys_id or contract number; reference fields normalised; 31 new tests; 98% coverage
