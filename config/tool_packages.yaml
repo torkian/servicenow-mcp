@@ -30,6 +30,10 @@ service_desk:
   # Knowledge Lookup
   - get_article
   - list_articles
+  # Asset Lookup & Provisioning
+  - list_assets
+  - get_asset
+  - create_asset
 
 catalog_builder:
   # Core Catalog
@@ -181,6 +185,8 @@ system_administrator:
   # Contract Management
   - list_asset_contracts
   - get_asset_contract
+  - create_asset_contract
+  - update_asset_contract
 
 full:
   # Incident Management
@@ -295,6 +301,8 @@ full:
   # Contract Management
   - list_asset_contracts
   - get_asset_contract
+  - create_asset_contract
+  - update_asset_contract
   # Story Management
   - create_story
   - update_story

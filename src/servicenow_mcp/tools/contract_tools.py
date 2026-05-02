@@ -85,6 +85,49 @@ class GetAssetContractParams(BaseModel):
     number: Optional[str] = Field(None, description="Contract number (e.g. CON0001234)")
 
 
+class CreateAssetContractParams(BaseModel):
+    """Parameters for creating a new asset contract."""
+
+    short_description: str = Field(..., description="Short description / title for the contract")
+    vendor: Optional[str] = Field(None, description="Vendor sys_id or display name")
+    start_date: Optional[str] = Field(None, description="Contract start date (YYYY-MM-DD)")
+    end_date: Optional[str] = Field(None, description="Contract end date (YYYY-MM-DD)")
+    value: Optional[str] = Field(None, description="Monetary value of the contract")
+    currency: Optional[str] = Field(None, description="Currency code (e.g. USD, EUR)")
+    contract_type: Optional[str] = Field(None, description="Contract type sys_id or display name")
+    category: Optional[str] = Field(None, description="Category sys_id or display name")
+    state: Optional[str] = Field(
+        None,
+        description=f"Contract state: {CONTRACT_STATE_VALUES}",
+    )
+    assigned_to: Optional[str] = Field(None, description="Assigned user sys_id or username")
+    department: Optional[str] = Field(None, description="Department sys_id or display name")
+    company: Optional[str] = Field(None, description="Company sys_id or display name")
+    location: Optional[str] = Field(None, description="Location sys_id or display name")
+
+
+class UpdateAssetContractParams(BaseModel):
+    """Parameters for updating an existing asset contract."""
+
+    sys_id: str = Field(..., description="sys_id of the contract to update")
+    short_description: Optional[str] = Field(None, description="Updated short description")
+    vendor: Optional[str] = Field(None, description="Vendor sys_id or display name")
+    start_date: Optional[str] = Field(None, description="Contract start date (YYYY-MM-DD)")
+    end_date: Optional[str] = Field(None, description="Contract end date (YYYY-MM-DD)")
+    value: Optional[str] = Field(None, description="Monetary value of the contract")
+    currency: Optional[str] = Field(None, description="Currency code (e.g. USD, EUR)")
+    contract_type: Optional[str] = Field(None, description="Contract type sys_id or display name")
+    category: Optional[str] = Field(None, description="Category sys_id or display name")
+    state: Optional[str] = Field(
+        None,
+        description=f"Contract state: {CONTRACT_STATE_VALUES}",
+    )
+    assigned_to: Optional[str] = Field(None, description="Assigned user sys_id or username")
+    department: Optional[str] = Field(None, description="Department sys_id or display name")
+    company: Optional[str] = Field(None, description="Company sys_id or display name")
+    location: Optional[str] = Field(None, description="Location sys_id or display name")
+
+
 def _format_contract(record: Dict) -> Dict:
     """Extract and normalise relevant fields from a raw alm_contract record."""
 
@@ -243,4 +286,117 @@ def get_asset_contract(
         return {
             "success": False,
             "message": f"Error retrieving asset contract: {_format_http_error(e)}",
+        }
+
+
+_CONTRACT_WRITE_FIELDS = [
+    "short_description", "vendor", "start_date", "end_date", "value",
+    "currency", "contract_type", "category", "state", "assigned_to",
+    "department", "company", "location",
+]
+
+
+def create_asset_contract(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new contract record in the alm_contract table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateAssetContractParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, and ``contract`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, CreateAssetContractParams, required_fields=["short_description"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body = {
+        f: getattr(validated, f)
+        for f in _CONTRACT_WRITE_FIELDS
+        if getattr(validated, f) is not None
+    }
+
+    url = f"{instance_url}/api/now/table/{CONTRACT_TABLE}"
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "sys_id": record.get("sys_id"),
+            "contract": _format_contract(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating asset contract: {e}")
+        return {
+            "success": False,
+            "message": f"Error creating asset contract: {_format_http_error(e)}",
+        }
+
+
+def update_asset_contract(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing contract record in the alm_contract table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateAssetContractParams.
+
+    Returns:
+        Dictionary with ``success`` and ``contract`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, UpdateAssetContractParams, required_fields=["sys_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body = {
+        f: getattr(validated, f)
+        for f in _CONTRACT_WRITE_FIELDS
+        if getattr(validated, f) is not None
+    }
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{CONTRACT_TABLE}/{validated.sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Contract not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "contract": _format_contract(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating asset contract: {e}")
+        return {
+            "success": False,
+            "message": f"Error updating asset contract: {_format_http_error(e)}",
         }

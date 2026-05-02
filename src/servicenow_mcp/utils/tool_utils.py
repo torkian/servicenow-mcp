@@ -445,12 +445,16 @@ from servicenow_mcp.tools.asset_tools import (
     update_asset as update_asset_tool,
 )
 from servicenow_mcp.tools.contract_tools import (
+    CreateAssetContractParams,
     GetAssetContractParams,
     ListAssetContractsParams,
+    UpdateAssetContractParams,
 )
 from servicenow_mcp.tools.contract_tools import (
+    create_asset_contract as create_asset_contract_tool,
     get_asset_contract as get_asset_contract_tool,
     list_asset_contracts as list_asset_contracts_tool,
+    update_asset_contract as update_asset_contract_tool,
 )
 
 # Define a type alias for the Pydantic models or dataclasses used for params
@@ -1359,6 +1363,27 @@ def get_tool_definitions(
             (
                 "Retrieve a single asset contract from the alm_contract table. "
                 "Lookup by sys_id or by contract number (e.g. CON0001234)."
+            ),
+            "raw_dict",
+        ),
+        "create_asset_contract": (
+            create_asset_contract_tool,
+            CreateAssetContractParams,
+            Dict[str, Any],
+            (
+                "Create a new contract record in the alm_contract table. "
+                "Requires a short_description; optionally accepts vendor, dates, "
+                "value, currency, type, category, state, and assignment fields."
+            ),
+            "raw_dict",
+        ),
+        "update_asset_contract": (
+            update_asset_contract_tool,
+            UpdateAssetContractParams,
+            Dict[str, Any],
+            (
+                "Update an existing contract in the alm_contract table by sys_id. "
+                "Supply only the fields that need to change."
             ),
             "raw_dict",
         ),
