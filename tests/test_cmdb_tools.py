@@ -157,6 +157,20 @@ class TestListCIs(unittest.TestCase):
         self.assertIn("environment=production", query)
 
     @patch("requests.get")
+    def test_list_with_category_filter(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": [FAKE_CI]}
+        mock_get.return_value = mock_response
+
+        result = list_cis(self.auth_manager, self.config, {"category": "Hardware"})
+
+        self.assertTrue(result["success"])
+        call_kwargs = mock_get.call_args
+        query = call_kwargs[1]["params"].get("sysparm_query", "")
+        self.assertIn("category=Hardware", query)
+
+    @patch("requests.get")
     def test_list_with_raw_query(self, mock_get):
         mock_response = MagicMock()
         mock_response.status_code = 200
@@ -554,6 +568,7 @@ class TestCMDBParams(unittest.TestCase):
         self.assertIsNone(p.name)
         self.assertIsNone(p.operational_status)
         self.assertIsNone(p.environment)
+        self.assertIsNone(p.category)
         self.assertIsNone(p.query)
 
     def test_get_params_requires_sys_id(self):

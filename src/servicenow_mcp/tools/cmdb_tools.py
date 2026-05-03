@@ -73,6 +73,10 @@ class ListCIsParams(BaseModel):
         None,
         description="Filter by environment (e.g. production, development, test, staging)",
     )
+    category: Optional[str] = Field(
+        None,
+        description="Filter by CI category (e.g. Software, Hardware, Network)",
+    )
     query: Optional[str] = Field(None, description="Raw ServiceNow encoded query string")
 
 
@@ -234,6 +238,8 @@ def list_cis(
         query_parts.append(f"operational_status={validated.operational_status}")
     if validated.environment:
         query_parts.append(f"environment={validated.environment}")
+    if validated.category:
+        query_parts.append(f"category={validated.category}")
     if validated.query:
         query_parts.append(validated.query)
 
