@@ -386,6 +386,138 @@ def create_catalog_variable_choice(
         )
 
 
+class CreateCatalogItemVariableSetParams(BaseModel):
+    """Parameters for creating a catalog item variable set."""
+
+    name: str = Field(..., description="Internal name for the variable set (no spaces)")
+    title: str = Field(..., description="Display title shown to users on the request form")
+    catalog_item_id: Optional[str] = Field(
+        None,
+        description="sys_id of the catalog item to link this set to immediately",
+    )
+    description: Optional[str] = Field(None, description="Description of the variable set")
+    order: Optional[int] = Field(
+        None,
+        description="Display order relative to other variable sets on the catalog item",
+    )
+    global_set: bool = Field(
+        False,
+        description="True to create a reusable global set; False for an item-local set",
+    )
+    active: bool = Field(True, description="Whether the variable set is active")
+
+
+class CatalogItemVariableSetResponse(BaseModel):
+    """Response from catalog item variable set operations."""
+
+    success: bool = Field(..., description="Whether the operation was successful")
+    message: str = Field(..., description="Message describing the result")
+    variable_set_id: Optional[str] = Field(None, description="sys_id of the created variable set")
+    link_id: Optional[str] = Field(
+        None,
+        description="sys_id of the io_set_item junction record if a catalog item was linked",
+    )
+    details: Optional[Dict[str, Any]] = Field(None, description="Full response from ServiceNow")
+
+
+def create_catalog_item_variable_set(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateCatalogItemVariableSetParams,
+) -> CatalogItemVariableSetResponse:
+    """
+    Create a variable set (section) for grouping catalog item variables.
+
+    Variable sets live in the ``item_option_new_set`` table.  When
+    ``catalog_item_id`` is provided the set is immediately linked to that item
+    via an ``io_set_item`` junction record so variables added to the set appear
+    on the request form.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for creating the variable set.
+
+    Returns:
+        Response with the sys_id of the new variable set and, when applicable,
+        the sys_id of the ``io_set_item`` link record.
+    """
+    headers = auth_manager.get_headers()
+
+    # Build variable-set payload
+    set_data: Dict[str, Any] = {
+        "name": params.name,
+        "title": params.title,
+        "type": "1" if params.global_set else "0",
+        "active": str(params.active).lower(),
+    }
+    if params.description is not None:
+        set_data["description"] = params.description
+
+    try:
+        set_response = _make_request(
+            "POST",
+            f"{config.instance_url}/api/now/table/item_option_new_set",
+            json=set_data,
+            headers=headers,
+            timeout=config.timeout,
+        )
+        set_response.raise_for_status()
+    except requests.RequestException as e:
+        logger.error(f"Failed to create catalog item variable set: {e}")
+        return CatalogItemVariableSetResponse(
+            success=False,
+            message=f"Failed to create catalog item variable set: {_format_http_error(e)}",
+        )
+
+    set_result = set_response.json().get("result", {})
+    variable_set_id = set_result.get("sys_id")
+
+    # Optionally link to a catalog item
+    link_id: Optional[str] = None
+    if params.catalog_item_id and variable_set_id:
+        link_data: Dict[str, Any] = {
+            "sc_cat_item": params.catalog_item_id,
+            "variable_set": variable_set_id,
+        }
+        if params.order is not None:
+            link_data["order"] = params.order
+
+        try:
+            link_response = _make_request(
+                "POST",
+                f"{config.instance_url}/api/now/table/io_set_item",
+                json=link_data,
+                headers=headers,
+                timeout=config.timeout,
+            )
+            link_response.raise_for_status()
+            link_id = link_response.json().get("result", {}).get("sys_id")
+        except requests.RequestException as e:
+            logger.error(f"Variable set created but failed to link to catalog item: {e}")
+            return CatalogItemVariableSetResponse(
+                success=False,
+                message=(
+                    f"Variable set {variable_set_id} created but failed to link to catalog item: "
+                    f"{_format_http_error(e)}"
+                ),
+                variable_set_id=variable_set_id,
+                details=set_result,
+            )
+
+    msg = "Catalog item variable set created successfully"
+    if link_id:
+        msg += " and linked to catalog item"
+
+    return CatalogItemVariableSetResponse(
+        success=True,
+        message=msg,
+        variable_set_id=variable_set_id,
+        link_id=link_id,
+        details=set_result,
+    )
+
+
 def delete_catalog_item_variable(
     config: ServerConfig,
     auth_manager: AuthManager,

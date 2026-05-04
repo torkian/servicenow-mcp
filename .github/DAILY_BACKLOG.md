@@ -1,10 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add create_catalog_item_variable_set tool (groups variables into sections)
-2. Add list_contract_assets tool (alm_asset records linked to a contract)
-3. Add expire_asset_contract tool (transition contract to expired state)
-4. Improve error messages across all tools
+1. Add list_contract_assets tool (alm_asset records linked to a contract)
+2. Add expire_asset_contract tool (transition contract to expired state)
+3. Improve error messages across all tools
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -34,3 +33,4 @@
 26. 2026-05-01 — Implement list_asset_contracts and get_asset_contract tools (alm_contract table); filters for vendor/state/type/description/date-range; lookup by sys_id or contract number; reference fields normalised; 31 new tests; 98% coverage
 27. 2026-05-02 — Implement create_asset_contract and update_asset_contract tools (POST/PATCH alm_contract); omits None fields from body; update guards against empty-body calls; both registered in system_administrator + full packages; added list_assets/get_asset/create_asset to service_desk package; 20 new tests; 99% contract_tools coverage
 28. 2026-05-03 — Add category filter to list_cis; ListCIsParams.category appends category=<value> to sysparm_query alongside existing operational_status/environment filters; 1 new test; 1 updated default-assertions test; cmdb_tools.py 98% coverage
+29. 2026-05-04 — Add create_catalog_item_variable_set tool (item_option_new_set table); groups catalog variables into form sections; optional immediate link to catalog item via io_set_item junction; supports local/global type, active flag, description, and display order; 9 new tests; 95% catalog_variables.py coverage

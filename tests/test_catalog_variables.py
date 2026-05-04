@@ -8,11 +8,13 @@ import requests
 
 from servicenow_mcp.tools.catalog_variables import (
     CreateCatalogItemVariableParams,
+    CreateCatalogItemVariableSetParams,
     CreateCatalogVariableChoiceParams,
     DeleteCatalogItemVariableParams,
     ListCatalogItemVariablesParams,
     UpdateCatalogItemVariableParams,
     create_catalog_item_variable,
+    create_catalog_item_variable_set,
     create_catalog_variable_choice,
     delete_catalog_item_variable,
     list_catalog_item_variables,
@@ -603,5 +605,203 @@ class TestCreateCatalogVariableChoice(unittest.TestCase):
         self.assertIn("failed", result.message.lower())
 
 
+class TestCreateCatalogItemVariableSet(unittest.TestCase):
+    """Tests for the create_catalog_item_variable_set function."""
+
+    def setUp(self):
+        self.config = ServerConfig(
+            instance_url="https://test.service-now.com",
+            timeout=10,
+            auth=AuthConfig(
+                type=AuthType.BASIC,
+                basic=BasicAuthConfig(username="test_user", password="test_password"),
+            ),
+        )
+        self.auth_manager = MagicMock()
+        self.auth_manager.get_headers.return_value = {"Content-Type": "application/json"}
+
+    @patch("requests.post")
+    def test_create_variable_set_success_no_link(self, mock_post):
+        """Create a variable set without linking to a catalog item."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": {"sys_id": "set123", "name": "my_set", "title": "My Set", "type": "0"}
+        }
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogItemVariableSetParams(name="my_set", title="My Set")
+        result = create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.variable_set_id, "set123")
+        self.assertIsNone(result.link_id)
+        self.assertIn("created successfully", result.message)
+
+        mock_post.assert_called_once()
+        call_args = mock_post.call_args
+        self.assertEqual(
+            call_args[0][0],
+            "https://test.service-now.com/api/now/table/item_option_new_set",
+        )
+        body = call_args[1]["json"]
+        self.assertEqual(body["name"], "my_set")
+        self.assertEqual(body["title"], "My Set")
+        self.assertEqual(body["type"], "0")  # local set
+        self.assertEqual(body["active"], "true")
+
+    @patch("requests.post")
+    def test_create_variable_set_global(self, mock_post):
+        """global_set=True sends type='1'."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"result": {"sys_id": "gset1", "type": "1"}}
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogItemVariableSetParams(
+            name="global_set", title="Global Set", global_set=True
+        )
+        result = create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        body = mock_post.call_args[1]["json"]
+        self.assertEqual(body["type"], "1")
+
+    @patch("requests.post")
+    def test_create_variable_set_with_link(self, mock_post):
+        """When catalog_item_id is provided the function makes two POSTs."""
+        set_resp = MagicMock()
+        set_resp.raise_for_status = MagicMock()
+        set_resp.json.return_value = {"result": {"sys_id": "set456"}}
+
+        link_resp = MagicMock()
+        link_resp.raise_for_status = MagicMock()
+        link_resp.json.return_value = {"result": {"sys_id": "link789"}}
+
+        mock_post.side_effect = [set_resp, link_resp]
+
+        params = CreateCatalogItemVariableSetParams(
+            name="contact_info",
+            title="Contact Information",
+            catalog_item_id="item001",
+            order=100,
+        )
+        result = create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.variable_set_id, "set456")
+        self.assertEqual(result.link_id, "link789")
+        self.assertIn("linked", result.message)
+
+        self.assertEqual(mock_post.call_count, 2)
+        link_call = mock_post.call_args_list[1]
+        self.assertIn(
+            "io_set_item",
+            link_call[0][0],
+        )
+        link_body = link_call[1]["json"]
+        self.assertEqual(link_body["sc_cat_item"], "item001")
+        self.assertEqual(link_body["variable_set"], "set456")
+        self.assertEqual(link_body["order"], 100)
+
+    @patch("requests.post")
+    def test_create_variable_set_with_description(self, mock_post):
+        """Optional description is included in the POST body."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"result": {"sys_id": "setXYZ"}}
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogItemVariableSetParams(
+            name="details", title="Details", description="Extra details section"
+        )
+        create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        body = mock_post.call_args[1]["json"]
+        self.assertEqual(body["description"], "Extra details section")
+
+    @patch("requests.post")
+    def test_create_variable_set_inactive(self, mock_post):
+        """active=False sends active='false'."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"result": {"sys_id": "setZ"}}
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogItemVariableSetParams(
+            name="old_section", title="Old Section", active=False
+        )
+        result = create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        body = mock_post.call_args[1]["json"]
+        self.assertEqual(body["active"], "false")
+
+    @patch("requests.post")
+    def test_create_variable_set_request_error(self, mock_post):
+        """Network failure on the first POST returns failure."""
+        mock_post.side_effect = requests.RequestException("Connection refused")
+
+        params = CreateCatalogItemVariableSetParams(name="broken", title="Broken")
+        result = create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("failed", result.message.lower())
+
+    @patch("requests.post")
+    def test_create_variable_set_http_error(self, mock_post):
+        """HTTP error on the first POST returns failure."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status.side_effect = requests.HTTPError("403 Forbidden")
+        mock_post.return_value = mock_response
+
+        params = CreateCatalogItemVariableSetParams(name="forbidden", title="Forbidden")
+        result = create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("failed", result.message.lower())
+
+    @patch("requests.post")
+    def test_create_variable_set_link_error(self, mock_post):
+        """When the link POST fails the variable_set_id is still returned."""
+        set_resp = MagicMock()
+        set_resp.raise_for_status = MagicMock()
+        set_resp.json.return_value = {"result": {"sys_id": "set999"}}
+
+        link_resp = MagicMock()
+        link_resp.raise_for_status.side_effect = requests.HTTPError("400 Bad Request")
+        mock_post.side_effect = [set_resp, link_resp]
+
+        params = CreateCatalogItemVariableSetParams(
+            name="partial", title="Partial", catalog_item_id="bad_item"
+        )
+        result = create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertEqual(result.variable_set_id, "set999")
+        self.assertIn("link", result.message.lower())
+
+    @patch("requests.post")
+    def test_create_variable_set_no_order_in_link_when_not_set(self, mock_post):
+        """order is not sent in the link body when not provided."""
+        set_resp = MagicMock()
+        set_resp.raise_for_status = MagicMock()
+        set_resp.json.return_value = {"result": {"sys_id": "setA"}}
+
+        link_resp = MagicMock()
+        link_resp.raise_for_status = MagicMock()
+        link_resp.json.return_value = {"result": {"sys_id": "linkA"}}
+
+        mock_post.side_effect = [set_resp, link_resp]
+
+        params = CreateCatalogItemVariableSetParams(
+            name="no_order", title="No Order", catalog_item_id="itemX"
+        )
+        create_catalog_item_variable_set(self.config, self.auth_manager, params)
+
+        link_body = mock_post.call_args_list[1][1]["json"]
+        self.assertNotIn("order", link_body)
+
+
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

@@ -43,8 +43,10 @@ from servicenow_mcp.tools.catalog_tools import (
     update_catalog_category as update_catalog_category_tool,
 )
 from servicenow_mcp.tools.catalog_variables import (
+    CatalogItemVariableSetResponse,
     CatalogVariableChoiceResponse,
     CreateCatalogItemVariableParams,
+    CreateCatalogItemVariableSetParams,
     CreateCatalogVariableChoiceParams,
     DeleteCatalogItemVariableParams,
     ListCatalogItemVariablesParams,
@@ -52,6 +54,9 @@ from servicenow_mcp.tools.catalog_variables import (
 )
 from servicenow_mcp.tools.catalog_variables import (
     create_catalog_item_variable as create_catalog_item_variable_tool,
+)
+from servicenow_mcp.tools.catalog_variables import (
+    create_catalog_item_variable_set as create_catalog_item_variable_set_tool,
 )
 from servicenow_mcp.tools.catalog_variables import (
     create_catalog_variable_choice as create_catalog_variable_choice_tool,
@@ -618,6 +623,13 @@ def get_tool_definitions(
             Dict[str, Any],  # Expects dict
             "Delete a catalog item variable by sys_id",
             "dict",  # Tool returns Pydantic model
+        ),
+        "create_catalog_item_variable_set": (
+            create_catalog_item_variable_set_tool,
+            CreateCatalogItemVariableSetParams,
+            CatalogItemVariableSetResponse,
+            "Create a variable set (section) to group catalog item variables; optionally link to a catalog item",
+            "dict",
         ),
         "create_catalog_variable_choice": (
             create_catalog_variable_choice_tool,

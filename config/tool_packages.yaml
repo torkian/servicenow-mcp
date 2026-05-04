@@ -49,6 +49,7 @@ catalog_builder:
   - move_catalog_items
   # Variables
   - create_catalog_item_variable
+  - create_catalog_item_variable_set
   - list_catalog_item_variables
   - update_catalog_item_variable
   # - delete_catalog_item_variable  # TODO: not yet implemented
@@ -211,6 +212,7 @@ full:
   - get_optimization_recommendations
   # Catalog (Variables)
   - create_catalog_item_variable
+  - create_catalog_item_variable_set
   - list_catalog_item_variables
   - update_catalog_item_variable
   # - delete_catalog_item_variable  # TODO: not yet implemented
