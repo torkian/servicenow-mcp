@@ -453,12 +453,14 @@ from servicenow_mcp.tools.contract_tools import (
     CreateAssetContractParams,
     GetAssetContractParams,
     ListAssetContractsParams,
+    ListContractAssetsParams,
     UpdateAssetContractParams,
 )
 from servicenow_mcp.tools.contract_tools import (
     create_asset_contract as create_asset_contract_tool,
     get_asset_contract as get_asset_contract_tool,
     list_asset_contracts as list_asset_contracts_tool,
+    list_contract_assets as list_contract_assets_tool,
     update_asset_contract as update_asset_contract_tool,
 )
 
@@ -1396,6 +1398,17 @@ def get_tool_definitions(
             (
                 "Update an existing contract in the alm_contract table by sys_id. "
                 "Supply only the fields that need to change."
+            ),
+            "raw_dict",
+        ),
+        "list_contract_assets": (
+            list_contract_assets_tool,
+            ListContractAssetsParams,
+            Dict[str, Any],
+            (
+                "List alm_asset records linked to a specific contract via the "
+                "maintenance_contract field. Requires contract_sys_id; optionally filter "
+                "by install_status or display_name. Supports pagination."
             ),
             "raw_dict",
         ),

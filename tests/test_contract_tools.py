@@ -7,9 +7,11 @@ import requests
 
 from servicenow_mcp.tools.contract_tools import (
     _format_contract,
+    _format_contract_asset,
     create_asset_contract,
     get_asset_contract,
     list_asset_contracts,
+    list_contract_assets,
     update_asset_contract,
 )
 from servicenow_mcp.auth.auth_manager import AuthManager
@@ -564,6 +566,191 @@ class TestUpdateAssetContract(unittest.TestCase):
         result = update_asset_contract(
             auth, config, {"sys_id": "con001", "state": "active"}
         )
+        self.assertFalse(result["success"])
+
+
+FAKE_CONTRACT_ASSET = {
+    "sys_id": "asset001",
+    "asset_tag": "P000123",
+    "display_name": "Dell Laptop",
+    "serial_number": "SN12345",
+    "model": {"display_value": "Dell XPS 15", "value": "model001"},
+    "model_category": {"display_value": "Computer", "value": "cat001"},
+    "assigned_to": {"display_value": "Alice Brown", "value": "user001"},
+    "install_status": "1",
+    "substatus": "",
+    "cost": "1500.00",
+    "cost_currency": "USD",
+    "purchase_date": "2024-01-15",
+    "warranty_expiration": "2027-01-15",
+    "vendor": {"display_value": "Dell Inc.", "value": "vendor001"},
+    "location": {"display_value": "HQ", "value": "loc001"},
+    "company": {"display_value": "Acme Corp", "value": "comp001"},
+    "department": {"display_value": "IT", "value": "dept001"},
+    "maintenance_contract": {"display_value": "CON0001234", "value": "con001"},
+    "sys_created_on": "2024-01-15 09:00:00",
+    "sys_updated_on": "2025-01-01 00:00:00",
+}
+
+
+class TestFormatContractAsset(unittest.TestCase):
+    def test_all_fields_mapped(self):
+        result = _format_contract_asset(FAKE_CONTRACT_ASSET)
+        self.assertEqual(result["sys_id"], "asset001")
+        self.assertEqual(result["asset_tag"], "P000123")
+        self.assertEqual(result["display_name"], "Dell Laptop")
+        self.assertEqual(result["serial_number"], "SN12345")
+        self.assertEqual(result["model"], "Dell XPS 15")
+        self.assertEqual(result["model_category"], "Computer")
+        self.assertEqual(result["assigned_to"], "Alice Brown")
+        self.assertEqual(result["install_status"], "1")
+        self.assertEqual(result["cost"], "1500.00")
+        self.assertEqual(result["cost_currency"], "USD")
+        self.assertEqual(result["purchase_date"], "2024-01-15")
+        self.assertEqual(result["warranty_expiration"], "2027-01-15")
+        self.assertEqual(result["vendor"], "Dell Inc.")
+        self.assertEqual(result["location"], "HQ")
+        self.assertEqual(result["company"], "Acme Corp")
+        self.assertEqual(result["department"], "IT")
+        self.assertEqual(result["maintenance_contract"], "CON0001234")
+        self.assertEqual(result["created_on"], "2024-01-15 09:00:00")
+        self.assertEqual(result["updated_on"], "2025-01-01 00:00:00")
+
+    def test_missing_fields_return_none(self):
+        result = _format_contract_asset({})
+        for key in ("sys_id", "asset_tag", "display_name", "model", "vendor"):
+            self.assertIsNone(result[key])
+
+    def test_scalar_reference_fields(self):
+        record = dict(FAKE_CONTRACT_ASSET)
+        record["vendor"] = "Flat Vendor"
+        result = _format_contract_asset(record)
+        self.assertEqual(result["vendor"], "Flat Vendor")
+
+
+class TestListContractAssets(unittest.TestCase):
+    def _make_auth_and_config(self):
+        return _make_auth_manager(), _make_config()
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_success_returns_assets(self, mock_req):
+        auth, config = self._make_auth_and_config()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": [FAKE_CONTRACT_ASSET]}
+        mock_req.return_value = mock_resp
+
+        result = list_contract_assets(auth, config, {"contract_sys_id": "con001"})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["assets"][0]["sys_id"], "asset001")
+        self.assertEqual(result["assets"][0]["display_name"], "Dell Laptop")
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_filter_by_install_status(self, mock_req):
+        auth, config = self._make_auth_and_config()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": [FAKE_CONTRACT_ASSET]}
+        mock_req.return_value = mock_resp
+
+        result = list_contract_assets(
+            auth, config, {"contract_sys_id": "con001", "install_status": "1"}
+        )
+
+        self.assertTrue(result["success"])
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("install_status=1", call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_filter_by_display_name(self, mock_req):
+        auth, config = self._make_auth_and_config()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": [FAKE_CONTRACT_ASSET]}
+        mock_req.return_value = mock_resp
+
+        result = list_contract_assets(
+            auth, config, {"contract_sys_id": "con001", "display_name": "Laptop"}
+        )
+
+        self.assertTrue(result["success"])
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("display_nameLIKELaptop", call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_contract_sys_id_in_query(self, mock_req):
+        auth, config = self._make_auth_and_config()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+
+        list_contract_assets(auth, config, {"contract_sys_id": "con999"})
+
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("maintenance_contract=con999", call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_empty_result(self, mock_req):
+        auth, config = self._make_auth_and_config()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+
+        result = list_contract_assets(auth, config, {"contract_sys_id": "con001"})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["assets"], [])
+        self.assertEqual(result["count"], 0)
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_http_error(self, mock_req):
+        auth, config = self._make_auth_and_config()
+        mock_req.side_effect = requests.exceptions.RequestException("server error")
+
+        result = list_contract_assets(auth, config, {"contract_sys_id": "con001"})
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing contract assets", result["message"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_pagination_fields_present(self, mock_req):
+        auth, config = self._make_auth_and_config()
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": [FAKE_CONTRACT_ASSET] * 20}
+        mock_req.return_value = mock_resp
+
+        result = list_contract_assets(
+            auth, config, {"contract_sys_id": "con001", "limit": 20, "offset": 0}
+        )
+
+        self.assertIn("has_more", result)
+        self.assertIn("next_offset", result)
+
+    def test_missing_contract_sys_id(self):
+        auth, config = self._make_auth_and_config()
+        result = list_contract_assets(auth, config, {})
+        self.assertFalse(result["success"])
+
+    def test_no_instance_url(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.instance_url = None
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = None
+        result = list_contract_assets(auth, config, {"contract_sys_id": "con001"})
+        self.assertFalse(result["success"])
+
+    def test_no_headers(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.instance_url = "https://dev.service-now.com"
+        auth.get_headers = MagicMock(return_value=None)
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = "https://dev.service-now.com"
+        result = list_contract_assets(auth, config, {"contract_sys_id": "con001"})
         self.assertFalse(result["success"])
 
 

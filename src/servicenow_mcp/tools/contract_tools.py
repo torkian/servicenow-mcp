@@ -27,6 +27,30 @@ from servicenow_mcp.utils.helpers import (
 logger = logging.getLogger(__name__)
 
 CONTRACT_TABLE = "alm_contract"
+ASSET_TABLE = "alm_asset"
+
+CONTRACT_ASSET_FIELDS = [
+    "sys_id",
+    "asset_tag",
+    "display_name",
+    "serial_number",
+    "model",
+    "model_category",
+    "assigned_to",
+    "install_status",
+    "substatus",
+    "cost",
+    "cost_currency",
+    "purchase_date",
+    "warranty_expiration",
+    "vendor",
+    "location",
+    "company",
+    "department",
+    "maintenance_contract",
+    "sys_created_on",
+    "sys_updated_on",
+]
 
 CONTRACT_FIELDS = [
     "sys_id",
@@ -399,4 +423,113 @@ def update_asset_contract(
         return {
             "success": False,
             "message": f"Error updating asset contract: {_format_http_error(e)}",
+        }
+
+
+def _format_contract_asset(record: Dict) -> Dict:
+    """Extract and normalise relevant fields from an alm_asset record linked to a contract."""
+
+    def _ref(value: Any) -> Any:
+        if isinstance(value, dict):
+            return value.get("display_value") or value.get("value")
+        return value
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "asset_tag": record.get("asset_tag"),
+        "display_name": record.get("display_name"),
+        "serial_number": record.get("serial_number"),
+        "model": _ref(record.get("model")),
+        "model_category": _ref(record.get("model_category")),
+        "assigned_to": _ref(record.get("assigned_to")),
+        "install_status": record.get("install_status"),
+        "substatus": record.get("substatus"),
+        "cost": record.get("cost"),
+        "cost_currency": record.get("cost_currency"),
+        "purchase_date": record.get("purchase_date"),
+        "warranty_expiration": record.get("warranty_expiration"),
+        "vendor": _ref(record.get("vendor")),
+        "location": _ref(record.get("location")),
+        "company": _ref(record.get("company")),
+        "department": _ref(record.get("department")),
+        "maintenance_contract": _ref(record.get("maintenance_contract")),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+class ListContractAssetsParams(BaseModel):
+    """Parameters for listing assets linked to a contract."""
+
+    contract_sys_id: str = Field(
+        ..., description="sys_id of the contract whose assets should be listed"
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+    install_status: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by asset install status: 1=In use, 2=On order, 3=In maintenance, "
+            "4=In stock, 5=Retired, 6=Consumed, 7=In transit, 8=Missing, 9=Stolen"
+        ),
+    )
+    display_name: Optional[str] = Field(
+        None, description="Filter by asset display name (substring match)"
+    )
+
+
+def list_contract_assets(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List alm_asset records whose maintenance_contract field points to the given contract.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListContractAssetsParams.
+
+    Returns:
+        Dictionary with ``success``, ``assets`` (list), ``count``, and pagination keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, ListContractAssetsParams, required_fields=["contract_sys_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts = [f"maintenance_contract={validated.contract_sys_id}"]
+    if validated.install_status:
+        query_parts.append(f"install_status={validated.install_status}")
+    if validated.display_name:
+        query_parts.append(f"display_nameLIKE{validated.display_name}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        fields=",".join(CONTRACT_ASSET_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{ASSET_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        assets = [_format_contract_asset(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(assets, validated.limit, validated.offset, "assets")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing contract assets: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing contract assets: {_format_http_error(e)}",
         }
