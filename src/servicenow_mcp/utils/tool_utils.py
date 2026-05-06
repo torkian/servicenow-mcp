@@ -451,6 +451,7 @@ from servicenow_mcp.tools.asset_tools import (
 )
 from servicenow_mcp.tools.contract_tools import (
     CreateAssetContractParams,
+    ExpireAssetContractParams,
     GetAssetContractParams,
     ListAssetContractsParams,
     ListContractAssetsParams,
@@ -458,6 +459,7 @@ from servicenow_mcp.tools.contract_tools import (
 )
 from servicenow_mcp.tools.contract_tools import (
     create_asset_contract as create_asset_contract_tool,
+    expire_asset_contract as expire_asset_contract_tool,
     get_asset_contract as get_asset_contract_tool,
     list_asset_contracts as list_asset_contracts_tool,
     list_contract_assets as list_contract_assets_tool,
@@ -1409,6 +1411,17 @@ def get_tool_definitions(
                 "List alm_asset records linked to a specific contract via the "
                 "maintenance_contract field. Requires contract_sys_id; optionally filter "
                 "by install_status or display_name. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "expire_asset_contract": (
+            expire_asset_contract_tool,
+            ExpireAssetContractParams,
+            Dict[str, Any],
+            (
+                "Transition an alm_contract record to the 'expired' state. "
+                "Requires sys_id; optionally accepts notes to record alongside "
+                "the state change."
             ),
             "raw_dict",
         ),

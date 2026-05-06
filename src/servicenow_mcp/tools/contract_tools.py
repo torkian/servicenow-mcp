@@ -426,6 +426,64 @@ def update_asset_contract(
         }
 
 
+class ExpireAssetContractParams(BaseModel):
+    """Parameters for expiring an asset contract."""
+
+    sys_id: str = Field(..., description="sys_id of the contract to expire")
+    notes: Optional[str] = Field(
+        None, description="Optional notes to record alongside the state change"
+    )
+
+
+def expire_asset_contract(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Transition a contract in the alm_contract table to the 'expired' state.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ExpireAssetContractParams.
+
+    Returns:
+        Dictionary with ``success`` and ``contract`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, ExpireAssetContractParams, required_fields=["sys_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: Dict[str, Any] = {"state": "expired"}
+    if validated.notes:
+        body["notes"] = validated.notes
+
+    url = f"{instance_url}/api/now/table/{CONTRACT_TABLE}/{validated.sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Contract not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "contract": _format_contract(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error expiring asset contract: {e}")
+        return {
+            "success": False,
+            "message": f"Error expiring asset contract: {_format_http_error(e)}",
+        }
+
+
 def _format_contract_asset(record: Dict) -> Dict:
     """Extract and normalise relevant fields from an alm_asset record linked to a contract."""
 

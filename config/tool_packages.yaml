@@ -188,6 +188,7 @@ system_administrator:
   - get_asset_contract
   - create_asset_contract
   - update_asset_contract
+  - expire_asset_contract
   - list_contract_assets
 
 full:
@@ -306,6 +307,7 @@ full:
   - get_asset_contract
   - create_asset_contract
   - update_asset_contract
+  - expire_asset_contract
   - list_contract_assets
   # Story Management
   - create_story

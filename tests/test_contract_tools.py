@@ -9,6 +9,7 @@ from servicenow_mcp.tools.contract_tools import (
     _format_contract,
     _format_contract_asset,
     create_asset_contract,
+    expire_asset_contract,
     get_asset_contract,
     list_asset_contracts,
     list_contract_assets,
@@ -751,6 +752,101 @@ class TestListContractAssets(unittest.TestCase):
         config = MagicMock(spec=ServerConfig)
         config.instance_url = "https://dev.service-now.com"
         result = list_contract_assets(auth, config, {"contract_sys_id": "con001"})
+        self.assertFalse(result["success"])
+
+
+class TestExpireAssetContract(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.config = _make_config()
+
+    def _mock_response(self, data, status_code=200):
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.json.return_value = {"result": data}
+        resp.raise_for_status.return_value = None
+        return resp
+
+    def test_missing_sys_id_returns_error(self):
+        result = expire_asset_contract(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_expire_success_returns_contract(self, mock_req):
+        expired = dict(FAKE_CONTRACT)
+        expired["state"] = "expired"
+        mock_req.return_value = self._mock_response(expired)
+        result = expire_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        self.assertTrue(result["success"])
+        self.assertIn("contract", result)
+        self.assertEqual(result["contract"]["state"], "expired")
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_expire_sends_patch_with_expired_state(self, mock_req):
+        mock_req.return_value = self._mock_response(FAKE_CONTRACT)
+        expire_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        call_args = mock_req.call_args
+        self.assertEqual(call_args[0][0], "PATCH")
+        self.assertIn("con001", call_args[0][1])
+        self.assertEqual(call_args[1]["json"]["state"], "expired")
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_expire_with_notes_includes_notes_in_body(self, mock_req):
+        mock_req.return_value = self._mock_response(FAKE_CONTRACT)
+        expire_asset_contract(
+            self.auth, self.config, {"sys_id": "con001", "notes": "End of term"}
+        )
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["notes"], "End of term")
+        self.assertEqual(body["state"], "expired")
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_expire_without_notes_omits_notes_from_body(self, mock_req):
+        mock_req.return_value = self._mock_response(FAKE_CONTRACT)
+        expire_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        body = mock_req.call_args[1]["json"]
+        self.assertNotIn("notes", body)
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_expire_404_returns_not_found_message(self, mock_req):
+        mock_req.return_value = self._mock_response({}, status_code=404)
+        result = expire_asset_contract(self.auth, self.config, {"sys_id": "bad001"})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn("bad001", result["message"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_expire_http_error_returns_error_message(self, mock_req):
+        mock_req.return_value = self._mock_response({}, 500)
+        mock_req.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            "Server Error"
+        )
+        result = expire_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error expiring asset contract", result["message"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_expire_connection_error_returns_error_message(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = expire_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error expiring asset contract", result["message"])
+
+    def test_expire_no_instance_url(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.instance_url = None
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = None
+        result = expire_asset_contract(auth, config, {"sys_id": "con001"})
+        self.assertFalse(result["success"])
+
+    def test_expire_no_headers(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.instance_url = "https://dev.service-now.com"
+        auth.get_headers = MagicMock(return_value=None)
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = "https://dev.service-now.com"
+        result = expire_asset_contract(auth, config, {"sys_id": "con001"})
         self.assertFalse(result["success"])
 
 

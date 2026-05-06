@@ -168,6 +168,7 @@ from servicenow_mcp.tools.contract_tools import (
     get_asset_contract,
     create_asset_contract,
     update_asset_contract,
+    expire_asset_contract,
     list_contract_assets,
 )
 # from servicenow_mcp.tools.problem_tools import create_problem, update_problem
@@ -335,6 +336,7 @@ __all__ = [
     "get_asset_contract",
     "create_asset_contract",
     "update_asset_contract",
+    "expire_asset_contract",
     "list_contract_assets",
 
     # Future tools

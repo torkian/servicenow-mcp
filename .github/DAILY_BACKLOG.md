@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add expire_asset_contract tool (transition contract to expired state)
-2. Improve error messages across all tools
+1. Improve error messages across all tools
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -34,3 +33,4 @@
 28. 2026-05-03 — Add category filter to list_cis; ListCIsParams.category appends category=<value> to sysparm_query alongside existing operational_status/environment filters; 1 new test; 1 updated default-assertions test; cmdb_tools.py 98% coverage
 29. 2026-05-04 — Add create_catalog_item_variable_set tool (item_option_new_set table); groups catalog variables into form sections; optional immediate link to catalog item via io_set_item junction; supports local/global type, active flag, description, and display order; 9 new tests; 95% catalog_variables.py coverage
 30. 2026-05-05 — Add list_contract_assets tool (alm_asset records linked to a contract via maintenance_contract field); filters for install_status and display_name; full pagination support; reference fields normalised; 13 new tests; 99% contract_tools.py coverage
+31. 2026-05-06 — Add expire_asset_contract tool (PATCH alm_contract/{sys_id} with state=expired); optional notes field; 404 guard; registered in system_administrator + full packages; 10 new tests; 99% contract_tools.py coverage
