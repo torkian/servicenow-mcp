@@ -152,6 +152,10 @@ agile_management:
   - update_time_card
 
 system_administrator:
+  # Attachment Management
+  - list_attachments
+  - get_attachment
+  - delete_attachment
   # User Management
   - create_user
   - update_user
@@ -309,6 +313,10 @@ full:
   - update_asset_contract
   - expire_asset_contract
   - list_contract_assets
+  # Attachment Management
+  - list_attachments
+  - get_attachment
+  - delete_attachment
   # Story Management
   - create_story
   - update_story

@@ -465,6 +465,16 @@ from servicenow_mcp.tools.contract_tools import (
     list_contract_assets as list_contract_assets_tool,
     update_asset_contract as update_asset_contract_tool,
 )
+from servicenow_mcp.tools.attachment_tools import (
+    DeleteAttachmentParams,
+    GetAttachmentParams,
+    ListAttachmentsParams,
+)
+from servicenow_mcp.tools.attachment_tools import (
+    delete_attachment as delete_attachment_tool,
+    get_attachment as get_attachment_tool,
+    list_attachments as list_attachments_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1423,6 +1433,32 @@ def get_tool_definitions(
                 "Requires sys_id; optionally accepts notes to record alongside "
                 "the state change."
             ),
+            "raw_dict",
+        ),
+        # Attachment Tools
+        "list_attachments": (
+            list_attachments_tool,
+            ListAttachmentsParams,
+            Dict[str, Any],
+            (
+                "List file attachments for a ServiceNow record. Requires table_name "
+                "(e.g. 'incident') and table_sys_id; optionally filter by file_name "
+                "or content_type. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_attachment": (
+            get_attachment_tool,
+            GetAttachmentParams,
+            Dict[str, Any],
+            "Get metadata for a specific attachment by its sys_id.",
+            "raw_dict",
+        ),
+        "delete_attachment": (
+            delete_attachment_tool,
+            DeleteAttachmentParams,
+            Dict[str, Any],
+            "Permanently delete a file attachment from ServiceNow by its sys_id.",
             "raw_dict",
         ),
     }
