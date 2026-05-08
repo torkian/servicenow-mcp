@@ -17,6 +17,21 @@ from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 logger = logging.getLogger(__name__)
 
 
+class ListCatalogsParams(BaseModel):
+    """Parameters for listing service catalogs."""
+
+    limit: int = Field(10, description="Maximum number of catalogs to return")
+    offset: int = Field(0, description="Offset for pagination")
+    query: Optional[str] = Field(None, description="Search query to filter catalogs by title or description")
+    active: bool = Field(True, description="Whether to only return active catalogs")
+
+
+class GetCatalogParams(BaseModel):
+    """Parameters for getting a specific service catalog."""
+
+    catalog_id: str = Field(..., description="Catalog sys_id or title")
+
+
 class ListCatalogItemsParams(BaseModel):
     """Parameters for listing service catalog items."""
     
@@ -90,6 +105,132 @@ class MoveCatalogItemsParams(BaseModel):
     
     item_ids: List[str] = Field(..., description="List of catalog item IDs to move")
     target_category_id: str = Field(..., description="Target category ID to move items to")
+
+
+def list_catalogs(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ListCatalogsParams,
+) -> Dict[str, Any]:
+    """List service catalogs from ServiceNow (sc_catalog table)."""
+    logger.info("Listing service catalogs")
+
+    url = f"{config.instance_url}/api/now/table/sc_catalog"
+    query_params: Dict[str, Any] = {
+        "sysparm_limit": params.limit,
+        "sysparm_offset": params.offset,
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    filters = []
+    if params.active:
+        filters.append("active=true")
+    if params.query:
+        filters.append(f"titleLIKE{params.query}^ORdescriptionLIKE{params.query}")
+    if filters:
+        query_params["sysparm_query"] = "^".join(filters)
+
+    headers = auth_manager.get_headers()
+    headers["Accept"] = "application/json"
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+
+        catalogs = response.json().get("result", [])
+        formatted = [
+            {
+                "sys_id": c.get("sys_id", ""),
+                "title": c.get("title", ""),
+                "description": c.get("description", ""),
+                "active": c.get("active", ""),
+                "enable_wish_list": c.get("enable_wish_list", ""),
+                "managers": c.get("managers", ""),
+            }
+            for c in catalogs
+        ]
+
+        return {
+            "success": True,
+            "message": f"Retrieved {len(formatted)} catalog(s)",
+            "catalogs": formatted,
+            "total": len(formatted),
+            "limit": params.limit,
+            "offset": params.offset,
+        }
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing catalogs: {_format_http_error(e)}")
+        return {
+            "success": False,
+            "message": f"Error listing catalogs: {_format_http_error(e)}",
+            "catalogs": [],
+            "total": 0,
+            "limit": params.limit,
+            "offset": params.offset,
+        }
+
+
+def get_catalog(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: GetCatalogParams,
+) -> CatalogResponse:
+    """Get a specific service catalog by sys_id."""
+    logger.info(f"Getting service catalog: {params.catalog_id}")
+
+    url = f"{config.instance_url}/api/now/table/sc_catalog/{params.catalog_id}"
+    query_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    headers = auth_manager.get_headers()
+    headers["Accept"] = "application/json"
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+
+        if response.status_code == 404:
+            return CatalogResponse(
+                success=False,
+                message=f"Catalog not found: {params.catalog_id}",
+                data=None,
+            )
+
+        response.raise_for_status()
+
+        catalog = response.json().get("result", {})
+        if not catalog:
+            return CatalogResponse(
+                success=False,
+                message=f"Catalog not found: {params.catalog_id}",
+                data=None,
+            )
+
+        return CatalogResponse(
+            success=True,
+            message=f"Retrieved catalog: {catalog.get('title', '')}",
+            data={
+                "sys_id": catalog.get("sys_id", ""),
+                "title": catalog.get("title", ""),
+                "description": catalog.get("description", ""),
+                "active": catalog.get("active", ""),
+                "enable_wish_list": catalog.get("enable_wish_list", ""),
+                "managers": catalog.get("managers", ""),
+                "desktop_image": catalog.get("desktop_image", ""),
+                "desktop_continue_shopping": catalog.get("desktop_continue_shopping", ""),
+            },
+        )
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting catalog: {_format_http_error(e)}")
+        return CatalogResponse(
+            success=False,
+            message=f"Error getting catalog: {_format_http_error(e)}",
+            data=None,
+        )
 
 
 def list_catalog_items(

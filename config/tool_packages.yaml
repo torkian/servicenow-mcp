@@ -37,7 +37,8 @@ service_desk:
 
 catalog_builder:
   # Core Catalog
-  # - list_catalogs  # TODO: not yet implemented
+  - list_catalogs
+  - get_catalog
   - list_catalog_items
   - get_catalog_item
   - create_catalog_item
@@ -204,7 +205,8 @@ full:
   - list_incidents
   - get_incident_by_number
   # Catalog (Core)
-  # - list_catalogs  # TODO: not yet implemented
+  - list_catalogs
+  - get_catalog
   - list_catalog_items
   - get_catalog_item
   - create_catalog_item

@@ -1,10 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_catalogs tool (sc_catalog table — referenced as TODO in tool_packages.yaml)
-2. Add problem management tools (list_problems, get_problem, create_problem, update_problem)
-3. Add SLA tools (list_slas, get_sla)
-4. Add upload_attachment tool (multipart POST to /api/now/attachment/file)
+1. Add problem management tools (list_problems, get_problem, create_problem, update_problem)
+2. Add SLA tools (list_slas, get_sla)
+3. Add upload_attachment tool (multipart POST to /api/now/attachment/file)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -38,3 +37,4 @@
 30. 2026-05-05 — Add list_contract_assets tool (alm_asset records linked to a contract via maintenance_contract field); filters for install_status and display_name; full pagination support; reference fields normalised; 13 new tests; 99% contract_tools.py coverage
 31. 2026-05-06 — Add expire_asset_contract tool (PATCH alm_contract/{sys_id} with state=expired); optional notes field; 404 guard; registered in system_administrator + full packages; 10 new tests; 99% contract_tools.py coverage
 32. 2026-05-07 — Add attachment management tools (list_attachments, get_attachment, delete_attachment) via /api/now/attachment API; list supports table_name/table_sys_id filters plus file_name/content_type/pagination; 404 guards on get and delete; registered in system_administrator + full packages; 21 new tests; 94% attachment_tools.py coverage
+33. 2026-05-08 — Add list_catalogs and get_catalog tools (sc_catalog table); list supports active/query/limit/offset filters; get_catalog has 404 guard; both registered in catalog_builder and full packages; removed TODO comments from tool_packages.yaml; 20 new tests; 91% total coverage
