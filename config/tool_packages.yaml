@@ -16,6 +16,9 @@ service_desk:
   - resolve_incident
   - list_incidents
   - get_incident_by_number
+  # Problem Management
+  - list_problems
+  - get_problem
   # Service Catalog Tasks
   - get_sctask
   - list_sctasks
@@ -74,6 +77,11 @@ change_coordinator:
   - submit_change_for_approval
   - approve_change
   - reject_change
+  # Problem Management (changes often linked to problems)
+  - list_problems
+  - get_problem
+  - create_problem
+  - update_problem
 
 knowledge_author:
   # KB Management
@@ -319,6 +327,11 @@ full:
   - list_attachments
   - get_attachment
   - delete_attachment
+  # Problem Management
+  - list_problems
+  - get_problem
+  - create_problem
+  - update_problem
   # Story Management
   - create_story
   - update_story

@@ -178,7 +178,12 @@ from servicenow_mcp.tools.attachment_tools import (
     get_attachment,
     delete_attachment,
 )
-# from servicenow_mcp.tools.problem_tools import create_problem, update_problem
+from servicenow_mcp.tools.problem_tools import (
+    create_problem,
+    get_problem,
+    list_problems,
+    update_problem,
+)
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
 __all__ = [
@@ -353,9 +358,13 @@ __all__ = [
     "get_attachment",
     "delete_attachment",
 
+    # Problem management tools
+    "list_problems",
+    "get_problem",
+    "create_problem",
+    "update_problem",
+
     # Future tools
-    # "create_problem",
-    # "update_problem",
     # "create_request",
     # "update_request",
 ] 
