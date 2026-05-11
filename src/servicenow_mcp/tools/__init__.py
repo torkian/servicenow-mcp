@@ -184,6 +184,10 @@ from servicenow_mcp.tools.problem_tools import (
     list_problems,
     update_problem,
 )
+from servicenow_mcp.tools.sla_tools import (
+    get_sla,
+    list_slas,
+)
 # from servicenow_mcp.tools.request_tools import create_request, update_request
 
 __all__ = [
@@ -364,7 +368,11 @@ __all__ = [
     "create_problem",
     "update_problem",
 
+    # SLA management tools
+    "list_slas",
+    "get_sla",
+
     # Future tools
     # "create_request",
     # "update_request",
-] 
+]
