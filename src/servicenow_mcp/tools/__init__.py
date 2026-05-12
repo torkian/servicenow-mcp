@@ -177,6 +177,7 @@ from servicenow_mcp.tools.attachment_tools import (
     list_attachments,
     get_attachment,
     delete_attachment,
+    upload_attachment,
 )
 from servicenow_mcp.tools.problem_tools import (
     create_problem,
@@ -361,6 +362,7 @@ __all__ = [
     "list_attachments",
     "get_attachment",
     "delete_attachment",
+    "upload_attachment",
 
     # Problem management tools
     "list_problems",

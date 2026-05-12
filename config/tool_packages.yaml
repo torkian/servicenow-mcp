@@ -165,6 +165,7 @@ system_administrator:
   - list_attachments
   - get_attachment
   - delete_attachment
+  - upload_attachment
   # User Management
   - create_user
   - update_user
@@ -327,6 +328,7 @@ full:
   - list_attachments
   - get_attachment
   - delete_attachment
+  - upload_attachment
   # Problem Management
   - list_problems
   - get_problem

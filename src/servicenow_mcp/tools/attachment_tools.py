@@ -1,10 +1,11 @@
 """
 Attachment management tools for the ServiceNow MCP server.
 
-Provides tools for listing, retrieving, and deleting file attachments via
-the /api/now/attachment endpoint.
+Provides tools for listing, retrieving, uploading, and deleting file attachments
+via the /api/now/attachment endpoint.
 """
 
+import base64
 import logging
 from typing import Any, Dict, Optional
 
@@ -64,6 +65,23 @@ class DeleteAttachmentParams(BaseModel):
     """Parameters for deleting an attachment."""
 
     sys_id: str = Field(..., description="sys_id of the attachment to delete")
+
+
+class UploadAttachmentParams(BaseModel):
+    """Parameters for uploading a file attachment to a ServiceNow record."""
+
+    table_name: str = Field(..., description="ServiceNow table name (e.g. 'incident', 'change_request')")
+    table_sys_id: str = Field(..., description="sys_id of the record to attach the file to")
+    file_name: str = Field(..., description="File name including extension (e.g. 'report.pdf')")
+    file_content_base64: str = Field(..., description="Base64-encoded file content")
+    content_type: Optional[str] = Field(
+        "application/octet-stream",
+        description="MIME type of the file (default: application/octet-stream)",
+    )
+    encryption_context: Optional[str] = Field(
+        None,
+        description="Encryption context sys_id (optional)",
+    )
 
 
 def _format_attachment(record: Dict) -> Dict:
@@ -222,3 +240,63 @@ def delete_attachment(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error deleting attachment: {e}")
         return {"success": False, "message": f"Error deleting attachment: {_format_http_error(e)}"}
+
+
+def upload_attachment(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Upload a file attachment to a ServiceNow record.
+
+    Posts raw binary content to ``/api/now/attachment/file`` with the target
+    table and record identified via query parameters.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UploadAttachmentParams.
+
+    Returns:
+        Dictionary with ``success`` and ``attachment`` (metadata) keys.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        UploadAttachmentParams,
+        required_fields=["table_name", "table_sys_id", "file_name", "file_content_base64"],
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    try:
+        file_bytes = base64.b64decode(validated.file_content_base64)
+    except Exception as exc:
+        return {"success": False, "message": f"Invalid base64 content: {exc}"}
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    upload_headers = {**headers, "Content-Type": validated.content_type or "application/octet-stream"}
+
+    query_params: Dict[str, Any] = {
+        "table_name": validated.table_name,
+        "table_sys_id": validated.table_sys_id,
+        "file_name": validated.file_name,
+    }
+    if validated.encryption_context:
+        query_params["encryption_context"] = validated.encryption_context
+
+    url = f"{instance_url}{ATTACHMENT_API}/file"
+    try:
+        response = _make_request("POST", url, headers=upload_headers, params=query_params, data=file_bytes)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "attachment": _format_attachment(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error uploading attachment: {e}")
+        return {"success": False, "message": f"Error uploading attachment: {_format_http_error(e)}"}

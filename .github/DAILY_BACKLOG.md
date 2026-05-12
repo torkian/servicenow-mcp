@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add upload_attachment tool (multipart POST to /api/now/attachment/file)
+1. Add download_attachment tool (GET /api/now/attachment/{sys_id}/file, returns base64 content)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -38,3 +38,4 @@
 33. 2026-05-08 — Add list_catalogs and get_catalog tools (sc_catalog table); list supports active/query/limit/offset filters; get_catalog has 404 guard; both registered in catalog_builder and full packages; removed TODO comments from tool_packages.yaml; 20 new tests; 91% total coverage
 34. 2026-05-09 — Add problem management tools (list_problems, get_problem, create_problem, update_problem); problem_tools.py targets the problem table; known_error boolean serialised as string; _resolve_problem_sys_id handles number/sys_id lookup; registered in service_desk, change_coordinator, full packages; 39 new tests; 89% problem_tools coverage; 91% total coverage
 35. 2026-05-11 — Add SLA tools (list_slas, get_sla) on contract_sla table; filters for active/type/table/query; sys_id and name-based lookup; also fixed missing problem tool registrations in tool_utils.py; 24 new tests; sla_tools.py 94% coverage; 91% total coverage
+36. 2026-05-12 — Add upload_attachment tool (POST /api/now/attachment/file); base64-decoded binary body; configurable MIME type and encryption_context; registered in system_administrator and full packages; 15 new tests; attachment_tools.py 97% coverage; 1029 total tests passing

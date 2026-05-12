@@ -1,5 +1,6 @@
 """Tests for attachment_tools.py."""
 
+import base64
 import unittest
 from unittest.mock import MagicMock, patch
 
@@ -10,6 +11,7 @@ from servicenow_mcp.tools.attachment_tools import (
     delete_attachment,
     get_attachment,
     list_attachments,
+    upload_attachment,
 )
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -283,6 +285,248 @@ class TestDeleteAttachment(unittest.TestCase):
         )
         self.assertFalse(result["success"])
         self.assertIn("Error deleting attachment", result["message"])
+
+
+_SAMPLE_CONTENT = b"Hello, ServiceNow!"
+_SAMPLE_B64 = base64.b64encode(_SAMPLE_CONTENT).decode()
+
+
+class TestUploadAttachment(unittest.TestCase):
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_success_returns_attachment_metadata(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "screenshot.png",
+                "file_content_base64": _SAMPLE_B64,
+                "content_type": "image/png",
+            },
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["attachment"]["sys_id"], "att001")
+        self.assertEqual(result["attachment"]["file_name"], "screenshot.png")
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_correct_url_and_method(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "file.txt",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        args, _ = mock_req.call_args
+        self.assertEqual(args[0], "POST")
+        self.assertIn("/api/now/attachment/file", args[1])
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_query_params_forwarded(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "notes.txt",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        _, kwargs = mock_req.call_args
+        p = kwargs.get("params", {})
+        self.assertEqual(p["table_name"], "incident")
+        self.assertEqual(p["table_sys_id"], "inc001")
+        self.assertEqual(p["file_name"], "notes.txt")
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_encryption_context_forwarded_when_provided(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "secure.pdf",
+                "file_content_base64": _SAMPLE_B64,
+                "encryption_context": "enc_ctx_001",
+            },
+        )
+        _, kwargs = mock_req.call_args
+        p = kwargs.get("params", {})
+        self.assertEqual(p["encryption_context"], "enc_ctx_001")
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_encryption_context_absent_when_not_provided(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "plain.txt",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        _, kwargs = mock_req.call_args
+        p = kwargs.get("params", {})
+        self.assertNotIn("encryption_context", p)
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_content_type_set_in_headers(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "doc.pdf",
+                "file_content_base64": _SAMPLE_B64,
+                "content_type": "application/pdf",
+            },
+        )
+        _, kwargs = mock_req.call_args
+        headers = kwargs.get("headers", {})
+        self.assertEqual(headers.get("Content-Type"), "application/pdf")
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_default_content_type_octet_stream(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "blob.bin",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        _, kwargs = mock_req.call_args
+        headers = kwargs.get("headers", {})
+        self.assertEqual(headers.get("Content-Type"), "application/octet-stream")
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_raw_bytes_sent_as_body(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_ATTACHMENT})
+        upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "data.bin",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        _, kwargs = mock_req.call_args
+        self.assertEqual(kwargs.get("data"), _SAMPLE_CONTENT)
+
+    def test_invalid_base64_returns_failure(self):
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "bad.txt",
+                "file_content_base64": "!!!not_valid_base64!!!",
+            },
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Invalid base64", result["message"])
+
+    def test_missing_table_name_returns_failure(self):
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_sys_id": "inc001",
+                "file_name": "x.txt",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        self.assertFalse(result["success"])
+
+    def test_missing_table_sys_id_returns_failure(self):
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "file_name": "x.txt",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        self.assertFalse(result["success"])
+
+    def test_missing_file_name_returns_failure(self):
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        self.assertFalse(result["success"])
+
+    def test_missing_file_content_returns_failure(self):
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "x.txt",
+            },
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_request_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.Timeout("timeout")
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "x.txt",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error uploading attachment", result["message"])
+
+    @patch("servicenow_mcp.tools.attachment_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        bad_response = _make_response(403, {})
+        bad_response.raise_for_status.side_effect = requests.exceptions.HTTPError("403 Forbidden")
+        mock_req.return_value = bad_response
+        result = upload_attachment(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "table_name": "incident",
+                "table_sys_id": "inc001",
+                "file_name": "x.txt",
+                "file_content_base64": _SAMPLE_B64,
+            },
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error uploading attachment", result["message"])
 
 
 if __name__ == "__main__":
