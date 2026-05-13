@@ -84,6 +84,12 @@ class UploadAttachmentParams(BaseModel):
     )
 
 
+class DownloadAttachmentParams(BaseModel):
+    """Parameters for downloading the binary content of an attachment."""
+
+    sys_id: str = Field(..., description="sys_id of the attachment to download")
+
+
 def _format_attachment(record: Dict) -> Dict:
     """Extract relevant fields from a raw attachment API record."""
     return {
@@ -300,3 +306,53 @@ def upload_attachment(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error uploading attachment: {e}")
         return {"success": False, "message": f"Error uploading attachment: {_format_http_error(e)}"}
+
+
+def download_attachment(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Download the binary content of an attachment as base64-encoded data.
+
+    Calls ``GET /api/now/attachment/{sys_id}/file`` and returns the raw bytes
+    encoded as base64 together with the content-type reported by the server.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DownloadAttachmentParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, ``content_type``, and
+        ``content_base64`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, DownloadAttachmentParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{ATTACHMENT_API}/{validated.sys_id}/file"
+    try:
+        response = _make_request("GET", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Attachment not found: {validated.sys_id}"}
+        response.raise_for_status()
+        content_type = response.headers.get("Content-Type", "application/octet-stream")
+        content_base64 = base64.b64encode(response.content).decode("utf-8")
+        return {
+            "success": True,
+            "sys_id": validated.sys_id,
+            "content_type": content_type,
+            "content_base64": content_base64,
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error downloading attachment: {e}")
+        return {"success": False, "message": f"Error downloading attachment: {_format_http_error(e)}"}
