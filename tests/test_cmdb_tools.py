@@ -7,10 +7,12 @@ from servicenow_mcp.tools.cmdb_tools import (
     CreateCIParams,
     GetCIParams,
     ListCIsParams,
+    ListCMDBClassesParams,
     UpdateCIParams,
     _format_ci,
     create_ci,
     get_ci,
+    list_cmdb_classes,
     list_cis,
     update_ci,
 )
@@ -600,6 +602,135 @@ class TestCMDBParams(unittest.TestCase):
         p = UpdateCIParams(sys_id="ci001", name="renamed")
         self.assertEqual(p.sys_id, "ci001")
         self.assertEqual(p.name, "renamed")
+
+
+class TestListCMDBClasses(unittest.TestCase):
+    """Tests for list_cmdb_classes using the aggregate API."""
+
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth_manager()
+
+    def _call(self, extra_params=None):
+        params = extra_params or {}
+        return list_cmdb_classes(self.auth, self.config, params)
+
+    def _mock_stats(self, entries):
+        """Build a mock response with aggregate stats entries."""
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": {"stats": entries}}
+        return mock_resp
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_returns_sorted_class_names(self, mock_req):
+        mock_req.return_value = self._mock_stats([
+            {"sys_class_name": "cmdb_ci_server", "count": "10"},
+            {"sys_class_name": "cmdb_ci", "count": "5"},
+            {"sys_class_name": "cmdb_ci_computer", "count": "3"},
+        ])
+        result = self._call()
+        self.assertTrue(result["success"])
+        names = [c["name"] for c in result["classes"]]
+        self.assertEqual(names, ["cmdb_ci", "cmdb_ci_computer", "cmdb_ci_server"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_count_included_by_default(self, mock_req):
+        mock_req.return_value = self._mock_stats([
+            {"sys_class_name": "cmdb_ci_server", "count": "42"},
+        ])
+        result = self._call()
+        self.assertTrue(result["success"])
+        self.assertEqual(result["classes"][0]["count"], 42)
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_count_excluded_when_false(self, mock_req):
+        mock_req.return_value = self._mock_stats([
+            {"sys_class_name": "cmdb_ci_server", "count": "42"},
+        ])
+        result = self._call({"include_count": False})
+        self.assertTrue(result["success"])
+        self.assertNotIn("count", result["classes"][0])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_dict_format_sys_class_name(self, mock_req):
+        """Aggregate API may return sys_class_name as a {value, display_value} dict."""
+        mock_req.return_value = self._mock_stats([
+            {"sys_class_name": {"value": "cmdb_ci_server", "display_value": "Server"}, "count": "7"},
+        ])
+        result = self._call()
+        self.assertTrue(result["success"])
+        self.assertEqual(result["classes"][0]["name"], "cmdb_ci_server")
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_empty_name_entries_skipped(self, mock_req):
+        mock_req.return_value = self._mock_stats([
+            {"sys_class_name": "", "count": "1"},
+            {"sys_class_name": "cmdb_ci_server", "count": "9"},
+        ])
+        result = self._call()
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["classes"][0]["name"], "cmdb_ci_server")
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_top_level_count_matches_classes_length(self, mock_req):
+        mock_req.return_value = self._mock_stats([
+            {"sys_class_name": "cmdb_ci_server", "count": "1"},
+            {"sys_class_name": "cmdb_ci_computer", "count": "2"},
+        ])
+        result = self._call()
+        self.assertEqual(result["count"], len(result["classes"]))
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_empty_stats_returns_empty_list(self, mock_req):
+        mock_req.return_value = self._mock_stats([])
+        result = self._call()
+        self.assertTrue(result["success"])
+        self.assertEqual(result["classes"], [])
+        self.assertEqual(result["count"], 0)
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_uses_aggregate_api_url(self, mock_req):
+        mock_req.return_value = self._mock_stats([])
+        self._call()
+        call_url = mock_req.call_args[0][1]
+        self.assertIn("/api/now/stats/cmdb_ci", call_url)
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_custom_ci_class_in_url(self, mock_req):
+        mock_req.return_value = self._mock_stats([])
+        self._call({"ci_class": "cmdb_ci_server"})
+        call_url = mock_req.call_args[0][1]
+        self.assertIn("/api/now/stats/cmdb_ci_server", call_url)
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_optional_query_forwarded(self, mock_req):
+        mock_req.return_value = self._mock_stats([])
+        self._call({"query": "operational_status=1"})
+        call_kwargs = mock_req.call_args[1]
+        self.assertEqual(call_kwargs["params"]["sysparm_query"], "operational_status=1")
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_sysparm_group_by_set(self, mock_req):
+        mock_req.return_value = self._mock_stats([])
+        self._call()
+        call_kwargs = mock_req.call_args[1]
+        self.assertEqual(call_kwargs["params"]["sysparm_group_by"], "sys_class_name")
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_request_exception_returns_error(self, mock_req):
+        import requests as requests_lib
+        mock_req.side_effect = requests_lib.exceptions.ConnectionError("network down")
+        result = self._call()
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing CMDB classes", result["message"])
+
+    def test_params_defaults(self):
+        p = ListCMDBClassesParams()
+        self.assertIsNone(p.ci_class)
+        self.assertIsNone(p.query)
+        self.assertTrue(p.include_count)
 
 
 if __name__ == "__main__":

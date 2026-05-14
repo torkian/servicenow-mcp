@@ -425,11 +425,13 @@ from servicenow_mcp.tools.cmdb_tools import (
     CreateCIParams,
     GetCIParams,
     ListCIsParams,
+    ListCMDBClassesParams,
     UpdateCIParams,
 )
 from servicenow_mcp.tools.cmdb_tools import (
     create_ci as create_ci_tool,
     get_ci as get_ci_tool,
+    list_cmdb_classes as list_cmdb_classes_tool,
     list_cis as list_cis_tool,
     update_ci as update_ci_tool,
 )
@@ -1267,6 +1269,18 @@ def get_tool_definitions(
             "raw_dict",
         ),
         # CMDB Tools
+        "list_cmdb_classes": (
+            list_cmdb_classes_tool,
+            ListCMDBClassesParams,
+            Dict[str, Any],
+            (
+                "Return a sorted list of distinct CI class names (sys_class_name) "
+                "present in the CMDB, using the ServiceNow aggregate API. "
+                "Optionally filter by a base class table or an encoded query, "
+                "and include the record count per class."
+            ),
+            "raw_dict",
+        ),
         "list_cis": (
             list_cis_tool,
             ListCIsParams,
