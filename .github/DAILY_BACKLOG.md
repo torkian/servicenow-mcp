@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_user_by_email lookup (search sys_user table by email field)
-2. Add list_cmdb_classes tool (fetch distinct sys_class_name values from cmdb_ci)
+1. Add list_cmdb_classes tool (fetch distinct sys_class_name values from cmdb_ci)
 3. Add create_incident_task tool (POST sc_task linked to incident)
 4. Add list_incident_tasks tool (GET sc_task filtered by incident sys_id)
 5. Add reopen_incident tool (PATCH incident state back to New/In Progress)
@@ -49,3 +48,4 @@
 34. 2026-05-11 — Add SLA tools (list_slas, get_sla) on contract_sla table; filters for active/type/table/query; sys_id and name-based lookup; also fixed missing problem tool registrations in tool_utils.py; 24 new tests; sla_tools.py 94% coverage; 91% total coverage
 35. 2026-05-12 — Add upload_attachment tool (POST /api/now/attachment/file); base64-decoded binary body; configurable MIME type and encryption_context; registered in system_administrator and full packages; 15 new tests; attachment_tools.py 97% coverage; 1029 total tests passing
 36. 2026-05-13 — Add download_attachment tool (GET /api/now/attachment/{sys_id}/file); returns base64-encoded content and content_type; 404 guard; also registered missing upload_attachment in tool_utils.py; 8 new tests; attachment_tools.py 99% coverage; 1037 total tests passing
+37. 2026-05-14 — Add get_user_by_email tool (sys_user table lookup by email); exact and LIKE match modes; 14 normalised fields; registered in service_desk, system_administrator, full packages; 9 new tests; 1038 total tests passing; 91% total coverage

@@ -62,6 +62,16 @@ class GetUserParams(BaseModel):
     email: Optional[str] = Field(None, description="Email address of the user")
 
 
+class GetUserByEmailParams(BaseModel):
+    """Parameters for looking up a user by email address."""
+
+    email: str = Field(..., description="Email address to search for")
+    exact: Optional[bool] = Field(
+        True,
+        description="When True (default) perform an exact match; False uses a LIKE partial match",
+    )
+
+
 class ListUsersParams(BaseModel):
     """Parameters for listing users."""
 
@@ -895,3 +905,70 @@ def remove_group_members(
         message=message,
         group_id=params.group_id,
     )
+
+
+USER_FIELDS = [
+    "sys_id",
+    "user_name",
+    "first_name",
+    "last_name",
+    "email",
+    "title",
+    "department",
+    "manager",
+    "phone",
+    "mobile_phone",
+    "location",
+    "active",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+def get_user_by_email(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: GetUserByEmailParams,
+) -> dict:
+    """Look up a sys_user record by email address.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters matching GetUserByEmailParams.
+
+    Returns:
+        Dictionary with ``success``, ``user``, and ``message`` keys.
+    """
+    if not params.email:
+        return {"success": False, "message": "email is required"}
+
+    operator = "=" if params.exact else "LIKE"
+    api_url = f"{config.api_url}/table/sys_user"
+    query_params = {
+        "sysparm_query": f"email{operator}{params.email}",
+        "sysparm_limit": "1",
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(USER_FIELDS),
+    }
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params=query_params,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+        records = response.json().get("result", [])
+        if not records:
+            return {"success": False, "message": f"No user found with email: {params.email}"}
+        return {"success": True, "message": "User found", "user": records[0]}
+    except requests.RequestException as e:
+        logger.error(f"Failed to look up user by email: {e}")
+        return {
+            "success": False,
+            "message": f"Failed to look up user by email: {_format_http_error(e)}",
+        }
