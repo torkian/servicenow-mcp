@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_cmdb_classes tool (fetch distinct sys_class_name values from cmdb_ci)
-3. Add create_incident_task tool (POST sc_task linked to incident)
+1. Add create_incident_task tool (POST sc_task linked to incident)
 4. Add list_incident_tasks tool (GET sc_task filtered by incident sys_id)
 5. Add reopen_incident tool (PATCH incident state back to New/In Progress)
 6. Add list_change_tasks tool (GET change_task by change_request sys_id)
@@ -49,3 +48,4 @@
 35. 2026-05-12 — Add upload_attachment tool (POST /api/now/attachment/file); base64-decoded binary body; configurable MIME type and encryption_context; registered in system_administrator and full packages; 15 new tests; attachment_tools.py 97% coverage; 1029 total tests passing
 36. 2026-05-13 — Add download_attachment tool (GET /api/now/attachment/{sys_id}/file); returns base64-encoded content and content_type; 404 guard; also registered missing upload_attachment in tool_utils.py; 8 new tests; attachment_tools.py 99% coverage; 1037 total tests passing
 37. 2026-05-14 — Add get_user_by_email tool (sys_user table lookup by email); exact and LIKE match modes; 14 normalised fields; registered in service_desk, system_administrator, full packages; 9 new tests; 1038 total tests passing; 91% total coverage
+38. 2026-05-15 — Add list_cmdb_classes tool (GET /api/now/stats/cmdb_ci grouped by sys_class_name); optional ci_class/query/include_count params; handles string and dict sys_class_name formats; sorted output; registered in system_administrator and full packages; 13 new tests; 1051 total tests passing; 91% total coverage

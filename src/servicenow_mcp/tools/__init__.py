@@ -149,6 +149,7 @@ from servicenow_mcp.tools.bulk_tools import (
 from servicenow_mcp.tools.cmdb_tools import (
     create_ci,
     get_ci,
+    list_cmdb_classes,
     list_cis,
     update_ci,
 )
@@ -333,6 +334,7 @@ __all__ = [
     "execute_bulk_operations",
 
     # CMDB tools
+    "list_cmdb_classes",
     "list_cis",
     "get_ci",
     "create_ci",

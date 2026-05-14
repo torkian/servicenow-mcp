@@ -129,6 +129,26 @@ class CreateCIParams(BaseModel):
     company: Optional[str] = Field(None, description="sys_id of the company record")
 
 
+class ListCMDBClassesParams(BaseModel):
+    """Parameters for listing distinct CMDB CI class names."""
+
+    ci_class: Optional[str] = Field(
+        None,
+        description=(
+            "Base CI class table to query (e.g. cmdb_ci_server). "
+            "Defaults to cmdb_ci (base class)."
+        ),
+    )
+    query: Optional[str] = Field(
+        None,
+        description="Optional ServiceNow encoded query to pre-filter CIs before grouping",
+    )
+    include_count: Optional[bool] = Field(
+        True,
+        description="Include the number of CI records per class in the response (default True)",
+    )
+
+
 class UpdateCIParams(BaseModel):
     """Parameters for updating an existing CMDB configuration item."""
 
@@ -200,6 +220,63 @@ def _build_body(validated, exclude: List[str]) -> Dict:
         if value is not None:
             body[sn_field] = value
     return body
+
+
+def list_cmdb_classes(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Return distinct sys_class_name values from the CMDB using the aggregate API.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListCMDBClassesParams.
+
+    Returns:
+        Dictionary with ``success``, ``classes`` (list of {name, count?}), and ``count``.
+    """
+    result = _unwrap_and_validate_params(params, ListCMDBClassesParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    table = validated.ci_class or CMDB_CI_TABLE
+    url = f"{instance_url}/api/now/stats/{table}"
+    query_params: Dict[str, Any] = {
+        "sysparm_group_by": "sys_class_name",
+        "sysparm_count": "true",
+    }
+    if validated.query:
+        query_params["sysparm_query"] = validated.query
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        stats = response.json().get("result", {}).get("stats", [])
+        classes = []
+        for item in stats:
+            raw = item.get("sys_class_name", "")
+            name = raw.get("value", "") if isinstance(raw, dict) else raw
+            if not name:
+                continue
+            entry: Dict[str, Any] = {"name": name}
+            if validated.include_count:
+                entry["count"] = int(item.get("count", 0))
+            classes.append(entry)
+        classes.sort(key=lambda x: x["name"])
+        return {"success": True, "classes": classes, "count": len(classes)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing CMDB classes: {e}")
+        return {"success": False, "message": f"Error listing CMDB classes: {_format_http_error(e)}"}
 
 
 def list_cis(
