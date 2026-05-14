@@ -29,6 +29,7 @@ service_desk:
   - update_time_card
   # User Lookup
   - get_user
+  - get_user_by_email
   - list_users
   # Knowledge Lookup
   - get_article
@@ -170,6 +171,7 @@ system_administrator:
   - create_user
   - update_user
   - get_user
+  - get_user_by_email
   - list_users
   # Group Management
   - create_group
@@ -285,6 +287,7 @@ full:
   - create_user
   - update_user
   - get_user
+  - get_user_by_email
   - list_users
   - create_group
   - update_group

@@ -76,6 +76,7 @@ from servicenow_mcp.tools.user_tools import (
     create_user,
     update_user,
     get_user,
+    get_user_by_email,
     list_users,
     create_group,
     update_group,
@@ -375,6 +376,9 @@ __all__ = [
     # SLA management tools
     "list_slas",
     "get_sla",
+
+    # User email lookup
+    "get_user_by_email",
 
     # Future tools
     # "create_request",
