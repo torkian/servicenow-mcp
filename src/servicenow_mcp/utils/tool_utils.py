@@ -237,6 +237,7 @@ from servicenow_mcp.tools.user_tools import (
     AddGroupMembersParams,
     CreateGroupParams,
     CreateUserParams,
+    GetUserByEmailParams,
     GetUserParams,
     ListGroupsParams,
     ListUsersParams,
@@ -255,6 +256,9 @@ from servicenow_mcp.tools.user_tools import (
 )
 from servicenow_mcp.tools.user_tools import (
     get_user as get_user_tool,
+)
+from servicenow_mcp.tools.user_tools import (
+    get_user_by_email as get_user_by_email_tool,
 )
 from servicenow_mcp.tools.user_tools import (
     list_groups as list_groups_tool,
@@ -1000,6 +1004,13 @@ def get_tool_definitions(
             GetUserParams,
             Dict[str, Any],  # Expects dict
             "Get a specific user in ServiceNow",
+            "raw_dict",
+        ),
+        "get_user_by_email": (
+            get_user_by_email_tool,
+            GetUserByEmailParams,
+            Dict[str, Any],
+            "Look up a ServiceNow user by email address (exact or partial match)",
             "raw_dict",
         ),
         "list_users": (
