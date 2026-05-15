@@ -53,6 +53,10 @@ from servicenow_mcp.tools.incident_tools import (
     update_incident,
     get_incident_by_number,
 )
+from servicenow_mcp.tools.incident_task_tools import (
+    create_incident_task,
+    list_incident_tasks,
+)
 from servicenow_mcp.tools.knowledge_base import (
     create_article,
     create_category,
@@ -202,6 +206,9 @@ __all__ = [
     "resolve_incident",
     "list_incidents",
     "get_incident_by_number",
+    # Incident Task tools
+    "create_incident_task",
+    "list_incident_tasks",
     
     # Catalog tools
     "list_catalogs",

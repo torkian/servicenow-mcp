@@ -168,6 +168,14 @@ from servicenow_mcp.tools.incident_tools import (
 from servicenow_mcp.tools.incident_tools import (
     get_incident_by_number as get_incident_by_number_tool,
 )
+from servicenow_mcp.tools.incident_task_tools import (
+    CreateIncidentTaskParams,
+    ListIncidentTasksParams,
+)
+from servicenow_mcp.tools.incident_task_tools import (
+    create_incident_task as create_incident_task_tool,
+    list_incident_tasks as list_incident_tasks_tool,
+)
 from servicenow_mcp.tools.knowledge_base import (
     CreateArticleParams,
     CreateKnowledgeBaseParams,
@@ -558,6 +566,21 @@ def get_tool_definitions(
             str,
             "Incident details from ServiceNow",
             "json_dict"
+        ),
+        # Incident Task Tools
+        "create_incident_task": (
+            create_incident_task_tool,
+            CreateIncidentTaskParams,
+            str,
+            "Create a task (sc_task) linked to a specific incident in ServiceNow",
+            "json",
+        ),
+        "list_incident_tasks": (
+            list_incident_tasks_tool,
+            ListIncidentTasksParams,
+            str,
+            "List tasks (sc_task) linked to a specific incident in ServiceNow",
+            "json",
         ),
         # Catalog Tools
         "list_catalogs": (
