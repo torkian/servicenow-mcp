@@ -73,6 +73,17 @@ class ResolveIncidentParams(BaseModel):
     resolution_notes: str = Field(..., description="Resolution notes for the incident")
 
 
+class ReopenIncidentParams(BaseModel):
+    """Parameters for reopening a resolved or closed incident."""
+
+    incident_id: str = Field(..., description="Incident number (e.g. INC0010001) or sys_id")
+    state: str = Field(
+        "1",
+        description="Target state: '1' = New (default), '2' = In Progress",
+    )
+    work_notes: Optional[str] = Field(None, description="Work notes to add when reopening")
+
+
 class ListIncidentsParams(BaseModel):
     """Parameters for listing incidents."""
     
@@ -460,6 +471,76 @@ def resolve_incident(
         return IncidentResponse(
             success=False,
             message=f"Failed to resolve incident: {_format_http_error(e)}",
+        )
+
+
+def reopen_incident(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ReopenIncidentParams,
+) -> IncidentResponse:
+    """
+    Reopen a resolved or closed incident by patching its state back to New or In Progress.
+    """
+    incident_id = params.incident_id
+    if len(incident_id) == 32 and all(c in "0123456789abcdef" for c in incident_id):
+        api_url = f"{config.api_url}/table/incident/{incident_id}"
+    else:
+        try:
+            query_url = f"{config.api_url}/table/incident"
+            query_params = {
+                "sysparm_query": f"number={incident_id}",
+                "sysparm_limit": 1,
+            }
+            response = _make_request(
+                "GET",
+                query_url,
+                params=query_params,
+                headers=auth_manager.get_headers(),
+                timeout=config.timeout,
+            )
+            response.raise_for_status()
+            result = response.json().get("result", [])
+            if not result:
+                return IncidentResponse(
+                    success=False,
+                    message=f"Incident not found: {incident_id}",
+                )
+            incident_id = result[0].get("sys_id")
+            api_url = f"{config.api_url}/table/incident/{incident_id}"
+        except requests.RequestException as e:
+            logger.error(f"Failed to find incident: {e}")
+            return IncidentResponse(
+                success=False,
+                message=f"Failed to find incident: {_format_http_error(e)}",
+            )
+
+    data: dict = {"state": params.state}
+    if params.work_notes:
+        data["work_notes"] = params.work_notes
+
+    try:
+        response = _make_request(
+            "PATCH",
+            api_url,
+            json=data,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+        result = response.json().get("result", {})
+        state_label = "New" if params.state == "1" else "In Progress"
+        return IncidentResponse(
+            success=True,
+            message=f"Incident reopened successfully (state → {state_label})",
+            incident_id=result.get("sys_id"),
+            incident_number=result.get("number"),
+        )
+    except requests.RequestException as e:
+        logger.error(f"Failed to reopen incident: {e}")
+        return IncidentResponse(
+            success=False,
+            message=f"Failed to reopen incident: {_format_http_error(e)}",
         )
 
 

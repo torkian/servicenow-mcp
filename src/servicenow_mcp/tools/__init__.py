@@ -49,6 +49,7 @@ from servicenow_mcp.tools.incident_tools import (
     add_comment,
     create_incident,
     list_incidents,
+    reopen_incident,
     resolve_incident,
     update_incident,
     get_incident_by_number,
@@ -204,6 +205,7 @@ __all__ = [
     "update_incident",
     "add_comment",
     "resolve_incident",
+    "reopen_incident",
     "list_incidents",
     "get_incident_by_number",
     # Incident Task tools

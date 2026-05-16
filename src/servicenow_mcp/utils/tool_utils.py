@@ -146,6 +146,7 @@ from servicenow_mcp.tools.incident_tools import (
     AddCommentParams,
     CreateIncidentParams,
     ListIncidentsParams,
+    ReopenIncidentParams,
     ResolveIncidentParams,
     UpdateIncidentParams,
     GetIncidentByNumberParams,
@@ -160,6 +161,7 @@ from servicenow_mcp.tools.incident_tools import (
     list_incidents as list_incidents_tool,
 )
 from servicenow_mcp.tools.incident_tools import (
+    reopen_incident as reopen_incident_tool,
     resolve_incident as resolve_incident_tool,
 )
 from servicenow_mcp.tools.incident_tools import (
@@ -551,6 +553,13 @@ def get_tool_definitions(
             ResolveIncidentParams,
             str,
             "Resolve an incident in ServiceNow",
+            "str",
+        ),
+        "reopen_incident": (
+            reopen_incident_tool,
+            ReopenIncidentParams,
+            str,
+            "Reopen a resolved or closed incident, setting its state back to New or In Progress",
             "str",
         ),
         "list_incidents": (

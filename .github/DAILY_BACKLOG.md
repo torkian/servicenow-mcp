@@ -1,12 +1,11 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add reopen_incident tool (PATCH incident state back to New/In Progress)
-2. Add list_change_tasks tool (GET change_task by change_request sys_id)
-3. Add create_change_task tool (POST change_task linked to change request)
-4. Add get_ci_by_name lookup shortcut (search cmdb_ci by name substring)
-5. Add list_knowledge_articles_by_category tool
-6. Add create_knowledge_article tool
+1. Add list_change_tasks tool (GET change_task by change_request sys_id)
+2. Add create_change_task tool (POST change_task linked to change request)
+3. Add get_ci_by_name lookup shortcut (search cmdb_ci by name substring)
+4. Add list_knowledge_articles_by_category tool
+5. Add create_knowledge_article tool
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -48,3 +47,4 @@
 37. 2026-05-14 — Add get_user_by_email tool (sys_user table lookup by email); exact and LIKE match modes; 14 normalised fields; registered in service_desk, system_administrator, full packages; 9 new tests; 1038 total tests passing; 91% total coverage
 38. 2026-05-15 — Add list_cmdb_classes tool
 39. 2026-05-15 — Add create_incident_task and list_incident_tasks tools (sc_task linked via parent_incident; incident number/sys_id auto-resolved; state filter + pagination; 17 new tests; 1068 total tests passing; 91% coverage) (GET /api/now/stats/cmdb_ci grouped by sys_class_name); optional ci_class/query/include_count params; handles string and dict sys_class_name formats; sorted output; registered in system_administrator and full packages; 13 new tests; 1051 total tests passing; 91% total coverage
+40. 2026-05-16 — Add reopen_incident tool (PATCH incident state back to New/In Progress); accepts incident number or sys_id; optional work_notes; registered in service_desk and full packages; 11 new tests; 1079 total tests passing; 91% total coverage

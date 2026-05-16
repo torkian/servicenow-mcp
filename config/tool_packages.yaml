@@ -14,6 +14,7 @@ service_desk:
   - update_incident
   - add_comment
   - resolve_incident
+  - reopen_incident
   - list_incidents
   - get_incident_by_number
   # Incident Tasks
@@ -217,6 +218,7 @@ full:
   - update_incident
   - add_comment
   - resolve_incident
+  - reopen_incident
   - list_incidents
   - get_incident_by_number
   # Incident Tasks
