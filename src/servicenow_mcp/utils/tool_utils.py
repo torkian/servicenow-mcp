@@ -82,8 +82,10 @@ from servicenow_mcp.tools.change_tools import (
     AddChangeTaskParams,
     ApproveChangeParams,
     CreateChangeRequestParams,
+    CreateChangeTaskParams,
     GetChangeRequestDetailsParams,
     ListChangeRequestsParams,
+    ListChangeTasksParams,
     RejectChangeParams,
     SubmitChangeForApprovalParams,
     UpdateChangeRequestParams,
@@ -98,10 +100,16 @@ from servicenow_mcp.tools.change_tools import (
     create_change_request as create_change_request_tool,
 )
 from servicenow_mcp.tools.change_tools import (
+    create_change_task as create_change_task_tool,
+)
+from servicenow_mcp.tools.change_tools import (
     get_change_request_details as get_change_request_details_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     list_change_requests as list_change_requests_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    list_change_tasks as list_change_tasks_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     reject_change as reject_change_tool,
@@ -747,6 +755,20 @@ def get_tool_definitions(
             str,  # Expects JSON string
             "Add a task to a change request",
             "json_dict",  # Tool returns Pydantic model
+        ),
+        "list_change_tasks": (
+            list_change_tasks_tool,
+            ListChangeTasksParams,
+            str,
+            "List tasks linked to a specific change request in ServiceNow",
+            "json",
+        ),
+        "create_change_task": (
+            create_change_task_tool,
+            CreateChangeTaskParams,
+            str,
+            "Create a task linked to a specific change request in ServiceNow",
+            "json",
         ),
         "submit_change_for_approval": (
             submit_change_for_approval_tool,

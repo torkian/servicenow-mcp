@@ -775,6 +775,189 @@ def approve_change(
         }
 
 
+class ListChangeTasksParams(BaseModel):
+    """Parameters for listing tasks linked to a change request."""
+
+    change_request_id: str = Field(
+        ...,
+        description="Change request sys_id or number (e.g. CHG0001234) whose tasks should be listed",
+    )
+    limit: int = Field(10, description="Maximum number of tasks to return")
+    offset: int = Field(0, description="Pagination offset")
+    state: Optional[str] = Field(None, description="Filter by task state (e.g. -5=Pending, 1=Open, 2=Work In Progress, 3=Closed Complete)")
+
+
+class CreateChangeTaskParams(BaseModel):
+    """Parameters for creating a task linked to a change request."""
+
+    change_request_id: str = Field(
+        ...,
+        description="Change request sys_id or number (e.g. CHG0001234) to attach the task to",
+    )
+    short_description: str = Field(..., description="Short description of the task")
+    description: Optional[str] = Field(None, description="Detailed description of the task")
+    assigned_to: Optional[str] = Field(None, description="Username or sys_id of the assignee")
+    assignment_group: Optional[str] = Field(None, description="Name or sys_id of the assignment group")
+    state: Optional[str] = Field(None, description="Initial state. Defaults to Open (-5=Pending, 1=Open, 2=Work In Progress)")
+    planned_start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
+    planned_end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
+    work_notes: Optional[str] = Field(None, description="Initial work notes")
+
+    @field_validator("planned_start_date", "planned_end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
+
+
+def _resolve_change_request_sys_id(
+    instance_url: str,
+    headers: dict,
+    change_request_id: str,
+) -> Optional[str]:
+    """Return the sys_id for a change request number or passthrough if already a sys_id."""
+    if len(change_request_id) == 32 and all(c in "0123456789abcdef" for c in change_request_id):
+        return change_request_id
+
+    url = f"{instance_url}/api/now/table/change_request"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={"sysparm_query": f"number={change_request_id}", "sysparm_limit": 1, "sysparm_fields": "sys_id"},
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+def list_change_tasks(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List change_task records linked to a specific change request."""
+    result = _unwrap_and_validate_params(
+        params, ListChangeTasksParams, required_fields=["change_request_id"]
+    )
+    if not result["success"]:
+        return result
+
+    validated: ListChangeTasksParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_request_id)
+    if not change_sys_id:
+        return {"success": False, "message": f"Change request not found: {validated.change_request_id}"}
+
+    query_parts = [f"change_request={change_sys_id}"]
+    if validated.state:
+        query_parts.append(f"state={validated.state}")
+
+    url = f"{instance_url}/api/now/table/change_task"
+    query_params = {
+        "sysparm_query": "^".join(query_parts),
+        "sysparm_limit": validated.limit,
+        "sysparm_offset": validated.offset,
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    try:
+        resp = _make_request("GET", url, headers=headers, params=query_params)
+        resp.raise_for_status()
+        tasks = resp.json().get("result", [])
+        return {
+            "success": True,
+            "tasks": tasks,
+            "count": len(tasks),
+            "has_more": len(tasks) == validated.limit,
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change tasks: {e}")
+        return {"success": False, "message": f"Error listing change tasks: {_format_http_error(e)}"}
+
+
+def create_change_task(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a change_task record linked to a specific change request."""
+    result = _unwrap_and_validate_params(
+        params, CreateChangeTaskParams, required_fields=["change_request_id", "short_description"]
+    )
+    if not result["success"]:
+        return result
+
+    validated: CreateChangeTaskParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+    headers["Content-Type"] = "application/json"
+
+    change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_request_id)
+    if not change_sys_id:
+        return {"success": False, "message": f"Change request not found: {validated.change_request_id}"}
+
+    body: Dict[str, Any] = {
+        "change_request": change_sys_id,
+        "short_description": validated.short_description,
+    }
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.assigned_to is not None:
+        body["assigned_to"] = validated.assigned_to
+    if validated.assignment_group is not None:
+        body["assignment_group"] = validated.assignment_group
+    if validated.state is not None:
+        body["state"] = validated.state
+    if validated.planned_start_date is not None:
+        body["planned_start_date"] = validated.planned_start_date
+    if validated.planned_end_date is not None:
+        body["planned_end_date"] = validated.planned_end_date
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}/api/now/table/change_task"
+    try:
+        resp = _make_request("POST", url, json=body, headers=headers)
+        resp.raise_for_status()
+        task = resp.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change task created: {task.get('number')}",
+            "task": {
+                "sys_id": task.get("sys_id"),
+                "number": task.get("number"),
+                "short_description": task.get("short_description"),
+                "state": task.get("state"),
+                "assigned_to": task.get("assigned_to"),
+                "assignment_group": task.get("assignment_group"),
+                "change_request": change_sys_id,
+            },
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating change task: {e}")
+        return {"success": False, "message": f"Error creating change task: {_format_http_error(e)}"}
+
+
 def reject_change(
     auth_manager: AuthManager,
     server_config: ServerConfig,
