@@ -441,6 +441,7 @@ from servicenow_mcp.tools.bulk_tools import (
 )
 from servicenow_mcp.tools.cmdb_tools import (
     CreateCIParams,
+    GetCIByNameParams,
     GetCIParams,
     ListCIsParams,
     ListCMDBClassesParams,
@@ -449,6 +450,7 @@ from servicenow_mcp.tools.cmdb_tools import (
 from servicenow_mcp.tools.cmdb_tools import (
     create_ci as create_ci_tool,
     get_ci as get_ci_tool,
+    get_ci_by_name as get_ci_by_name_tool,
     list_cmdb_classes as list_cmdb_classes_tool,
     list_cis as list_cis_tool,
     update_ci as update_ci_tool,
@@ -1351,6 +1353,17 @@ def get_tool_definitions(
             GetCIParams,
             Dict[str, Any],
             "Retrieve a single CMDB configuration item by its sys_id",
+            "raw_dict",
+        ),
+        "get_ci_by_name": (
+            get_ci_by_name_tool,
+            GetCIByNameParams,
+            Dict[str, Any],
+            (
+                "Search for CMDB configuration items by name substring. Returns all CIs "
+                "whose name contains the given string. Use exact=true for an exact match. "
+                "Optionally scope the search to a specific ci_class table."
+            ),
             "raw_dict",
         ),
         "create_ci": (

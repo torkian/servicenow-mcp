@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.cmdb_tools import (
     CreateCIParams,
+    GetCIByNameParams,
     GetCIParams,
     ListCIsParams,
     ListCMDBClassesParams,
@@ -12,6 +13,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     _format_ci,
     create_ci,
     get_ci,
+    get_ci_by_name,
     list_cmdb_classes,
     list_cis,
     update_ci,
@@ -731,6 +733,148 @@ class TestListCMDBClasses(unittest.TestCase):
         self.assertIsNone(p.ci_class)
         self.assertIsNone(p.query)
         self.assertTrue(p.include_count)
+
+
+class TestGetCIByNameParams(unittest.TestCase):
+    def test_defaults(self):
+        p = GetCIByNameParams(name="web")
+        self.assertEqual(p.name, "web")
+        self.assertFalse(p.exact)
+        self.assertIsNone(p.ci_class)
+        self.assertEqual(p.limit, 10)
+        self.assertEqual(p.offset, 0)
+
+    def test_exact_flag(self):
+        p = GetCIByNameParams(name="web-01", exact=True)
+        self.assertTrue(p.exact)
+
+    def test_custom_ci_class(self):
+        p = GetCIByNameParams(name="db", ci_class="cmdb_ci_server")
+        self.assertEqual(p.ci_class, "cmdb_ci_server")
+
+
+class TestGetCIByName(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth_manager = _make_auth_manager()
+
+    @patch("requests.get")
+    def test_substring_match_returns_cis(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": [FAKE_CI]}
+        mock_get.return_value = mock_response
+
+        result = get_ci_by_name(self.auth_manager, self.config, {"name": "web"})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(result["cis"][0]["sys_id"], "ci001")
+
+    @patch("requests.get")
+    def test_substring_uses_like_operator(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": [FAKE_CI]}
+        mock_get.return_value = mock_response
+
+        get_ci_by_name(self.auth_manager, self.config, {"name": "web-server"})
+
+        call_kwargs = mock_get.call_args
+        query = call_kwargs[1]["params"].get("sysparm_query", "")
+        self.assertIn("nameLIKEweb-server", query)
+
+    @patch("requests.get")
+    def test_exact_uses_equals_operator(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": [FAKE_CI]}
+        mock_get.return_value = mock_response
+
+        get_ci_by_name(self.auth_manager, self.config, {"name": "web-server-01", "exact": True})
+
+        call_kwargs = mock_get.call_args
+        query = call_kwargs[1]["params"].get("sysparm_query", "")
+        self.assertIn("name=web-server-01", query)
+        self.assertNotIn("nameLIKE", query)
+
+    @patch("requests.get")
+    def test_uses_specified_ci_class_table(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        get_ci_by_name(self.auth_manager, self.config, {"name": "db", "ci_class": "cmdb_ci_server"})
+
+        call_url = mock_get.call_args[0][0]
+        self.assertIn("cmdb_ci_server", call_url)
+
+    @patch("requests.get")
+    def test_defaults_to_cmdb_ci_table(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        get_ci_by_name(self.auth_manager, self.config, {"name": "app"})
+
+        call_url = mock_get.call_args[0][0]
+        self.assertTrue(call_url.endswith("/cmdb_ci"))
+
+    @patch("requests.get")
+    def test_empty_result(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        result = get_ci_by_name(self.auth_manager, self.config, {"name": "nonexistent"})
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 0)
+        self.assertEqual(result["cis"], [])
+
+    @patch("requests.get")
+    def test_pagination_params(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        get_ci_by_name(self.auth_manager, self.config, {"name": "web", "limit": 5, "offset": 10})
+
+        call_kwargs = mock_get.call_args
+        params = call_kwargs[1]["params"]
+        self.assertEqual(params.get("sysparm_limit"), 5)
+        self.assertEqual(params.get("sysparm_offset"), 10)
+
+    @patch("requests.get")
+    def test_has_more_flag_set(self, mock_get):
+        cis = [dict(FAKE_CI, sys_id=f"ci{i:03d}", name=f"web-{i:02d}") for i in range(3)]
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": cis}
+        mock_get.return_value = mock_response
+
+        result = get_ci_by_name(self.auth_manager, self.config, {"name": "web", "limit": 3})
+
+        self.assertTrue(result["success"])
+        self.assertTrue(result["has_more"])
+
+    def test_missing_name_returns_error(self):
+        result = get_ci_by_name(self.auth_manager, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("requests.get")
+    def test_request_exception_returns_error(self, mock_get):
+        import requests as req
+        mock_get.side_effect = req.exceptions.ConnectionError("timeout")
+
+        result = get_ci_by_name(self.auth_manager, self.config, {"name": "web"})
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error searching CIs by name", result["message"])
 
 
 if __name__ == "__main__":

@@ -149,6 +149,24 @@ class ListCMDBClassesParams(BaseModel):
     )
 
 
+class GetCIByNameParams(BaseModel):
+    """Parameters for the get_ci_by_name lookup shortcut."""
+
+    name: str = Field(..., description="CI name to search for (substring match by default)")
+    exact: Optional[bool] = Field(
+        False,
+        description="When True, perform an exact name match instead of a substring match",
+    )
+    ci_class: Optional[str] = Field(
+        None,
+        description=(
+            "CI class table to query (e.g. cmdb_ci_server). Defaults to cmdb_ci."
+        ),
+    )
+    limit: Optional[int] = Field(10, description="Maximum number of records to return (default 10)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+
+
 class UpdateCIParams(BaseModel):
     """Parameters for updating an existing CMDB configuration item."""
 
@@ -475,3 +493,53 @@ def update_ci(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating CI: {e}")
         return {"success": False, "message": f"Error updating CI: {_format_http_error(e)}"}
+
+
+def get_ci_by_name(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Search for CMDB configuration items by name.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetCIByNameParams.
+
+    Returns:
+        Dictionary with ``success``, ``cis`` (list), ``count``, and pagination keys.
+    """
+    result = _unwrap_and_validate_params(params, GetCIByNameParams, required_fields=["name"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    table = validated.ci_class or CMDB_CI_TABLE
+    operator = "=" if validated.exact else "LIKE"
+    query = f"name{operator}{validated.name}"
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=query,
+        exclude_reference_link=True,
+        fields=",".join(CMDB_CI_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{table}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        cis = [_format_ci(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(cis, validated.limit, validated.offset, "cis")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error searching CIs by name: {e}")
+        return {"success": False, "message": f"Error searching CIs by name: {_format_http_error(e)}"}

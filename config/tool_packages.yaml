@@ -192,6 +192,7 @@ system_administrator:
   - list_cmdb_classes
   - list_cis
   - get_ci
+  - get_ci_by_name
   - create_ci
   - update_ci
   # CMDB Relationships
@@ -320,6 +321,7 @@ full:
   - list_cmdb_classes
   - list_cis
   - get_ci
+  - get_ci_by_name
   - create_ci
   - update_ci
   # CMDB Relationships
