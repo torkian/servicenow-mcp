@@ -126,13 +126,24 @@ class ArticleResponse(BaseModel):
 
 class ListCategoriesParams(BaseModel):
     """Parameters for listing categories in a knowledge base."""
-    
+
     knowledge_base: Optional[str] = Field(None, description="Filter by knowledge base ID")
     parent_category: Optional[str] = Field(None, description="Filter by parent category ID")
     limit: int = Field(10, description="Maximum number of categories to return")
     offset: int = Field(0, description="Offset for pagination")
     active: Optional[bool] = Field(None, description="Filter by active status")
     query: Optional[str] = Field(None, description="Search query for categories")
+
+
+class ListArticlesByCategoryParams(BaseModel):
+    """Parameters for listing knowledge articles within a specific category."""
+
+    category: str = Field(..., description="Category name or sys_id to filter articles by")
+    knowledge_base: Optional[str] = Field(None, description="Optional knowledge base name or sys_id to narrow the category lookup")
+    workflow_state: Optional[str] = Field(None, description="Filter by workflow state (e.g. 'published', 'draft', 'retired')")
+    include_body: bool = Field(False, description="Include the full article body text in results")
+    limit: int = Field(10, description="Maximum number of articles to return")
+    offset: int = Field(0, description="Offset for pagination")
 
 
 def create_knowledge_base(
@@ -969,4 +980,168 @@ def list_categories(
             "count": 0,
             "limit": params.limit,
             "offset": params.offset,
-        } 
+        }
+
+
+def _resolve_category_sys_id(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    category: str,
+    knowledge_base: Optional[str] = None,
+) -> Optional[str]:
+    """Resolve a category name or sys_id to a sys_id.
+
+    Returns the sys_id string, or None if not found.
+    """
+    # 32-char hex → already a sys_id
+    if len(category) == 32 and all(c in "0123456789abcdefABCDEF" for c in category):
+        return category
+
+    api_url = f"{config.api_url}/table/kb_category"
+    query_parts = [f"label={category}"]
+    if knowledge_base:
+        if len(knowledge_base) == 32 and all(c in "0123456789abcdefABCDEF" for c in knowledge_base):
+            query_parts.append(f"kb_knowledge_base={knowledge_base}")
+        else:
+            query_parts.append(f"kb_knowledge_base.titleLIKE{knowledge_base}")
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params={
+                "sysparm_query": "^".join(query_parts),
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id,label",
+            },
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+        result = response.json().get("result", [])
+        if isinstance(result, list) and result:
+            return result[0].get("sys_id")
+    except requests.RequestException as e:
+        logger.warning("Category lookup failed: %s", e)
+    return None
+
+
+def list_articles_by_category(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ListArticlesByCategoryParams,
+) -> Dict[str, Any]:
+    """List knowledge articles belonging to a specific category.
+
+    Accepts a category name or sys_id.  When a name is given the tool first
+    resolves it to a sys_id via a kb_category lookup, then queries kb_knowledge.
+    The response includes richer metadata (author, view_count, keywords) compared
+    to the generic list_articles tool.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required category identifier.
+
+    Returns:
+        Dictionary with articles list, pagination metadata, and resolved category info.
+    """
+    category_sys_id = _resolve_category_sys_id(
+        config, auth_manager, params.category, params.knowledge_base
+    )
+    if not category_sys_id:
+        return {
+            "success": False,
+            "message": f"Category '{params.category}' not found",
+            "articles": [],
+            "count": 0,
+            "limit": params.limit,
+            "offset": params.offset,
+        }
+
+    api_url = f"{config.api_url}/table/kb_knowledge"
+
+    query_parts = [f"kb_category={category_sys_id}"]
+    if params.workflow_state:
+        query_parts.append(f"workflow_state={params.workflow_state}")
+
+    fields = "sys_id,short_description,kb_knowledge_base,kb_category,workflow_state,author,keywords,view_count,sys_created_on,sys_updated_on,article_type"
+    if params.include_body:
+        fields += ",text"
+
+    query_params = {
+        "sysparm_query": "^".join(query_parts),
+        "sysparm_limit": params.limit,
+        "sysparm_offset": params.offset,
+        "sysparm_display_value": "all",
+        "sysparm_fields": fields,
+    }
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params=query_params,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        json_response = response.json()
+        if not isinstance(json_response, dict) or "result" not in json_response:
+            return {
+                "success": False,
+                "message": "Unexpected response format from ServiceNow",
+                "articles": [],
+                "count": 0,
+                "limit": params.limit,
+                "offset": params.offset,
+            }
+
+        def _display(field) -> str:
+            if isinstance(field, dict):
+                return field.get("display_value", "")
+            return field or ""
+
+        articles = []
+        for item in json_response.get("result", []):
+            if not isinstance(item, dict):
+                continue
+            entry = {
+                "id": item.get("sys_id", ""),
+                "title": _display(item.get("short_description")),
+                "knowledge_base": _display(item.get("kb_knowledge_base")),
+                "category": _display(item.get("kb_category")),
+                "workflow_state": _display(item.get("workflow_state")),
+                "author": _display(item.get("author")),
+                "keywords": _display(item.get("keywords")),
+                "view_count": _display(item.get("view_count")),
+                "article_type": _display(item.get("article_type")),
+                "created": item.get("sys_created_on", ""),
+                "updated": item.get("sys_updated_on", ""),
+            }
+            if params.include_body:
+                entry["text"] = _display(item.get("text"))
+            articles.append(entry)
+
+        return _paginated_list_response(
+            articles,
+            params.limit,
+            params.offset,
+            "articles",
+            extra={
+                "message": f"Found {len(articles)} articles in category '{params.category}'",
+                "category_sys_id": category_sys_id,
+            },
+        )
+
+    except requests.RequestException as e:
+        logger.error("Failed to list articles by category: %s", e)
+        return {
+            "success": False,
+            "message": f"Failed to list articles by category: {_format_http_error(e)}",
+            "articles": [],
+            "count": 0,
+            "limit": params.limit,
+            "offset": params.offset,
+        }

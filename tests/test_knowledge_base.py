@@ -626,5 +626,279 @@ class TestKnowledgeBaseParams(unittest.TestCase):
         self.assertEqual("html", params.article_type)
 
 
+class TestListArticlesByCategory(unittest.TestCase):
+    """Tests for list_articles_by_category tool."""
+
+    def setUp(self):
+        auth_config = AuthConfig(
+            type=AuthType.BASIC,
+            basic=BasicAuthConfig(username="test_user", password="test_password"),
+        )
+        self.server_config = ServerConfig(
+            instance_url="https://test.service-now.com",
+            auth=auth_config,
+        )
+        self.auth_manager = MagicMock(spec=AuthManager)
+        self.auth_manager.get_headers.return_value = {
+            "Authorization": "Bearer test",
+            "Content-Type": "application/json",
+        }
+
+    def _make_category_response(self, sys_id="cat001", label="How-To"):
+        mock = MagicMock()
+        mock.json.return_value = {"result": [{"sys_id": sys_id, "label": label}]}
+        mock.raise_for_status = MagicMock()
+        return mock
+
+    def _make_articles_response(self, articles):
+        mock = MagicMock()
+        mock.json.return_value = {"result": articles}
+        mock.raise_for_status = MagicMock()
+        return mock
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_list_by_category_name_resolves_to_sys_id(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        mock_req.side_effect = [
+            self._make_category_response(sys_id="cat001", label="How-To"),
+            self._make_articles_response([
+                {
+                    "sys_id": "art001",
+                    "short_description": {"display_value": "Reset password"},
+                    "kb_knowledge_base": {"display_value": "IT KB"},
+                    "kb_category": {"display_value": "How-To"},
+                    "workflow_state": {"display_value": "published"},
+                    "author": {"display_value": "admin"},
+                    "keywords": {"display_value": "password,reset"},
+                    "view_count": {"display_value": "42"},
+                    "article_type": {"display_value": "html"},
+                    "sys_created_on": "2024-01-01 00:00:00",
+                    "sys_updated_on": "2024-06-01 00:00:00",
+                }
+            ]),
+        ]
+
+        params = ListArticlesByCategoryParams(category="How-To")
+        result = list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(1, result["count"])
+        self.assertEqual("art001", result["articles"][0]["id"])
+        self.assertEqual("Reset password", result["articles"][0]["title"])
+        self.assertEqual("cat001", result["category_sys_id"])
+        # Body should NOT be present unless include_body=True
+        self.assertNotIn("text", result["articles"][0])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_list_by_category_sys_id_skips_lookup(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        # 32-char hex sys_id should skip the category lookup GET
+        cat_sys_id = "a" * 32
+        mock_req.return_value = self._make_articles_response([])
+
+        params = ListArticlesByCategoryParams(category=cat_sys_id)
+        result = list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        # Only one request should have been made (no category lookup)
+        self.assertEqual(1, mock_req.call_count)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_category_not_found_returns_error(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        # Category lookup returns empty list
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_resp.raise_for_status = MagicMock()
+        mock_req.return_value = mock_resp
+
+        params = ListArticlesByCategoryParams(category="Nonexistent Category")
+        result = list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertEqual([], result["articles"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_include_body_adds_text_field(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        mock_req.side_effect = [
+            self._make_category_response(),
+            self._make_articles_response([
+                {
+                    "sys_id": "art002",
+                    "short_description": {"display_value": "VPN Setup"},
+                    "kb_knowledge_base": {"display_value": "IT KB"},
+                    "kb_category": {"display_value": "How-To"},
+                    "workflow_state": {"display_value": "published"},
+                    "author": {"display_value": "admin"},
+                    "keywords": {"display_value": "vpn"},
+                    "view_count": {"display_value": "10"},
+                    "article_type": {"display_value": "html"},
+                    "text": {"display_value": "<p>Steps to set up VPN</p>"},
+                    "sys_created_on": "2024-01-01 00:00:00",
+                    "sys_updated_on": "2024-06-01 00:00:00",
+                }
+            ]),
+        ]
+
+        params = ListArticlesByCategoryParams(category="How-To", include_body=True)
+        result = list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        self.assertIn("text", result["articles"][0])
+        self.assertEqual("<p>Steps to set up VPN</p>", result["articles"][0]["text"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_workflow_state_filter_applied(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        mock_req.side_effect = [
+            self._make_category_response(),
+            self._make_articles_response([]),
+        ]
+
+        params = ListArticlesByCategoryParams(category="How-To", workflow_state="published")
+        list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        # Second call is the articles request; verify query contains state filter
+        articles_call = mock_req.call_args_list[1]
+        query = articles_call[1]["params"]["sysparm_query"]
+        self.assertIn("workflow_state=published", query)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_http_error_on_articles_request(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        mock_req.side_effect = [
+            self._make_category_response(),
+            requests.RequestException("503 Service Unavailable"),
+        ]
+
+        params = ListArticlesByCategoryParams(category="How-To")
+        result = list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertIn("Failed to list articles", result["message"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_category_lookup_with_knowledge_base_filter(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        mock_req.side_effect = [
+            self._make_category_response(),
+            self._make_articles_response([]),
+        ]
+
+        params = ListArticlesByCategoryParams(category="How-To", knowledge_base="IT Knowledge Base")
+        list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        # First call is the category lookup; verify it includes KB filter
+        cat_call = mock_req.call_args_list[0]
+        query = cat_call[1]["params"]["sysparm_query"]
+        self.assertIn("kb_knowledge_base.titleLIKE", query)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_category_lookup_with_kb_sys_id(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        mock_req.side_effect = [
+            self._make_category_response(),
+            self._make_articles_response([]),
+        ]
+
+        kb_sys_id = "b" * 32
+        params = ListArticlesByCategoryParams(category="How-To", knowledge_base=kb_sys_id)
+        list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        cat_call = mock_req.call_args_list[0]
+        query = cat_call[1]["params"]["sysparm_query"]
+        self.assertIn(f"kb_knowledge_base={kb_sys_id}", query)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_unexpected_response_format(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        cat_sys_id = "c" * 32
+        # Articles request returns malformed response
+        bad_resp = MagicMock()
+        bad_resp.json.return_value = "not a dict"
+        bad_resp.raise_for_status = MagicMock()
+        mock_req.return_value = bad_resp
+
+        params = ListArticlesByCategoryParams(category=cat_sys_id)
+        result = list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertIn("Unexpected response format", result["message"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_pagination_metadata(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            ListArticlesByCategoryParams,
+            list_articles_by_category,
+        )
+
+        articles = [
+            {
+                "sys_id": f"art{i:03d}",
+                "short_description": {"display_value": f"Article {i}"},
+                "kb_knowledge_base": {"display_value": "IT KB"},
+                "kb_category": {"display_value": "How-To"},
+                "workflow_state": {"display_value": "published"},
+                "author": {"display_value": "admin"},
+                "keywords": {"display_value": ""},
+                "view_count": {"display_value": str(i)},
+                "article_type": {"display_value": "html"},
+                "sys_created_on": "2024-01-01 00:00:00",
+                "sys_updated_on": "2024-06-01 00:00:00",
+            }
+            for i in range(5)
+        ]
+        mock_req.side_effect = [
+            self._make_category_response(),
+            self._make_articles_response(articles),
+        ]
+
+        params = ListArticlesByCategoryParams(category="How-To", limit=5, offset=10)
+        result = list_articles_by_category(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(5, result["count"])
+        self.assertEqual(5, result["limit"])
+        self.assertEqual(10, result["offset"])
+
+
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

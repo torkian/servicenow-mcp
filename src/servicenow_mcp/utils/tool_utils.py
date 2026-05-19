@@ -190,6 +190,7 @@ from servicenow_mcp.tools.knowledge_base import (
     CreateArticleParams,
     CreateKnowledgeBaseParams,
     GetArticleParams,
+    ListArticlesByCategoryParams,
     ListArticlesParams,
     ListKnowledgeBasesParams,
     PublishArticleParams,
@@ -213,6 +214,9 @@ from servicenow_mcp.tools.knowledge_base import (
 )
 from servicenow_mcp.tools.knowledge_base import (
     list_articles as list_articles_tool,
+)
+from servicenow_mcp.tools.knowledge_base import (
+    list_articles_by_category as list_articles_by_category_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
     # list_categories aliased in function call
@@ -1026,6 +1030,17 @@ def get_tool_definitions(
             Dict[str, Any],  # Expects dict
             "List knowledge articles",
             "raw_dict",  # Tool returns raw dict
+        ),
+        "list_articles_by_category": (
+            list_articles_by_category_tool,
+            ListArticlesByCategoryParams,
+            Dict[str, Any],
+            (
+                "List knowledge articles within a specific category. "
+                "Accepts category name or sys_id; resolves name to sys_id automatically. "
+                "Returns richer metadata (author, view_count, keywords) than list_articles."
+            ),
+            "raw_dict",
         ),
         "get_article": (
             get_article_tool,

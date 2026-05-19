@@ -38,6 +38,7 @@ service_desk:
   # Knowledge Lookup
   - get_article
   - list_articles
+  - list_articles_by_category
   # Asset Lookup & Provisioning
   - list_assets
   - get_asset
@@ -102,6 +103,7 @@ knowledge_author:
   - update_article
   - publish_article
   - list_articles
+  - list_articles_by_category
   - get_article
 
 platform_developer:
@@ -296,6 +298,7 @@ full:
   - update_article
   - publish_article
   - list_articles
+  - list_articles_by_category
   - get_article
   # User Management
   - create_user

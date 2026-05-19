@@ -66,6 +66,7 @@ from servicenow_mcp.tools.knowledge_base import (
     create_knowledge_base,
     get_article,
     list_articles,
+    list_articles_by_category,
     list_knowledge_bases,
     publish_article,
     update_article,
@@ -286,6 +287,7 @@ __all__ = [
     "update_article",
     "publish_article",
     "list_articles",
+    "list_articles_by_category",
     "get_article",
     
     # User management tools
