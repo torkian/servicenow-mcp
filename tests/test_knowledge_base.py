@@ -900,5 +900,292 @@ class TestListArticlesByCategory(unittest.TestCase):
         self.assertEqual(10, result["offset"])
 
 
+class TestCreateKnowledgeArticle(unittest.TestCase):
+    """Tests for create_knowledge_article tool."""
+
+    def setUp(self):
+        auth_config = AuthConfig(
+            type=AuthType.BASIC,
+            basic=BasicAuthConfig(username="test_user", password="test_password"),
+        )
+        self.server_config = ServerConfig(
+            instance_url="https://test.service-now.com",
+            auth=auth_config,
+        )
+        self.auth_manager = MagicMock(spec=AuthManager)
+        self.auth_manager.get_headers.return_value = {"Authorization": "Bearer test"}
+
+    def _kb_response(self, sys_id="kb001"):
+        m = MagicMock()
+        m.json.return_value = {"result": [{"sys_id": sys_id, "title": "IT KB"}]}
+        m.raise_for_status = MagicMock()
+        return m
+
+    def _cat_response(self, sys_id="cat001"):
+        m = MagicMock()
+        m.json.return_value = {"result": [{"sys_id": sys_id, "label": "How-To"}]}
+        m.raise_for_status = MagicMock()
+        return m
+
+    def _article_response(self, sys_id="art001", title="My Article", state="draft"):
+        m = MagicMock()
+        m.json.return_value = {
+            "result": {
+                "sys_id": sys_id,
+                "short_description": title,
+                "workflow_state": state,
+            }
+        }
+        m.raise_for_status = MagicMock()
+        return m
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_create_with_names_resolves_and_posts(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        mock_req.side_effect = [
+            self._kb_response("kb001"),
+            self._cat_response("cat001"),
+            self._article_response("art001", "My Article"),
+        ]
+
+        params = CreateKnowledgeArticleParams(
+            title="My Article",
+            text="<p>Body text</p>",
+            knowledge_base="IT KB",
+            category="How-To",
+        )
+        result = create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual("art001", result.article_id)
+        self.assertEqual("My Article", result.article_title)
+        self.assertEqual("draft", result.workflow_state)
+        self.assertEqual(3, mock_req.call_count)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_kb_sys_id_skips_kb_lookup(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        kb_sys_id = "a" * 32
+        mock_req.side_effect = [
+            self._cat_response("cat001"),
+            self._article_response(),
+        ]
+
+        params = CreateKnowledgeArticleParams(
+            title="Article",
+            text="Body",
+            knowledge_base=kb_sys_id,
+            category="How-To",
+        )
+        result = create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        # Only 2 calls: category lookup + POST
+        self.assertEqual(2, mock_req.call_count)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_both_sys_ids_skips_both_lookups(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        kb_sys_id = "a" * 32
+        cat_sys_id = "b" * 32
+        mock_req.return_value = self._article_response()
+
+        params = CreateKnowledgeArticleParams(
+            title="Article",
+            text="Body",
+            knowledge_base=kb_sys_id,
+            category=cat_sys_id,
+        )
+        result = create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        # Only 1 call: the POST
+        self.assertEqual(1, mock_req.call_count)
+        post_call = mock_req.call_args
+        self.assertEqual("POST", post_call[0][0])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_optional_fields_sent_in_body(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        kb_sys_id = "a" * 32
+        cat_sys_id = "b" * 32
+        mock_req.return_value = self._article_response()
+
+        params = CreateKnowledgeArticleParams(
+            title="Article",
+            text="Body",
+            knowledge_base=kb_sys_id,
+            category=cat_sys_id,
+            keywords="tag1,tag2",
+            author="user001",
+            valid_to="2026-12-31",
+            flagged=True,
+            disable_commenting=True,
+            disable_suggesting=False,
+        )
+        create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual("tag1,tag2", body["keywords"])
+        self.assertEqual("user001", body["author"])
+        self.assertEqual("2026-12-31", body["valid_to"])
+        self.assertEqual("true", body["flagged"])
+        self.assertEqual("true", body["disable_commenting"])
+        self.assertEqual("false", body["disable_suggesting"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_publish_flag_sets_workflow_state(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        kb_sys_id = "a" * 32
+        cat_sys_id = "b" * 32
+        mock_req.return_value = self._article_response(state="published")
+
+        params = CreateKnowledgeArticleParams(
+            title="Article",
+            text="Body",
+            knowledge_base=kb_sys_id,
+            category=cat_sys_id,
+            publish=True,
+        )
+        result = create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual("published", body["workflow_state"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_kb_not_found_returns_failure(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        not_found = MagicMock()
+        not_found.json.return_value = {"result": []}
+        not_found.raise_for_status = MagicMock()
+        mock_req.return_value = not_found
+
+        params = CreateKnowledgeArticleParams(
+            title="Article",
+            text="Body",
+            knowledge_base="Nonexistent KB",
+            category="How-To",
+        )
+        result = create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("Nonexistent KB", result.message)
+        self.assertIn("not found", result.message)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_category_not_found_returns_failure(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        kb_sys_id = "a" * 32
+        not_found = MagicMock()
+        not_found.json.return_value = {"result": []}
+        not_found.raise_for_status = MagicMock()
+        mock_req.return_value = not_found
+
+        params = CreateKnowledgeArticleParams(
+            title="Article",
+            text="Body",
+            knowledge_base=kb_sys_id,
+            category="Bad Category",
+        )
+        result = create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("Bad Category", result.message)
+        self.assertIn("not found", result.message)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_http_error_on_post(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        kb_sys_id = "a" * 32
+        cat_sys_id = "b" * 32
+        mock_req.side_effect = requests.RequestException("500 Server Error")
+
+        params = CreateKnowledgeArticleParams(
+            title="Article",
+            text="Body",
+            knowledge_base=kb_sys_id,
+            category=cat_sys_id,
+        )
+        result = create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        self.assertFalse(result.success)
+        self.assertIn("Failed to create knowledge article", result.message)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_correct_fields_in_post_body(self, mock_req):
+        from servicenow_mcp.tools.knowledge_base import (
+            CreateKnowledgeArticleParams,
+            create_knowledge_article,
+        )
+
+        kb_sys_id = "a" * 32
+        cat_sys_id = "b" * 32
+        mock_req.return_value = self._article_response()
+
+        params = CreateKnowledgeArticleParams(
+            title="My Title",
+            text="<p>Content</p>",
+            knowledge_base=kb_sys_id,
+            category=cat_sys_id,
+            article_type="wiki",
+        )
+        create_knowledge_article(self.server_config, self.auth_manager, params)
+
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual("My Title", body["short_description"])
+        self.assertEqual("<p>Content</p>", body["text"])
+        self.assertEqual(kb_sys_id, body["kb_knowledge_base"])
+        self.assertEqual(cat_sys_id, body["kb_category"])
+        self.assertEqual("wiki", body["article_type"])
+        self.assertNotIn("workflow_state", body)
+
+    def test_params_defaults(self):
+        from servicenow_mcp.tools.knowledge_base import CreateKnowledgeArticleParams
+
+        params = CreateKnowledgeArticleParams(
+            title="T", text="B", knowledge_base="kb", category="cat"
+        )
+        self.assertEqual("html", params.article_type)
+        self.assertFalse(params.publish)
+        self.assertIsNone(params.author)
+        self.assertIsNone(params.valid_to)
+        self.assertIsNone(params.flagged)
+        self.assertIsNone(params.disable_commenting)
+        self.assertIsNone(params.disable_suggesting)
+
+
 if __name__ == "__main__":
     unittest.main()

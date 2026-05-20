@@ -100,6 +100,7 @@ knowledge_author:
   - list_categories  # KB specific category tool
   # Article Lifecycle
   - create_article
+  - create_knowledge_article
   - update_article
   - publish_article
   - list_articles
@@ -295,6 +296,7 @@ full:
   - create_category # KB specific
   - list_categories # KB specific
   - create_article
+  - create_knowledge_article
   - update_article
   - publish_article
   - list_articles

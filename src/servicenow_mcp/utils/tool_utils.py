@@ -188,6 +188,7 @@ from servicenow_mcp.tools.incident_task_tools import (
 )
 from servicenow_mcp.tools.knowledge_base import (
     CreateArticleParams,
+    CreateKnowledgeArticleParams,
     CreateKnowledgeBaseParams,
     GetArticleParams,
     ListArticlesByCategoryParams,
@@ -204,6 +205,9 @@ from servicenow_mcp.tools.knowledge_base import (
 )
 from servicenow_mcp.tools.knowledge_base import (
     create_article as create_article_tool,
+)
+from servicenow_mcp.tools.knowledge_base import (
+    create_knowledge_article as create_knowledge_article_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
     # create_category aliased in function call
@@ -1009,6 +1013,17 @@ def get_tool_definitions(
             str,  # Expects JSON string
             "Create a new knowledge article",
             "json_dict",  # Tool returns Pydantic model
+        ),
+        "create_knowledge_article": (
+            create_knowledge_article_tool,
+            CreateKnowledgeArticleParams,
+            str,
+            (
+                "Create a knowledge article, automatically resolving knowledge base and category "
+                "by name or sys_id. Supports extra fields: author, expiry date (valid_to), "
+                "flagged status, commenting and suggesting controls, and optional immediate publish."
+            ),
+            "json_dict",
         ),
         "update_article": (
             update_article_tool,

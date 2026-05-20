@@ -146,6 +146,23 @@ class ListArticlesByCategoryParams(BaseModel):
     offset: int = Field(0, description="Offset for pagination")
 
 
+class CreateKnowledgeArticleParams(BaseModel):
+    """Parameters for creating a knowledge article with automatic name resolution."""
+
+    title: str = Field(..., description="Article title (stored as short_description in ServiceNow)")
+    text: str = Field(..., description="Article body. Supports HTML (default) or wiki markup depending on article_type")
+    knowledge_base: str = Field(..., description="Knowledge base name or sys_id to create the article in")
+    category: str = Field(..., description="Category name or sys_id for the article")
+    keywords: Optional[str] = Field(None, description="Comma-separated search keywords")
+    article_type: Optional[str] = Field("html", description="Content type: 'html' (default) or 'wiki'")
+    author: Optional[str] = Field(None, description="sys_id or username of the article author")
+    valid_to: Optional[str] = Field(None, description="Expiry date for the article in YYYY-MM-DD format")
+    flagged: Optional[bool] = Field(None, description="Flag the article for review")
+    disable_commenting: Optional[bool] = Field(None, description="Disable user comments on the article")
+    disable_suggesting: Optional[bool] = Field(None, description="Disable user suggestions on the article")
+    publish: bool = Field(False, description="Publish the article immediately after creation")
+
+
 def create_knowledge_base(
     config: ServerConfig,
     auth_manager: AuthManager,
@@ -983,6 +1000,40 @@ def list_categories(
         }
 
 
+def _resolve_kb_sys_id(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    knowledge_base: str,
+) -> Optional[str]:
+    """Resolve a knowledge base name or sys_id to a sys_id.
+
+    Returns the sys_id string, or None if not found.
+    """
+    if len(knowledge_base) == 32 and all(c in "0123456789abcdefABCDEF" for c in knowledge_base):
+        return knowledge_base
+
+    api_url = f"{config.api_url}/table/kb_knowledge_base"
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params={
+                "sysparm_query": f"titleLIKE{knowledge_base}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id,title",
+            },
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+        result = response.json().get("result", [])
+        if isinstance(result, list) and result:
+            return result[0].get("sys_id")
+    except requests.RequestException as e:
+        logger.warning("KB lookup failed: %s", e)
+    return None
+
+
 def _resolve_category_sys_id(
     config: ServerConfig,
     auth_manager: AuthManager,
@@ -1145,3 +1196,90 @@ def list_articles_by_category(
             "limit": params.limit,
             "offset": params.offset,
         }
+
+
+def create_knowledge_article(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateKnowledgeArticleParams,
+) -> ArticleResponse:
+    """Create a knowledge article, resolving KB and category by name or sys_id.
+
+    Unlike create_article, this tool accepts knowledge base and category names
+    (in addition to sys_ids), resolves them automatically, and supports extra
+    fields: author, expiry date, flagged status, commenting/suggesting controls,
+    and an optional immediate-publish flag.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Article creation parameters.
+
+    Returns:
+        ArticleResponse with the created article details.
+    """
+    kb_sys_id = _resolve_kb_sys_id(config, auth_manager, params.knowledge_base)
+    if not kb_sys_id:
+        return ArticleResponse(
+            success=False,
+            message=f"Knowledge base '{params.knowledge_base}' not found",
+        )
+
+    category_sys_id = _resolve_category_sys_id(config, auth_manager, params.category, kb_sys_id)
+    if not category_sys_id:
+        return ArticleResponse(
+            success=False,
+            message=f"Category '{params.category}' not found in knowledge base '{params.knowledge_base}'",
+        )
+
+    api_url = f"{config.api_url}/table/kb_knowledge"
+
+    data: Dict[str, Any] = {
+        "short_description": params.title,
+        "text": params.text,
+        "kb_knowledge_base": kb_sys_id,
+        "kb_category": category_sys_id,
+        "article_type": params.article_type or "html",
+    }
+
+    if params.keywords:
+        data["keywords"] = params.keywords
+    if params.author:
+        data["author"] = params.author
+    if params.valid_to:
+        data["valid_to"] = params.valid_to
+    if params.flagged is not None:
+        data["flagged"] = str(params.flagged).lower()
+    if params.disable_commenting is not None:
+        data["disable_commenting"] = str(params.disable_commenting).lower()
+    if params.disable_suggesting is not None:
+        data["disable_suggesting"] = str(params.disable_suggesting).lower()
+    if params.publish:
+        data["workflow_state"] = "published"
+
+    try:
+        response = _make_request(
+            "POST",
+            api_url,
+            json=data,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        result = response.json().get("result", {})
+
+        return ArticleResponse(
+            success=True,
+            message="Knowledge article created successfully",
+            article_id=result.get("sys_id"),
+            article_title=result.get("short_description"),
+            workflow_state=result.get("workflow_state"),
+        )
+
+    except requests.RequestException as e:
+        logger.error("Failed to create knowledge article: %s", e)
+        return ArticleResponse(
+            success=False,
+            message=f"Failed to create knowledge article: {_format_http_error(e)}",
+        )

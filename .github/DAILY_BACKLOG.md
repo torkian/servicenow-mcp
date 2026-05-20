@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add create_knowledge_article tool
+(empty — add new items here)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -47,3 +47,4 @@
 41. 2026-05-17 — Add list_change_tasks and create_change_task tools (change_task table; number/sys_id resolver; state filter + pagination for list; full optional fields for create; registered in change_coordinator and full packages; 20 new tests; 1099 total tests passing; 91% total coverage)
 42. 2026-05-18 — Add get_ci_by_name lookup shortcut (nameLIKE substring match with exact=true equality mode; optional ci_class scoping; pagination with has_more; registered in system_administrator and full packages; 13 new tests; 1112 total tests passing; 91% total coverage)
 43. 2026-05-19 — Add list_articles_by_category tool (category name-to-sys_id resolver; optional KB scoping; richer metadata: author/view_count/keywords; include_body flag; registered in service_desk, knowledge_author, full packages; 10 new tests; 1122 total tests passing; 91% total coverage)
+44. 2026-05-20 — Add create_knowledge_article tool (name/sys_id resolver for KB and category; extra fields: author, valid_to, flagged, disable_commenting, disable_suggesting; optional immediate publish flag; _resolve_kb_sys_id helper; registered in knowledge_author and full packages; 10 new tests; 1132 total tests passing; 91% total coverage)
