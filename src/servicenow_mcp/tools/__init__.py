@@ -202,7 +202,12 @@ from servicenow_mcp.tools.sla_tools import (
     get_sla,
     list_slas,
 )
-# from servicenow_mcp.tools.request_tools import create_request, update_request
+from servicenow_mcp.tools.request_tools import (
+    create_request,
+    get_request,
+    list_requests,
+    update_request,
+)
 
 __all__ = [
     # Incident tools
@@ -401,7 +406,9 @@ __all__ = [
     # User email lookup
     "get_user_by_email",
 
-    # Future tools
-    # "create_request",
-    # "update_request",
+    # Service Request tools
+    "list_requests",
+    "get_request",
+    "create_request",
+    "update_request",
 ]

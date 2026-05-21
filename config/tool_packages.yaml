@@ -43,6 +43,10 @@ service_desk:
   - list_assets
   - get_asset
   - create_asset
+  # Service Requests
+  - list_requests
+  - get_request
+  - create_request
 
 catalog_builder:
   # Core Catalog
@@ -385,3 +389,8 @@ full:
   - list_time_cards
   - create_time_card
   - update_time_card
+  # Service Request Management
+  - list_requests
+  - get_request
+  - create_request
+  - update_request

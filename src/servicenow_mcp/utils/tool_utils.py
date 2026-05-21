@@ -517,6 +517,18 @@ from servicenow_mcp.tools.attachment_tools import (
     get_attachment as get_attachment_tool,
     list_attachments as list_attachments_tool,
 )
+from servicenow_mcp.tools.request_tools import (
+    CreateRequestParams,
+    GetRequestParams,
+    ListRequestsParams,
+    UpdateRequestParams,
+)
+from servicenow_mcp.tools.request_tools import (
+    create_request as create_request_tool,
+    get_request as get_request_tool,
+    list_requests as list_requests_tool,
+    update_request as update_request_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1603,6 +1615,50 @@ def get_tool_definitions(
             DeleteAttachmentParams,
             Dict[str, Any],
             "Permanently delete a file attachment from ServiceNow by its sys_id.",
+            "raw_dict",
+        ),
+        # Service Request Tools
+        "list_requests": (
+            list_requests_tool,
+            ListRequestsParams,
+            Dict[str, Any],
+            (
+                "List service request records from the ServiceNow sc_request table. "
+                "Filter by state, requested_for, assigned_to, assignment_group, approval "
+                "status, or free-text query. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_request": (
+            get_request_tool,
+            GetRequestParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single service request from the sc_request table. "
+                "Accepts a request number (e.g. REQ0010001) or a 32-character sys_id."
+            ),
+            "raw_dict",
+        ),
+        "create_request": (
+            create_request_tool,
+            CreateRequestParams,
+            Dict[str, Any],
+            (
+                "Create a new service request in the ServiceNow sc_request table. "
+                "Requires a short_description; optionally accepts requested_for, "
+                "assignment_group, priority, urgency, impact, due_date, and comments."
+            ),
+            "raw_dict",
+        ),
+        "update_request": (
+            update_request_tool,
+            UpdateRequestParams,
+            Dict[str, Any],
+            (
+                "Update an existing service request in the sc_request table by number or "
+                "sys_id. Supply only the fields that need to change. Guards against "
+                "empty-body calls."
+            ),
             "raw_dict",
         ),
     }
