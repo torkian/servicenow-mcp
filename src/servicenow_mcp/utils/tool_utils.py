@@ -81,12 +81,14 @@ from servicenow_mcp.tools.catalog_variables import (
 from servicenow_mcp.tools.change_tools import (
     AddChangeTaskParams,
     ApproveChangeParams,
+    CancelChangeRequestParams,
     CreateChangeRequestParams,
     CreateChangeTaskParams,
     GetChangeRequestDetailsParams,
     ListChangeRequestsParams,
     ListChangeTasksParams,
     RejectChangeParams,
+    ReopenChangeRequestParams,
     SubmitChangeForApprovalParams,
     UpdateChangeRequestParams,
 )
@@ -95,6 +97,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     approve_change as approve_change_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    cancel_change_request as cancel_change_request_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     create_change_request as create_change_request_tool,
@@ -113,6 +118,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     reject_change as reject_change_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    reopen_change_request as reopen_change_request_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     submit_change_for_approval as submit_change_for_approval_tool,
@@ -812,6 +820,20 @@ def get_tool_definitions(
             str,
             "Reject a change request",
             "str",  # Tool returns simple message
+        ),
+        "cancel_change_request": (
+            cancel_change_request_tool,
+            CancelChangeRequestParams,
+            str,
+            "Cancel a change request",
+            "json",
+        ),
+        "reopen_change_request": (
+            reopen_change_request_tool,
+            ReopenChangeRequestParams,
+            str,
+            "Reopen a cancelled or closed change request",
+            "json",
         ),
         # Workflow Management Tools
         "list_workflows": (

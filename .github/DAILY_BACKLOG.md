@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add cancel_change_request and reopen_change_request lifecycle tools to change_tools.py
-2. Add delete_incident tool to complete incident CRUD
+1. Add delete_incident tool to complete incident CRUD
 3. Add get_request_items tool (sc_req_item table; lists items within an sc_request)
 4. Add list_sla_breaches tool (task_sla table; filter by breach/warning state, table, task)
 5. Add tests for sla_tools.py (currently 94% but no dedicated test file)
@@ -53,3 +52,4 @@
 43. 2026-05-19 — Add list_articles_by_category tool (category name-to-sys_id resolver; optional KB scoping; richer metadata: author/view_count/keywords; include_body flag; registered in service_desk, knowledge_author, full packages; 10 new tests; 1122 total tests passing; 91% total coverage)
 44. 2026-05-20 — Add create_knowledge_article tool (name/sys_id resolver for KB and category; extra fields: author, valid_to, flagged, disable_commenting, disable_suggesting; optional immediate publish flag; _resolve_kb_sys_id helper; registered in knowledge_author and full packages; 10 new tests; 1132 total tests passing; 91% total coverage)
 45. 2026-05-21 — Implement service request management tools (list_requests, get_request, create_request, update_request on sc_request table; number/sys_id dual lookup; reference-field normalisation; state/approval/requested_for filters; pagination; registered in service_desk and full packages; 30 new tests; 1162 total tests passing; 91% total coverage)
+46. 2026-05-22 — Add cancel_change_request and reopen_change_request lifecycle tools (state=-1 for cancel, configurable state for reopen; number/sys_id resolver; optional work notes; registered in change_coordinator and full packages; 17 new tests; 1179 total tests passing; 91% total coverage)

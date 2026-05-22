@@ -1,4 +1,4 @@
-"""Tests for list_change_tasks and create_change_task tools."""
+"""Tests for list_change_tasks, create_change_task, cancel_change_request, and reopen_change_request tools."""
 
 import unittest
 from unittest.mock import MagicMock, patch
@@ -7,11 +7,15 @@ import requests
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.change_tools import (
+    CancelChangeRequestParams,
     CreateChangeTaskParams,
     ListChangeTasksParams,
+    ReopenChangeRequestParams,
     _resolve_change_request_sys_id,
+    cancel_change_request,
     create_change_task,
     list_change_tasks,
+    reopen_change_request,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
@@ -270,6 +274,179 @@ class TestCreateChangeTask(unittest.TestCase):
                 short_description="Test",
                 planned_start_date="not-a-date",
             )
+
+
+class TestCancelChangeRequest(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth()
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_cancel_by_sys_id(self, mock_req):
+        record = {"sys_id": FAKE_SYS_ID, "number": "CHG0001234", "state": "-1"}
+        mock_req.return_value = _ok({"result": record})
+
+        result = cancel_change_request(self.auth, self.config, {"change_id": FAKE_SYS_ID})
+
+        self.assertTrue(result["success"])
+        self.assertIn("CHG0001234", result["message"])
+        self.assertEqual(result["change_request"]["state"], "-1")
+
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["state"], "-1")
+        self.assertNotIn("work_notes", body)
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_cancel_with_reason(self, mock_req):
+        record = {"sys_id": FAKE_SYS_ID, "number": "CHG0001234", "state": "-1"}
+        mock_req.return_value = _ok({"result": record})
+
+        result = cancel_change_request(
+            self.auth,
+            self.config,
+            {"change_id": FAKE_SYS_ID, "cancellation_reason": "No longer needed"},
+        )
+
+        self.assertTrue(result["success"])
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["work_notes"], "No longer needed")
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_cancel_by_number_resolves(self, mock_req):
+        record = {"sys_id": FAKE_SYS_ID, "number": FAKE_CHG_NUMBER, "state": "-1"}
+        mock_req.side_effect = [
+            _ok({"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _ok({"result": record}),
+        ]
+
+        result = cancel_change_request(self.auth, self.config, {"change_id": FAKE_CHG_NUMBER})
+
+        self.assertTrue(result["success"])
+        patch_kwargs = mock_req.call_args[1]
+        self.assertIn(FAKE_SYS_ID, patch_kwargs["url"] if "url" in patch_kwargs else mock_req.call_args[0][1])
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_cancel_not_found(self, mock_req):
+        mock_req.return_value = _ok({"result": []})
+
+        result = cancel_change_request(self.auth, self.config, {"change_id": FAKE_CHG_NUMBER})
+
+        self.assertFalse(result["success"])
+        self.assertIn(FAKE_CHG_NUMBER, result["message"])
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_cancel_api_error(self, mock_req):
+        mock_req.side_effect = requests.exceptions.RequestException("network fail")
+
+        result = cancel_change_request(self.auth, self.config, {"change_id": FAKE_SYS_ID})
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error cancelling change request", result["message"])
+
+    def test_cancel_missing_change_id(self):
+        result = cancel_change_request(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    def test_cancel_params_model(self):
+        p = CancelChangeRequestParams(change_id="CHG0001")
+        self.assertEqual(p.change_id, "CHG0001")
+        self.assertIsNone(p.cancellation_reason)
+
+    def test_cancel_params_with_reason(self):
+        p = CancelChangeRequestParams(change_id="CHG0001", cancellation_reason="Project shelved")
+        self.assertEqual(p.cancellation_reason, "Project shelved")
+
+
+class TestReopenChangeRequest(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth()
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_reopen_defaults_to_new(self, mock_req):
+        record = {"sys_id": FAKE_SYS_ID, "number": "CHG0001234", "state": "-5"}
+        mock_req.return_value = _ok({"result": record})
+
+        result = reopen_change_request(self.auth, self.config, {"change_id": FAKE_SYS_ID})
+
+        self.assertTrue(result["success"])
+        self.assertIn("New", result["message"])
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["state"], "-5")
+        self.assertNotIn("work_notes", body)
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_reopen_to_assess(self, mock_req):
+        record = {"sys_id": FAKE_SYS_ID, "number": "CHG0001234", "state": "-4"}
+        mock_req.return_value = _ok({"result": record})
+
+        result = reopen_change_request(
+            self.auth, self.config, {"change_id": FAKE_SYS_ID, "state": "-4"}
+        )
+
+        self.assertTrue(result["success"])
+        self.assertIn("Assess", result["message"])
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["state"], "-4")
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_reopen_with_work_notes(self, mock_req):
+        record = {"sys_id": FAKE_SYS_ID, "number": "CHG0001234", "state": "-5"}
+        mock_req.return_value = _ok({"result": record})
+
+        result = reopen_change_request(
+            self.auth,
+            self.config,
+            {"change_id": FAKE_SYS_ID, "work_notes": "Reopening after review"},
+        )
+
+        self.assertTrue(result["success"])
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["work_notes"], "Reopening after review")
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_reopen_by_number_resolves(self, mock_req):
+        record = {"sys_id": FAKE_SYS_ID, "number": FAKE_CHG_NUMBER, "state": "-5"}
+        mock_req.side_effect = [
+            _ok({"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _ok({"result": record}),
+        ]
+
+        result = reopen_change_request(self.auth, self.config, {"change_id": FAKE_CHG_NUMBER})
+
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_reopen_not_found(self, mock_req):
+        mock_req.return_value = _ok({"result": []})
+
+        result = reopen_change_request(self.auth, self.config, {"change_id": FAKE_CHG_NUMBER})
+
+        self.assertFalse(result["success"])
+        self.assertIn(FAKE_CHG_NUMBER, result["message"])
+
+    @patch("servicenow_mcp.tools.change_tools._make_request")
+    def test_reopen_api_error(self, mock_req):
+        mock_req.side_effect = requests.exceptions.RequestException("network fail")
+
+        result = reopen_change_request(self.auth, self.config, {"change_id": FAKE_SYS_ID})
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error reopening change request", result["message"])
+
+    def test_reopen_missing_change_id(self):
+        result = reopen_change_request(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    def test_reopen_params_defaults(self):
+        p = ReopenChangeRequestParams(change_id="CHG0001")
+        self.assertEqual(p.state, "-5")
+        self.assertIsNone(p.work_notes)
+
+    def test_reopen_params_custom_state(self):
+        p = ReopenChangeRequestParams(change_id="CHG0001", state="-4", work_notes="See notes")
+        self.assertEqual(p.state, "-4")
+        self.assertEqual(p.work_notes, "See notes")
 
 
 if __name__ == "__main__":

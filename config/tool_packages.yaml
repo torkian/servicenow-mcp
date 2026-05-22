@@ -89,6 +89,8 @@ change_coordinator:
   - submit_change_for_approval
   - approve_change
   - reject_change
+  - cancel_change_request
+  - reopen_change_request
   # Problem Management (changes often linked to problems)
   - list_problems
   - get_problem
@@ -266,6 +268,8 @@ full:
   - submit_change_for_approval
   - approve_change
   - reject_change
+  - cancel_change_request
+  - reopen_change_request
   # Workflow
   - list_workflows
   - get_workflow_details

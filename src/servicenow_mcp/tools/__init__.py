@@ -29,12 +29,14 @@ from servicenow_mcp.tools.catalog_variables import (
 from servicenow_mcp.tools.change_tools import (
     add_change_task,
     approve_change,
+    cancel_change_request,
     create_change_request,
     create_change_task,
     get_change_request_details,
     list_change_requests,
     list_change_tasks,
     reject_change,
+    reopen_change_request,
     submit_change_for_approval,
     update_change_request,
 )
@@ -252,6 +254,8 @@ __all__ = [
     "submit_change_for_approval",
     "approve_change",
     "reject_change",
+    "cancel_change_request",
+    "reopen_change_request",
     
     # Workflow management tools
     "list_workflows",

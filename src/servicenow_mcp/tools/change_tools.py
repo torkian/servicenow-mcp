@@ -958,6 +958,135 @@ def create_change_task(
         return {"success": False, "message": f"Error creating change task: {_format_http_error(e)}"}
 
 
+class CancelChangeRequestParams(BaseModel):
+    """Parameters for cancelling a change request."""
+
+    change_id: str = Field(
+        ...,
+        description="Change request sys_id or number (e.g. CHG0001234) to cancel",
+    )
+    cancellation_reason: Optional[str] = Field(
+        None, description="Reason for cancellation (added as work notes)"
+    )
+
+
+class ReopenChangeRequestParams(BaseModel):
+    """Parameters for reopening a cancelled or closed change request."""
+
+    change_id: str = Field(
+        ...,
+        description="Change request sys_id or number (e.g. CHG0001234) to reopen",
+    )
+    state: str = Field(
+        "-5",
+        description="Target state to reopen to: '-5' = New (default), '-4' = Assess",
+    )
+    work_notes: Optional[str] = Field(
+        None, description="Work notes to add when reopening"
+    )
+
+
+def cancel_change_request(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Cancel a change request by setting its state to Cancelled."""
+    result = _unwrap_and_validate_params(
+        params, CancelChangeRequestParams, required_fields=["change_id"]
+    )
+    if not result["success"]:
+        return result
+
+    validated: CancelChangeRequestParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+    headers["Content-Type"] = "application/json"
+
+    change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_id)
+    if not change_sys_id:
+        return {"success": False, "message": f"Change request not found: {validated.change_id}"}
+
+    body: Dict[str, Any] = {"state": "-1"}
+    if validated.cancellation_reason:
+        body["work_notes"] = validated.cancellation_reason
+
+    url = f"{instance_url}/api/now/table/change_request/{change_sys_id}"
+    try:
+        resp = _make_request("PATCH", url, json=body, headers=headers)
+        resp.raise_for_status()
+        record = resp.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change request cancelled: {record.get('number', change_sys_id)}",
+            "change_request": {
+                "sys_id": record.get("sys_id"),
+                "number": record.get("number"),
+                "state": record.get("state"),
+            },
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error cancelling change request: {e}")
+        return {"success": False, "message": f"Error cancelling change request: {_format_http_error(e)}"}
+
+
+def reopen_change_request(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Reopen a cancelled or closed change request by setting its state back to New or Assess."""
+    result = _unwrap_and_validate_params(
+        params, ReopenChangeRequestParams, required_fields=["change_id"]
+    )
+    if not result["success"]:
+        return result
+
+    validated: ReopenChangeRequestParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+    headers["Content-Type"] = "application/json"
+
+    change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_id)
+    if not change_sys_id:
+        return {"success": False, "message": f"Change request not found: {validated.change_id}"}
+
+    body: Dict[str, Any] = {"state": validated.state}
+    if validated.work_notes:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}/api/now/table/change_request/{change_sys_id}"
+    try:
+        resp = _make_request("PATCH", url, json=body, headers=headers)
+        resp.raise_for_status()
+        record = resp.json().get("result", {})
+        state_label = "New" if validated.state == "-5" else "Assess"
+        return {
+            "success": True,
+            "message": f"Change request reopened (state → {state_label}): {record.get('number', change_sys_id)}",
+            "change_request": {
+                "sys_id": record.get("sys_id"),
+                "number": record.get("number"),
+                "state": record.get("state"),
+            },
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error reopening change request: {e}")
+        return {"success": False, "message": f"Error reopening change request: {_format_http_error(e)}"}
+
+
 def reject_change(
     auth_manager: AuthManager,
     server_config: ServerConfig,
