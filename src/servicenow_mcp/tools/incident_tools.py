@@ -84,6 +84,14 @@ class ReopenIncidentParams(BaseModel):
     work_notes: Optional[str] = Field(None, description="Work notes to add when reopening")
 
 
+class DeleteIncidentParams(BaseModel):
+    """Parameters for deleting an incident."""
+
+    incident_id: str = Field(
+        ..., description="Incident number (e.g. INC0010001) or sys_id to delete"
+    )
+
+
 class ListIncidentsParams(BaseModel):
     """Parameters for listing incidents."""
     
@@ -541,6 +549,79 @@ def reopen_incident(
         return IncidentResponse(
             success=False,
             message=f"Failed to reopen incident: {_format_http_error(e)}",
+        )
+
+
+def delete_incident(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: DeleteIncidentParams,
+) -> IncidentResponse:
+    """Permanently delete an incident record from ServiceNow.
+
+    Resolves incident number to sys_id when needed, then issues DELETE on
+    /api/now/table/incident/{sys_id}.  Returns success on 204, failure on 404
+    or any HTTP/network error.
+    """
+    incident_id = params.incident_id
+    if len(incident_id) == 32 and all(c in "0123456789abcdef" for c in incident_id):
+        api_url = f"{config.api_url}/table/incident/{incident_id}"
+        resolved_sys_id = incident_id
+    else:
+        try:
+            query_url = f"{config.api_url}/table/incident"
+            query_params = {
+                "sysparm_query": f"number={incident_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id,number",
+            }
+            response = _make_request(
+                "GET",
+                query_url,
+                params=query_params,
+                headers=auth_manager.get_headers(),
+                timeout=config.timeout,
+            )
+            response.raise_for_status()
+            result = response.json().get("result", [])
+            if not result:
+                return IncidentResponse(
+                    success=False,
+                    message=f"Incident not found: {incident_id}",
+                )
+            resolved_sys_id = result[0].get("sys_id")
+            api_url = f"{config.api_url}/table/incident/{resolved_sys_id}"
+        except requests.RequestException as e:
+            logger.error(f"Failed to find incident: {e}")
+            return IncidentResponse(
+                success=False,
+                message=f"Failed to find incident: {_format_http_error(e)}",
+            )
+
+    try:
+        response = _make_request(
+            "DELETE",
+            api_url,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        if response.status_code == 404:
+            return IncidentResponse(
+                success=False,
+                message=f"Incident not found: {params.incident_id}",
+            )
+        if response.status_code not in (200, 204):
+            response.raise_for_status()
+        return IncidentResponse(
+            success=True,
+            message=f"Incident {params.incident_id} deleted successfully",
+            incident_id=resolved_sys_id,
+        )
+    except requests.RequestException as e:
+        logger.error(f"Failed to delete incident: {e}")
+        return IncidentResponse(
+            success=False,
+            message=f"Failed to delete incident: {_format_http_error(e)}",
         )
 
 

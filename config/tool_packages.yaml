@@ -210,6 +210,8 @@ system_administrator:
   - create_ci_relationship
   - delete_ci_relationship
   - list_ci_relationship_types
+  # Incident Management (destructive)
+  - delete_incident
   # Asset Management
   - create_asset
   - delete_asset
@@ -228,6 +230,7 @@ full:
   # Incident Management
   - create_incident
   - update_incident
+  - delete_incident
   - add_comment
   - resolve_incident
   - reopen_incident

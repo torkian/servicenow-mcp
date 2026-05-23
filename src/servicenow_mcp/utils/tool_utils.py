@@ -161,6 +161,7 @@ from servicenow_mcp.tools.changeset_tools import (
 from servicenow_mcp.tools.incident_tools import (
     AddCommentParams,
     CreateIncidentParams,
+    DeleteIncidentParams,
     ListIncidentsParams,
     ReopenIncidentParams,
     ResolveIncidentParams,
@@ -175,6 +176,9 @@ from servicenow_mcp.tools.incident_tools import (
 )
 from servicenow_mcp.tools.incident_tools import (
     list_incidents as list_incidents_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    delete_incident as delete_incident_tool,
 )
 from servicenow_mcp.tools.incident_tools import (
     reopen_incident as reopen_incident_tool,
@@ -591,6 +595,16 @@ def get_tool_definitions(
             ResolveIncidentParams,
             str,
             "Resolve an incident in ServiceNow",
+            "str",
+        ),
+        "delete_incident": (
+            delete_incident_tool,
+            DeleteIncidentParams,
+            str,
+            (
+                "Permanently delete an incident record from ServiceNow by incident number or sys_id. "
+                "This action is irreversible — confirm the incident ID before calling."
+            ),
             "str",
         ),
         "reopen_incident": (

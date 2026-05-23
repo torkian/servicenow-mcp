@@ -1,10 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add delete_incident tool to complete incident CRUD
-3. Add get_request_items tool (sc_req_item table; lists items within an sc_request)
-4. Add list_sla_breaches tool (task_sla table; filter by breach/warning state, table, task)
-5. Add tests for sla_tools.py (currently 94% but no dedicated test file)
+1. Add get_request_items tool (sc_req_item table; lists items within an sc_request)
+2. Add list_sla_breaches tool (task_sla table; filter by breach/warning state, table, task)
+3. Add tests for sla_tools.py (currently 94% but no dedicated test file)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -53,3 +52,4 @@
 44. 2026-05-20 — Add create_knowledge_article tool (name/sys_id resolver for KB and category; extra fields: author, valid_to, flagged, disable_commenting, disable_suggesting; optional immediate publish flag; _resolve_kb_sys_id helper; registered in knowledge_author and full packages; 10 new tests; 1132 total tests passing; 91% total coverage)
 45. 2026-05-21 — Implement service request management tools (list_requests, get_request, create_request, update_request on sc_request table; number/sys_id dual lookup; reference-field normalisation; state/approval/requested_for filters; pagination; registered in service_desk and full packages; 30 new tests; 1162 total tests passing; 91% total coverage)
 46. 2026-05-22 — Add cancel_change_request and reopen_change_request lifecycle tools (state=-1 for cancel, configurable state for reopen; number/sys_id resolver; optional work notes; registered in change_coordinator and full packages; 17 new tests; 1179 total tests passing; 91% total coverage)
+47. 2026-05-23 — Add delete_incident tool to complete incident CRUD (DELETE /api/now/table/incident/{sys_id}; number/sys_id resolver; 404 guard; registered in system_administrator and full packages; 13 new tests; 1192 total tests passing; 91% total coverage)
