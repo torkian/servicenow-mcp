@@ -532,12 +532,14 @@ from servicenow_mcp.tools.attachment_tools import (
 from servicenow_mcp.tools.request_tools import (
     CreateRequestParams,
     GetRequestParams,
+    ListRequestItemsParams,
     ListRequestsParams,
     UpdateRequestParams,
 )
 from servicenow_mcp.tools.request_tools import (
     create_request as create_request_tool,
     get_request as get_request_tool,
+    list_request_items as list_request_items_tool,
     list_requests as list_requests_tool,
     update_request as update_request_tool,
 )
@@ -1694,6 +1696,17 @@ def get_tool_definitions(
                 "Update an existing service request in the sc_request table by number or "
                 "sys_id. Supply only the fields that need to change. Guards against "
                 "empty-body calls."
+            ),
+            "raw_dict",
+        ),
+        "list_request_items": (
+            list_request_items_tool,
+            ListRequestItemsParams,
+            Dict[str, Any],
+            (
+                "List the requested items (sc_req_item / RITM records) that belong to a "
+                "service request. Accepts a request number (e.g. REQ0010001) or sys_id. "
+                "Optionally filter by item state. Supports pagination."
             ),
             "raw_dict",
         ),

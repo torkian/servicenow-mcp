@@ -2,7 +2,8 @@
 Service request management tools for the ServiceNow MCP server.
 
 Provides tools for listing, retrieving, creating, and updating service request
-records via the /api/now/table/sc_request endpoint.
+records via the /api/now/table/sc_request endpoint, and listing requested items
+(sc_req_item) within a request.
 """
 
 import logging
@@ -27,6 +28,25 @@ from servicenow_mcp.utils.helpers import (
 logger = logging.getLogger(__name__)
 
 REQUEST_TABLE = "/api/now/table/sc_request"
+REQUEST_ITEM_TABLE = "/api/now/table/sc_req_item"
+
+REQUEST_ITEM_FIELDS = [
+    "sys_id",
+    "number",
+    "short_description",
+    "description",
+    "state",
+    "stage",
+    "cat_item",
+    "quantity",
+    "price",
+    "request",
+    "assigned_to",
+    "assignment_group",
+    "opened_by",
+    "sys_created_on",
+    "sys_updated_on",
+]
 
 REQUEST_FIELDS = [
     "sys_id",
@@ -464,3 +484,134 @@ def update_request(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating request: {e}")
         return {"success": False, "message": f"Error updating request: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# Request Item (sc_req_item) helpers and tool
+# ---------------------------------------------------------------------------
+
+
+class ListRequestItemsParams(BaseModel):
+    """Parameters for listing requested items within a service request."""
+
+    request_id: str = Field(
+        ...,
+        description=(
+            "Request number (e.g. REQ0010001) or sys_id (32-char hex) whose "
+            "requested items (RITM records) should be listed."
+        ),
+    )
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by item state: 1=Pending Approval, 2=Approved, 3=Rejected, "
+            "4=Fulfilled, 6=Cancelled, 7=Staged, 8=Pending, 16=Open, 17=Work In Progress, "
+            "18=Closed Complete, 19=Closed Incomplete"
+        ),
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+
+
+def _format_request_item(record: Dict) -> Dict:
+    """Extract and normalise relevant fields from a raw sc_req_item API record."""
+    cat_item = record.get("cat_item")
+    if isinstance(cat_item, dict):
+        cat_item = cat_item.get("display_value")
+
+    request = record.get("request")
+    if isinstance(request, dict):
+        request = request.get("display_value")
+
+    assigned_to = record.get("assigned_to")
+    if isinstance(assigned_to, dict):
+        assigned_to = assigned_to.get("display_value")
+
+    assignment_group = record.get("assignment_group")
+    if isinstance(assignment_group, dict):
+        assignment_group = assignment_group.get("display_value")
+
+    opened_by = record.get("opened_by")
+    if isinstance(opened_by, dict):
+        opened_by = opened_by.get("display_value")
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "number": record.get("number"),
+        "short_description": record.get("short_description"),
+        "description": record.get("description"),
+        "state": record.get("state"),
+        "stage": record.get("stage"),
+        "cat_item": cat_item,
+        "quantity": record.get("quantity"),
+        "price": record.get("price"),
+        "request": request,
+        "assigned_to": assigned_to,
+        "assignment_group": assignment_group,
+        "opened_by": opened_by,
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def list_request_items(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List requested items (sc_req_item / RITM records) within a service request.
+
+    Each service request (sc_request) may contain one or more requested items,
+    each representing a specific catalog item ordered as part of that request.
+    This tool returns those child records, optionally filtered by state.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListRequestItemsParams.
+
+    Returns:
+        Dictionary with ``success``, ``items`` (list), ``count``, and
+        pagination keys ``has_more`` / ``next_offset``.
+    """
+    result = _unwrap_and_validate_params(
+        params, ListRequestItemsParams, required_fields=["request_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Resolve request_id to a sys_id so we can filter sc_req_item.request
+    resolve = _resolve_request_sys_id(validated.request_id, instance_url, headers)
+    if not resolve["success"]:
+        return resolve
+    request_sys_id = resolve["sys_id"]
+
+    filters = [f"request={request_sys_id}"]
+    if validated.state is not None:
+        filters.append(f"state={validated.state}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(REQUEST_ITEM_FIELDS),
+    )
+
+    url = f"{instance_url}{REQUEST_ITEM_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        items = [_format_request_item(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(items, validated.limit, validated.offset, "items")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing request items: {e}")
+        return {"success": False, "message": f"Error listing request items: {_format_http_error(e)}"}

@@ -208,6 +208,7 @@ from servicenow_mcp.tools.sla_tools import (
 from servicenow_mcp.tools.request_tools import (
     create_request,
     get_request,
+    list_request_items,
     list_requests,
     update_request,
 )
@@ -417,4 +418,5 @@ __all__ = [
     "get_request",
     "create_request",
     "update_request",
+    "list_request_items",
 ]
