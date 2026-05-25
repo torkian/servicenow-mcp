@@ -48,6 +48,9 @@ service_desk:
   - get_request
   - create_request
   - list_request_items
+  # SLA Monitoring
+  - list_slas
+  - list_sla_breaches
 
 catalog_builder:
   # Core Catalog
@@ -226,6 +229,10 @@ system_administrator:
   - update_asset_contract
   - expire_asset_contract
   - list_contract_assets
+  # SLA Tools
+  - list_slas
+  - get_sla
+  - list_sla_breaches
 
 full:
   # Incident Management
@@ -403,3 +410,7 @@ full:
   - create_request
   - update_request
   - list_request_items
+  # SLA Tools
+  - list_slas
+  - get_sla
+  - list_sla_breaches

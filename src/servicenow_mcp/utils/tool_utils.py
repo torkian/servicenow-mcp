@@ -543,6 +543,16 @@ from servicenow_mcp.tools.request_tools import (
     list_requests as list_requests_tool,
     update_request as update_request_tool,
 )
+from servicenow_mcp.tools.sla_tools import (
+    GetSLAParams,
+    ListSLABreachesParams,
+    ListSLAsParams,
+)
+from servicenow_mcp.tools.sla_tools import (
+    get_sla as get_sla_tool,
+    list_sla_breaches as list_sla_breaches_tool,
+    list_slas as list_slas_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1707,6 +1717,41 @@ def get_tool_definitions(
                 "List the requested items (sc_req_item / RITM records) that belong to a "
                 "service request. Accepts a request number (e.g. REQ0010001) or sys_id. "
                 "Optionally filter by item state. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        # SLA Tools
+        "list_slas": (
+            list_slas_tool,
+            ListSLAsParams,
+            Dict[str, Any],
+            (
+                "List SLA definitions from the ServiceNow contract_sla table. "
+                "Filter by active status, type (SLA/OLA/UC), target table, or "
+                "free-text query on name and description. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_sla": (
+            get_sla_tool,
+            GetSLAParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single SLA definition by sys_id (32-char hex) or "
+                "exact name from the contract_sla table."
+            ),
+            "raw_dict",
+        ),
+        "list_sla_breaches": (
+            list_sla_breaches_tool,
+            ListSLABreachesParams,
+            Dict[str, Any],
+            (
+                "List SLA breach tracking records from the ServiceNow task_sla table. "
+                "Each record shows the SLA state for one task/ticket. "
+                "Filter by has_breached flag, stage (in_progress/breached/paused/completed), "
+                "source table (e.g. 'incident'), a specific task sys_id, or a specific "
+                "SLA definition sys_id. Supports pagination."
             ),
             "raw_dict",
         ),
