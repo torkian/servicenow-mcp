@@ -544,12 +544,14 @@ from servicenow_mcp.tools.request_tools import (
     update_request as update_request_tool,
 )
 from servicenow_mcp.tools.sla_tools import (
+    GetSLABreachParams,
     GetSLAParams,
     ListSLABreachesParams,
     ListSLAsParams,
 )
 from servicenow_mcp.tools.sla_tools import (
     get_sla as get_sla_tool,
+    get_sla_breach as get_sla_breach_tool,
     list_sla_breaches as list_sla_breaches_tool,
     list_slas as list_slas_tool,
 )
@@ -1752,6 +1754,18 @@ def get_tool_definitions(
                 "Filter by has_breached flag, stage (in_progress/breached/paused/completed), "
                 "source table (e.g. 'incident'), a specific task sys_id, or a specific "
                 "SLA definition sys_id. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_sla_breach": (
+            get_sla_breach_tool,
+            GetSLABreachParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single SLA breach tracking record from the task_sla table "
+                "by its sys_id. Returns breach status, stage, timing details (start_time, "
+                "breach_time, end_time), percentage elapsed, and the associated task and "
+                "SLA definition references."
             ),
             "raw_dict",
         ),

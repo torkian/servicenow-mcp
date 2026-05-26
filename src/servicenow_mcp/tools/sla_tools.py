@@ -266,6 +266,15 @@ def _format_task_sla(record: Dict) -> Dict:
     }
 
 
+class GetSLABreachParams(BaseModel):
+    """Parameters for retrieving a single SLA breach record from task_sla."""
+
+    task_sla_id: str = Field(
+        ...,
+        description="sys_id of the task_sla record to retrieve (32-char hex)",
+    )
+
+
 class ListSLABreachesParams(BaseModel):
     """Parameters for listing SLA breach records from task_sla."""
 
@@ -370,4 +379,63 @@ def list_sla_breaches(
         return {
             "success": False,
             "message": f"Error listing SLA breaches: {_format_http_error(e)}",
+        }
+
+
+def get_sla_breach(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single SLA breach record from the task_sla table by sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetSLABreachParams.
+
+    Returns:
+        Dictionary with ``success`` and ``sla_breach`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, GetSLABreachParams, required_fields=["task_sla_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{TASK_SLA_TABLE}/{validated.task_sla_id}"
+    query_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(TASK_SLA_FIELDS),
+    }
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"SLA breach record not found: {validated.task_sla_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {
+                "success": False,
+                "message": f"SLA breach record not found: {validated.task_sla_id}",
+            }
+        return {"success": True, "sla_breach": _format_task_sla(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving SLA breach record: {e}")
+        return {
+            "success": False,
+            "message": f"Error retrieving SLA breach record: {_format_http_error(e)}",
         }

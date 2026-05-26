@@ -51,6 +51,7 @@ service_desk:
   # SLA Monitoring
   - list_slas
   - list_sla_breaches
+  - get_sla_breach
 
 catalog_builder:
   # Core Catalog
@@ -233,6 +234,7 @@ system_administrator:
   - list_slas
   - get_sla
   - list_sla_breaches
+  - get_sla_breach
 
 full:
   # Incident Management
@@ -414,3 +416,4 @@ full:
   - list_slas
   - get_sla
   - list_sla_breaches
+  - get_sla_breach
