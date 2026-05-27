@@ -49,6 +49,7 @@ service_desk:
   - create_request
   - list_request_items
   # SLA Monitoring
+  - list_sla_breach_definitions
   - list_slas
   - list_sla_breaches
   - get_sla_breach
@@ -231,6 +232,7 @@ system_administrator:
   - expire_asset_contract
   - list_contract_assets
   # SLA Tools
+  - list_sla_breach_definitions
   - list_slas
   - get_sla
   - list_sla_breaches
@@ -413,6 +415,7 @@ full:
   - update_request
   - list_request_items
   # SLA Tools
+  - list_sla_breach_definitions
   - list_slas
   - get_sla
   - list_sla_breaches

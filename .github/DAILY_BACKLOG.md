@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_sla_breach_definitions shortcut (list_slas filtered to active breach-capable SLAs)
-2. Add close_problem tool (PATCH problem state to Closed; accept problem number/sys_id)
+1. Add close_problem tool (PATCH problem state to Closed; accept problem number/sys_id)
 3. Add list_cmdb_ci_outages tool (cmdb_ci_outage table; filter by CI, start/end date)
 4. Add bulk_update_incidents tool (PATCH multiple incidents in one batch call)
 
@@ -56,4 +55,5 @@
 47. 2026-05-23 — Add delete_incident tool to complete incident CRUD (DELETE /api/now/table/incident/{sys_id}; number/sys_id resolver; 404 guard; registered in system_administrator and full packages; 13 new tests; 1192 total tests passing; 91% total coverage)
 48. 2026-05-24 — Add list_request_items tool (sc_req_item table; lists RITM records within an sc_request; state filter; pagination; _format_request_item helper normalises reference fields; registered in service_desk and full packages; 20 new tests; 1212 total tests passing; 91% total coverage)
 49. 2026-05-25 — Add list_sla_breaches tool (task_sla table; filters for has_breached/stage/table_name/task_sys_id/sla_sys_id; _format_task_sla normalises reference fields; also fixed missing list_slas+get_sla registrations in tool_utils.py; registered in service_desk, system_administrator, full packages; 19 new tests; 1231 total tests passing; 91% total coverage)
-50. 2026-05-26 — Add get_sla_breach tool (GET task_sla/{sys_id}; 404/empty-result guards; normalised breach/timing/percentage fields; GetSLABreachParams model; registered in service_desk, system_administrator, full packages; 10 new tests; 1241 total tests passing; 91% total coverage)
+50. 2026-05-26 — Add get_sla_breach tool
+51. 2026-05-27 — Add list_sla_breach_definitions shortcut (active=true^durationISNOTEMPTY filter on contract_sla; optional type/table/name-query filters; 11 new tests; 1252 total tests; 91% coverage) (GET task_sla/{sys_id}; 404/empty-result guards; normalised breach/timing/percentage fields; GetSLABreachParams model; registered in service_desk, system_administrator, full packages; 10 new tests; 1241 total tests passing; 91% total coverage)

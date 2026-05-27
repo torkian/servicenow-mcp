@@ -266,6 +266,91 @@ def _format_task_sla(record: Dict) -> Dict:
     }
 
 
+class ListSLABreachDefinitionsParams(BaseModel):
+    """Parameters for listing active, breach-capable SLA definitions."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+    type: Optional[str] = Field(
+        None,
+        description="Filter by SLA type (e.g. 'SLA', 'OLA', 'UC')",
+    )
+    table: Optional[str] = Field(
+        None,
+        description="Filter by the table the SLA applies to (e.g. 'incident')",
+    )
+    query: Optional[str] = Field(
+        None,
+        description="Free-text search on SLA name",
+    )
+
+
+def list_sla_breach_definitions(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List active, breach-capable SLA definitions from the contract_sla table.
+
+    A "breach-capable" SLA is one that is active and has a duration set.
+    This is a focused shortcut for finding SLAs that can actually generate
+    breach records in task_sla — useful when setting up monitoring or
+    investigating why breaches are (or aren't) being tracked.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListSLABreachDefinitionsParams.
+
+    Returns:
+        Dictionary with ``success``, ``sla_breach_definitions`` (list),
+        ``count``, and pagination keys (``has_more``, ``next_offset``).
+    """
+    result = _unwrap_and_validate_params(params, ListSLABreachDefinitionsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Always restrict to active SLAs that have a duration (can breach)
+    filters = ["active=true", "durationISNOTEMPTY"]
+    if validated.type:
+        filters.append(f"type={validated.type}")
+    if validated.table:
+        filters.append(f"table={validated.table}")
+    if validated.query:
+        filters.append(f"nameLIKE{validated.query}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(SLA_FIELDS),
+    )
+
+    url = f"{instance_url}{SLA_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        definitions = [_format_sla(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(
+            definitions, validated.limit, validated.offset, "sla_breach_definitions"
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing SLA breach definitions: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing SLA breach definitions: {_format_http_error(e)}",
+        }
+
+
 class GetSLABreachParams(BaseModel):
     """Parameters for retrieving a single SLA breach record from task_sla."""
 

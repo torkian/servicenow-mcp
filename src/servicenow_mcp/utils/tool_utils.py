@@ -546,12 +546,14 @@ from servicenow_mcp.tools.request_tools import (
 from servicenow_mcp.tools.sla_tools import (
     GetSLABreachParams,
     GetSLAParams,
+    ListSLABreachDefinitionsParams,
     ListSLABreachesParams,
     ListSLAsParams,
 )
 from servicenow_mcp.tools.sla_tools import (
     get_sla as get_sla_tool,
     get_sla_breach as get_sla_breach_tool,
+    list_sla_breach_definitions as list_sla_breach_definitions_tool,
     list_sla_breaches as list_sla_breaches_tool,
     list_slas as list_slas_tool,
 )
@@ -1723,6 +1725,19 @@ def get_tool_definitions(
             "raw_dict",
         ),
         # SLA Tools
+        "list_sla_breach_definitions": (
+            list_sla_breach_definitions_tool,
+            ListSLABreachDefinitionsParams,
+            Dict[str, Any],
+            (
+                "List active, breach-capable SLA definitions from the contract_sla table. "
+                "Returns only SLAs that are active=true and have a duration set — i.e. "
+                "those that can generate breach records in task_sla. "
+                "Optional filters: type (SLA/OLA/UC), target table (e.g. 'incident'), "
+                "and a name keyword search. Supports pagination."
+            ),
+            "raw_dict",
+        ),
         "list_slas": (
             list_slas_tool,
             ListSLAsParams,

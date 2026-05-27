@@ -10,6 +10,7 @@ from servicenow_mcp.tools.sla_tools import (
     _format_task_sla,
     get_sla,
     get_sla_breach,
+    list_sla_breach_definitions,
     list_sla_breaches,
     list_slas,
 )
@@ -88,6 +89,116 @@ class TestFormatSLA(unittest.TestCase):
         self.assertIsNone(result["sys_id"])
         self.assertIsNone(result["name"])
         self.assertIsNone(result["duration"])
+
+
+# ---------------------------------------------------------------------------
+# list_sla_breach_definitions
+# ---------------------------------------------------------------------------
+
+
+class TestListSLABreachDefinitions(unittest.TestCase):
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_success_returns_definitions(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_SLA]})
+        result = list_sla_breach_definitions(_make_auth_manager(), _make_config(), {})
+        self.assertTrue(result["success"])
+        self.assertIn("sla_breach_definitions", result)
+        self.assertEqual(len(result["sla_breach_definitions"]), 1)
+        self.assertEqual(result["sla_breach_definitions"][0]["name"], FAKE_SLA_NAME)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_always_applies_active_and_duration_filters(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_sla_breach_definitions(_make_auth_manager(), _make_config(), {})
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("active=true", query)
+        self.assertIn("durationISNOTEMPTY", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_type_filter_added(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_sla_breach_definitions(_make_auth_manager(), _make_config(), {"type": "OLA"})
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("type=OLA", query)
+        self.assertIn("active=true", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_table_filter_added(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_sla_breach_definitions(
+            _make_auth_manager(), _make_config(), {"table": "change_request"}
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("table=change_request", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_query_filter_searches_by_name(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_sla_breach_definitions(_make_auth_manager(), _make_config(), {"query": "Priority"})
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("nameLIKEPriority", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_all_optional_filters_combined(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_sla_breach_definitions(
+            _make_auth_manager(),
+            _make_config(),
+            {"type": "SLA", "table": "incident", "query": "P1"},
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("active=true", query)
+        self.assertIn("durationISNOTEMPTY", query)
+        self.assertIn("type=SLA", query)
+        self.assertIn("table=incident", query)
+        self.assertIn("nameLIKEP1", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_pagination_params_forwarded(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_sla_breach_definitions(
+            _make_auth_manager(), _make_config(), {"limit": 5, "offset": 10}
+        )
+        _, kwargs = mock_req.call_args
+        params = kwargs.get("params", {})
+        self.assertEqual(params.get("sysparm_limit"), 5)
+        self.assertEqual(params.get("sysparm_offset"), 10)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = list_sla_breach_definitions(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing SLA breach definitions", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_uses_contract_sla_table_url(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_sla_breach_definitions(_make_auth_manager(), _make_config(), {})
+        args, _ = mock_req.call_args
+        url = args[1]
+        self.assertIn("contract_sla", url)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_response_includes_count_and_pagination(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_SLA]})
+        result = list_sla_breach_definitions(_make_auth_manager(), _make_config(), {})
+        self.assertIn("count", result)
+        self.assertEqual(result["count"], 1)
+        self.assertIn("has_more", result)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_empty_result(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = list_sla_breach_definitions(_make_auth_manager(), _make_config(), {})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sla_breach_definitions"], [])
+        self.assertEqual(result["count"], 0)
 
 
 # ---------------------------------------------------------------------------
