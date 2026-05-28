@@ -196,6 +196,7 @@ from servicenow_mcp.tools.attachment_tools import (
     download_attachment,
 )
 from servicenow_mcp.tools.problem_tools import (
+    close_problem,
     create_problem,
     get_problem,
     list_problems,
@@ -408,6 +409,7 @@ __all__ = [
     "get_problem",
     "create_problem",
     "update_problem",
+    "close_problem",
 
     # SLA management tools
     "list_slas",

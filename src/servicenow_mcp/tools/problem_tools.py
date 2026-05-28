@@ -116,6 +116,19 @@ class UpdateProblemParams(BaseModel):
     close_notes: Optional[str] = Field(None, description="Closure notes")
 
 
+class CloseProblemParams(BaseModel):
+    """Parameters for closing a problem."""
+
+    problem_id: str = Field(
+        ...,
+        description="Problem number (e.g. PRB0001234) or sys_id (32-char hex)",
+    )
+    close_notes: Optional[str] = Field(None, description="Closure notes explaining how the problem was resolved")
+    fix_notes: Optional[str] = Field(None, description="Description of the fix that was applied")
+    cause_notes: Optional[str] = Field(None, description="Root-cause analysis notes")
+    work_notes: Optional[str] = Field(None, description="Additional work notes to append on closure")
+
+
 def _format_problem(record: Dict) -> Dict:
     """Extract and normalise relevant fields from a raw problem API record."""
     assigned_to = record.get("assigned_to")
@@ -461,3 +474,66 @@ def update_problem(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating problem: {e}")
         return {"success": False, "message": f"Error updating problem: {_format_http_error(e)}"}
+
+
+def close_problem(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Close a problem record by setting its state to Closed (4).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CloseProblemParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, ``number``, and ``problem`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, CloseProblemParams, required_fields=["problem_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    resolve = _resolve_problem_sys_id(validated.problem_id, instance_url, headers)
+    if not resolve["success"]:
+        return resolve
+    sys_id = resolve["sys_id"]
+
+    body: Dict[str, Any] = {"state": "4"}
+    if validated.close_notes is not None:
+        body["close_notes"] = validated.close_notes
+    if validated.fix_notes is not None:
+        body["fix_notes"] = validated.fix_notes
+    if validated.cause_notes is not None:
+        body["cause_notes"] = validated.cause_notes
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}{PROBLEM_TABLE}/{sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Problem not found: {validated.problem_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "Problem closed successfully",
+            "sys_id": record.get("sys_id") or sys_id,
+            "number": record.get("number"),
+            "problem": _format_problem(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error closing problem: {e}")
+        return {"success": False, "message": f"Error closing problem: {_format_http_error(e)}"}

@@ -8,6 +8,7 @@ import requests
 from servicenow_mcp.tools.problem_tools import (
     _format_problem,
     _resolve_problem_sys_id,
+    close_problem,
     create_problem,
     get_problem,
     list_problems,
@@ -426,6 +427,126 @@ class TestUpdateProblem(unittest.TestCase):
         )
         self.assertFalse(result["success"])
         self.assertIn("Error updating problem", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# close_problem
+# ---------------------------------------------------------------------------
+
+class TestCloseProblem(unittest.TestCase):
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_success_by_sys_id(self, mock_req):
+        closed = dict(FAKE_PROBLEM, state="4", closed_at="2026-05-28 10:00:00")
+        mock_req.return_value = _make_response(200, {"result": closed})
+        result = close_problem(_make_auth_manager(), _make_config(), {"problem_id": FAKE_SYS_ID})
+        self.assertTrue(result["success"])
+        self.assertIn("closed", result["message"].lower())
+        self.assertEqual(result["sys_id"], FAKE_SYS_ID)
+        self.assertEqual(result["problem"]["state"], "4")
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_success_by_number(self, mock_req):
+        closed = dict(FAKE_PROBLEM, state="4")
+        # First call: number lookup; second call: PATCH
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(200, {"result": closed}),
+        ]
+        result = close_problem(_make_auth_manager(), _make_config(), {"problem_id": FAKE_NUMBER})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["number"], FAKE_NUMBER)
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_state_4_sent_in_body(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_PROBLEM})
+        close_problem(_make_auth_manager(), _make_config(), {"problem_id": FAKE_SYS_ID})
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("state"), "4")
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_close_notes_included_when_provided(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_PROBLEM})
+        close_problem(
+            _make_auth_manager(), _make_config(),
+            {"problem_id": FAKE_SYS_ID, "close_notes": "Fixed by patching DB"},
+        )
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("close_notes"), "Fixed by patching DB")
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_fix_notes_and_cause_notes_included(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_PROBLEM})
+        close_problem(
+            _make_auth_manager(), _make_config(),
+            {
+                "problem_id": FAKE_SYS_ID,
+                "fix_notes": "Applied hotfix",
+                "cause_notes": "Memory leak in indexer",
+            },
+        )
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("fix_notes"), "Applied hotfix")
+        self.assertEqual(body.get("cause_notes"), "Memory leak in indexer")
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_work_notes_included(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_PROBLEM})
+        close_problem(
+            _make_auth_manager(), _make_config(),
+            {"problem_id": FAKE_SYS_ID, "work_notes": "Closing after validation"},
+        )
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("work_notes"), "Closing after validation")
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_optional_fields_omitted_when_not_provided(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_PROBLEM})
+        close_problem(_make_auth_manager(), _make_config(), {"problem_id": FAKE_SYS_ID})
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertNotIn("close_notes", body)
+        self.assertNotIn("fix_notes", body)
+        self.assertNotIn("cause_notes", body)
+        self.assertNotIn("work_notes", body)
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_404_returns_not_found_message(self, mock_req):
+        not_found = _make_response(404)
+        not_found.raise_for_status = MagicMock()
+        mock_req.return_value = not_found
+        result = close_problem(_make_auth_manager(), _make_config(), {"problem_id": FAKE_SYS_ID})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_number_lookup_not_found_propagated(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = close_problem(_make_auth_manager(), _make_config(), {"problem_id": "PRB9999999"})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_request_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.Timeout("timeout")
+        result = close_problem(_make_auth_manager(), _make_config(), {"problem_id": FAKE_SYS_ID})
+        self.assertFalse(result["success"])
+        self.assertIn("Error closing problem", result["message"])
+
+    def test_missing_problem_id_returns_failure(self):
+        result = close_problem(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.problem_tools._make_request")
+    def test_sys_id_fallback_when_result_missing(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = close_problem(_make_auth_manager(), _make_config(), {"problem_id": FAKE_SYS_ID})
+        self.assertTrue(result["success"])
+        # sys_id falls back to the resolved sys_id when API returns empty result
+        self.assertEqual(result["sys_id"], FAKE_SYS_ID)
 
 
 if __name__ == "__main__":

@@ -557,6 +557,20 @@ from servicenow_mcp.tools.sla_tools import (
     list_sla_breaches as list_sla_breaches_tool,
     list_slas as list_slas_tool,
 )
+from servicenow_mcp.tools.problem_tools import (
+    CloseProblemParams,
+    CreateProblemParams,
+    GetProblemParams,
+    ListProblemsParams,
+    UpdateProblemParams,
+)
+from servicenow_mcp.tools.problem_tools import (
+    close_problem as close_problem_tool,
+    create_problem as create_problem_tool,
+    get_problem as get_problem_tool,
+    list_problems as list_problems_tool,
+    update_problem as update_problem_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1781,6 +1795,61 @@ def get_tool_definitions(
                 "by its sys_id. Returns breach status, stage, timing details (start_time, "
                 "breach_time, end_time), percentage elapsed, and the associated task and "
                 "SLA definition references."
+            ),
+            "raw_dict",
+        ),
+        # Problem Management Tools
+        "list_problems": (
+            list_problems_tool,
+            ListProblemsParams,
+            Dict[str, Any],
+            (
+                "List problem records from the ServiceNow problem table. "
+                "Filter by state, assigned_to, assignment_group, category, known_error flag, "
+                "or free-text query. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_problem": (
+            get_problem_tool,
+            GetProblemParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single problem record by problem number (e.g. PRB0001234) "
+                "or 32-character sys_id."
+            ),
+            "raw_dict",
+        ),
+        "create_problem": (
+            create_problem_tool,
+            CreateProblemParams,
+            Dict[str, Any],
+            (
+                "Create a new problem record in the ServiceNow problem table. "
+                "Requires a short_description. Optionally set category, priority, "
+                "impact, urgency, assigned_to, assignment_group, workaround, and known_error."
+            ),
+            "raw_dict",
+        ),
+        "update_problem": (
+            update_problem_tool,
+            UpdateProblemParams,
+            Dict[str, Any],
+            (
+                "Update an existing problem record by number or sys_id. Supply only the "
+                "fields that need to change. Supports state, category, priority, cause_notes, "
+                "fix_notes, work_notes, close_notes, and known_error flag."
+            ),
+            "raw_dict",
+        ),
+        "close_problem": (
+            close_problem_tool,
+            CloseProblemParams,
+            Dict[str, Any],
+            (
+                "Close a problem record by setting its state to Closed (4). "
+                "Accepts a problem number (e.g. PRB0001234) or sys_id. "
+                "Optionally include close_notes, fix_notes, cause_notes, and work_notes."
             ),
             "raw_dict",
         ),

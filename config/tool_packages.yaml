@@ -23,6 +23,7 @@ service_desk:
   # Problem Management
   - list_problems
   - get_problem
+  - close_problem
   # Service Catalog Tasks
   - get_sctask
   - list_sctasks
@@ -102,6 +103,7 @@ change_coordinator:
   - get_problem
   - create_problem
   - update_problem
+  - close_problem
 
 knowledge_author:
   # KB Management
@@ -381,6 +383,7 @@ full:
   - get_problem
   - create_problem
   - update_problem
+  - close_problem
   # Story Management
   - create_story
   - update_story
