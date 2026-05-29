@@ -9,7 +9,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
@@ -22,11 +22,28 @@ from servicenow_mcp.utils.helpers import (
     _make_request,
     _paginated_list_response,
     _unwrap_and_validate_params,
+    validate_servicenow_datetime,
 )
 
 logger = logging.getLogger(__name__)
 
 CMDB_CI_TABLE = "cmdb_ci"
+CMDB_CI_OUTAGE_TABLE = "cmdb_ci_outage"
+
+CMDB_CI_OUTAGE_FIELDS = [
+    "sys_id",
+    "cmdb_ci",
+    "type",
+    "begin",
+    "end",
+    "duration",
+    "short_description",
+    "cause_ci",
+    "resolved",
+    "resolution_notes",
+    "sys_created_on",
+    "sys_updated_on",
+]
 
 CMDB_CI_FIELDS = [
     "sys_id",
@@ -543,3 +560,120 @@ def get_ci_by_name(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error searching CIs by name: {e}")
         return {"success": False, "message": f"Error searching CIs by name: {_format_http_error(e)}"}
+
+
+class ListCMDBCIOutagesParams(BaseModel):
+    """Parameters for listing CMDB CI outage records."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+    ci_sys_id: Optional[str] = Field(
+        None,
+        description="Filter outages by the affected CI sys_id (cmdb_ci field)",
+    )
+    outage_type: Optional[str] = Field(
+        None,
+        description="Filter by outage type (e.g. hardware, network, application)",
+    )
+    resolved: Optional[bool] = Field(
+        None,
+        description="When True return only resolved outages; False returns open outages",
+    )
+    begin_after: Optional[str] = Field(
+        None,
+        description="Return outages that begin on or after this datetime (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD)",
+    )
+    begin_before: Optional[str] = Field(
+        None,
+        description="Return outages that begin on or before this datetime (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD)",
+    )
+    query: Optional[str] = Field(None, description="Raw ServiceNow encoded query string")
+
+    @field_validator("begin_after", "begin_before", mode="before")
+    @classmethod
+    def _validate_datetime_fields(cls, v):
+        return validate_servicenow_datetime(v)
+
+
+def _format_ci_outage(record: Dict) -> Dict:
+    """Extract and normalise relevant fields from a raw cmdb_ci_outage record."""
+
+    def _ref(val):
+        if isinstance(val, dict):
+            return val.get("value") or val.get("display_value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "ci_sys_id": _ref(record.get("cmdb_ci")),
+        "type": record.get("type"),
+        "begin": record.get("begin"),
+        "end": record.get("end"),
+        "duration": record.get("duration"),
+        "short_description": record.get("short_description"),
+        "cause_ci": _ref(record.get("cause_ci")),
+        "resolved": record.get("resolved"),
+        "resolution_notes": record.get("resolution_notes"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def list_cmdb_ci_outages(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List CMDB CI outage records with optional filters and pagination.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListCMDBCIOutagesParams.
+
+    Returns:
+        Dictionary with ``success``, ``outages`` (list), ``count``, and pagination keys.
+    """
+    result = _unwrap_and_validate_params(params, ListCMDBCIOutagesParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts = []
+    if validated.ci_sys_id:
+        query_parts.append(f"cmdb_ci={validated.ci_sys_id}")
+    if validated.outage_type:
+        query_parts.append(f"type={validated.outage_type}")
+    if validated.resolved is not None:
+        query_parts.append(f"resolved={'true' if validated.resolved else 'false'}")
+    if validated.begin_after:
+        query_parts.append(f"begin>={validated.begin_after}")
+    if validated.begin_before:
+        query_parts.append(f"begin<={validated.begin_before}")
+    if validated.query:
+        query_parts.append(validated.query)
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        fields=",".join(CMDB_CI_OUTAGE_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{CMDB_CI_OUTAGE_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        outages = [_format_ci_outage(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(outages, validated.limit, validated.offset, "outages")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing CI outages: {e}")
+        return {"success": False, "message": f"Error listing CI outages: {_format_http_error(e)}"}

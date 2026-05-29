@@ -465,6 +465,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     GetCIParams,
     ListCIsParams,
     ListCMDBClassesParams,
+    ListCMDBCIOutagesParams,
     UpdateCIParams,
 )
 from servicenow_mcp.tools.cmdb_tools import (
@@ -472,6 +473,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     get_ci as get_ci_tool,
     get_ci_by_name as get_ci_by_name_tool,
     list_cmdb_classes as list_cmdb_classes_tool,
+    list_cmdb_ci_outages as list_cmdb_ci_outages_tool,
     list_cis as list_cis_tool,
     update_ci as update_ci_tool,
 )
@@ -1490,6 +1492,17 @@ def get_tool_definitions(
             UpdateCIParams,
             Dict[str, Any],
             "Update an existing CMDB configuration item by its sys_id",
+            "raw_dict",
+        ),
+        "list_cmdb_ci_outages": (
+            list_cmdb_ci_outages_tool,
+            ListCMDBCIOutagesParams,
+            Dict[str, Any],
+            (
+                "List CI outage records from the cmdb_ci_outage table. "
+                "Filter by affected CI sys_id, outage type, resolved state, "
+                "and begin date range. Supports pagination."
+            ),
             "raw_dict",
         ),
         # CMDB Relationship Tools

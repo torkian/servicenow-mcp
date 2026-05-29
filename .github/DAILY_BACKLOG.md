@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_cmdb_ci_outages tool (cmdb_ci_outage table; filter by CI, start/end date)
-2. Add bulk_update_incidents tool (PATCH multiple incidents in one batch call)
+1. Add bulk_update_incidents tool (PATCH multiple incidents in one batch call)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -57,3 +56,4 @@
 50. 2026-05-26 — Add get_sla_breach tool
 51. 2026-05-27 — Add list_sla_breach_definitions shortcut (active=true^durationISNOTEMPTY filter on contract_sla; optional type/table/name-query filters; 11 new tests; 1252 total tests; 91% coverage) (GET task_sla/{sys_id}; 404/empty-result guards; normalised breach/timing/percentage fields; GetSLABreachParams model; registered in service_desk, system_administrator, full packages; 10 new tests; 1241 total tests passing; 91% total coverage)
 52. 2026-05-28 — Add close_problem tool (PATCH problem state to Closed/4; number/sys_id resolver; optional close_notes/fix_notes/cause_notes/work_notes; 404 guard; registered in service_desk, change_coordinator, full packages; 12 new tests; 1264 total tests; 91% coverage)
+53. 2026-05-29 — Add list_cmdb_ci_outages tool (cmdb_ci_outage table; filters for ci_sys_id, outage_type, resolved, begin_after/begin_before with datetime validation; reference fields normalised; pagination; registered in system_administrator and full packages; 21 new tests; 1285 total tests; 91% coverage)
