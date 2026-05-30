@@ -19,6 +19,12 @@ from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
 
+_SYS_ID_CHARS = frozenset("0123456789abcdefABCDEF")
+
+
+def _is_sys_id(value: str) -> bool:
+    return len(value) == 32 and all(c in _SYS_ID_CHARS for c in value)
+
 _ALLOWED_METHODS = frozenset({"DELETE", "GET", "PATCH", "POST", "PUT"})
 
 
@@ -164,3 +170,172 @@ def execute_bulk_operations(
         "failed": total - succeeded,
         "results": results,
     }
+
+
+# ---------------------------------------------------------------------------
+# Bulk update incidents
+# ---------------------------------------------------------------------------
+
+_INCIDENT_UPDATE_FIELDS = (
+    "short_description",
+    "description",
+    "state",
+    "category",
+    "subcategory",
+    "priority",
+    "impact",
+    "urgency",
+    "assigned_to",
+    "assignment_group",
+    "work_notes",
+    "close_notes",
+    "close_code",
+)
+
+
+class IncidentUpdate(BaseModel):
+    """One incident update within a bulk request."""
+
+    incident_id: str = Field(
+        ...,
+        description="Incident number (e.g. INC0010001) or 32-character sys_id",
+    )
+    short_description: Optional[str] = Field(None, description="Short description")
+    description: Optional[str] = Field(None, description="Detailed description")
+    state: Optional[str] = Field(None, description="Incident state code (e.g. '2' = In Progress)")
+    category: Optional[str] = Field(None, description="Category")
+    subcategory: Optional[str] = Field(None, description="Subcategory")
+    priority: Optional[str] = Field(None, description="Priority code")
+    impact: Optional[str] = Field(None, description="Impact code")
+    urgency: Optional[str] = Field(None, description="Urgency code")
+    assigned_to: Optional[str] = Field(None, description="Assigned-to user name or sys_id")
+    assignment_group: Optional[str] = Field(None, description="Assignment group name or sys_id")
+    work_notes: Optional[str] = Field(None, description="Work notes to append")
+    close_notes: Optional[str] = Field(None, description="Close notes")
+    close_code: Optional[str] = Field(None, description="Close code")
+
+
+class BulkUpdateIncidentsParams(BaseModel):
+    """Parameters for bulk-updating multiple incidents in one batch call."""
+
+    updates: List[IncidentUpdate] = Field(
+        ...,
+        description="List of incident updates (1–100 items). Each entry must include incident_id plus at least one field to change.",
+    )
+
+
+def _resolve_incident_numbers(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    numbers: List[str],
+) -> Dict[str, str]:
+    """Resolve a list of incident numbers to sys_ids via a single GET.
+
+    Returns a dict mapping number → sys_id for every number found.
+    Raises requests.RequestException on HTTP failure.
+    """
+    query = "numberIN" + ",".join(numbers)
+    response = _make_request(
+        "GET",
+        f"{config.api_url}/table/incident",
+        params={
+            "sysparm_query": query,
+            "sysparm_fields": "sys_id,number",
+            "sysparm_limit": len(numbers),
+        },
+        headers=auth_manager.get_headers(),
+        timeout=config.timeout,
+    )
+    response.raise_for_status()
+    return {r["number"]: r["sys_id"] for r in response.json().get("result", [])}
+
+
+def bulk_update_incidents(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: BulkUpdateIncidentsParams,
+) -> Dict[str, Any]:
+    """PATCH multiple incidents in ServiceNow using a single Batch API call.
+
+    Incident numbers are resolved to sys_ids with one preliminary GET request
+    before the batch PATCH is issued. Up to 100 incidents can be updated per call.
+    Each result entry reports the incident_id, ok flag, HTTP status, and response body.
+    """
+    if not params.updates:
+        return {"success": False, "message": "No updates provided"}
+
+    if len(params.updates) > 100:
+        return {
+            "success": False,
+            "message": f"Too many updates: {len(params.updates)} (maximum 100)",
+        }
+
+    # Split: collect numbers that need resolution
+    numbers_to_resolve: List[str] = [
+        u.incident_id for u in params.updates if not _is_sys_id(u.incident_id)
+    ]
+
+    # Batch-resolve numbers → sys_ids
+    number_to_sys_id: Dict[str, str] = {}
+    if numbers_to_resolve:
+        try:
+            number_to_sys_id = _resolve_incident_numbers(
+                config, auth_manager, numbers_to_resolve
+            )
+        except requests.RequestException as e:
+            logger.error("Failed to resolve incident numbers: %s", e)
+            return {
+                "success": False,
+                "message": f"Failed to resolve incident numbers: {_format_http_error(e)}",
+            }
+
+    # Build batch PATCH sub-requests
+    batch_requests: List[BulkOperationRequest] = []
+    unresolved: List[str] = []
+
+    for idx, update in enumerate(params.updates):
+        if _is_sys_id(update.incident_id):
+            sys_id = update.incident_id
+        else:
+            sys_id = number_to_sys_id.get(update.incident_id)
+            if sys_id is None:
+                unresolved.append(update.incident_id)
+                continue
+
+        body = {
+            field: getattr(update, field)
+            for field in _INCIDENT_UPDATE_FIELDS
+            if getattr(update, field) is not None
+        }
+
+        batch_requests.append(
+            BulkOperationRequest(
+                id=str(idx),
+                method="PATCH",
+                url=f"/api/now/v2/table/incident/{sys_id}",
+                body=body if body else None,
+            )
+        )
+
+    if unresolved:
+        return {
+            "success": False,
+            "message": f"Incident(s) not found: {', '.join(unresolved)}",
+            "unresolved": unresolved,
+        }
+
+    if not batch_requests:
+        return {"success": False, "message": "No valid updates to execute"}
+
+    bulk_params = BulkOperationsParams(requests=batch_requests)
+    result = execute_bulk_operations(config, auth_manager, bulk_params)
+
+    # Re-attach original incident_id to each result entry
+    enriched = []
+    for entry in result.get("results", []):
+        original_idx = int(entry["id"])
+        original_update = params.updates[original_idx]
+        enriched.append({**entry, "incident_id": original_update.incident_id})
+
+    result["results"] = enriched
+    return result

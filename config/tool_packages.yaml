@@ -54,6 +54,8 @@ service_desk:
   - list_slas
   - list_sla_breaches
   - get_sla_breach
+  # Bulk Operations
+  - bulk_update_incidents
 
 catalog_builder:
   # Core Catalog
@@ -425,3 +427,6 @@ full:
   - get_sla
   - list_sla_breaches
   - get_sla_breach
+  # Bulk Operations
+  - execute_bulk_operations
+  - bulk_update_incidents

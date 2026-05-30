@@ -455,8 +455,9 @@ from servicenow_mcp.tools.user_criteria_tools import (
 from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria_condition as create_user_criteria_condition_tool,
 )
-from servicenow_mcp.tools.bulk_tools import BulkOperationsParams
+from servicenow_mcp.tools.bulk_tools import BulkOperationsParams, BulkUpdateIncidentsParams
 from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_incidents as bulk_update_incidents_tool,
     execute_bulk_operations as execute_bulk_operations_tool,
 )
 from servicenow_mcp.tools.cmdb_tools import (
@@ -1431,6 +1432,20 @@ def get_tool_definitions(
                 "using the ServiceNow Batch API. Each request specifies a method, "
                 "relative URL path, and optional body. Results are returned in the "
                 "same order with per-request status codes and parsed response bodies."
+            ),
+            "raw_dict",
+        ),
+        "bulk_update_incidents": (
+            bulk_update_incidents_tool,
+            BulkUpdateIncidentsParams,
+            Dict[str, Any],
+            (
+                "PATCH multiple ServiceNow incidents in a single Batch API call. "
+                "Each update entry specifies an incident_id (number or sys_id) and "
+                "the fields to change (short_description, state, priority, assigned_to, "
+                "work_notes, etc.). Incident numbers are resolved to sys_ids with one "
+                "preliminary GET before the batch PATCH is issued. Up to 100 incidents "
+                "per call. Returns per-incident ok/status_code with the original incident_id."
             ),
             "raw_dict",
         ),
