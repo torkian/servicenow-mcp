@@ -455,8 +455,13 @@ from servicenow_mcp.tools.user_criteria_tools import (
 from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria_condition as create_user_criteria_condition_tool,
 )
-from servicenow_mcp.tools.bulk_tools import BulkOperationsParams, BulkUpdateIncidentsParams
 from servicenow_mcp.tools.bulk_tools import (
+    BulkOperationsParams,
+    BulkUpdateIncidentsParams,
+    BulkUpdateChangeRequestsParams,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_change_requests as bulk_update_change_requests_tool,
     bulk_update_incidents as bulk_update_incidents_tool,
     execute_bulk_operations as execute_bulk_operations_tool,
 )
@@ -1446,6 +1451,21 @@ def get_tool_definitions(
                 "work_notes, etc.). Incident numbers are resolved to sys_ids with one "
                 "preliminary GET before the batch PATCH is issued. Up to 100 incidents "
                 "per call. Returns per-incident ok/status_code with the original incident_id."
+            ),
+            "raw_dict",
+        ),
+        "bulk_update_change_requests": (
+            bulk_update_change_requests_tool,
+            BulkUpdateChangeRequestsParams,
+            Dict[str, Any],
+            (
+                "PATCH multiple ServiceNow change requests in a single Batch API call. "
+                "Each update entry specifies a change_id (CHG number or sys_id) and "
+                "the fields to change (short_description, state, type, risk, impact, "
+                "priority, assignment_group, start_date, end_date, work_notes, etc.). "
+                "Change request numbers are resolved to sys_ids with one preliminary GET "
+                "before the batch PATCH is issued. Up to 100 change requests per call. "
+                "Returns per-change ok/status_code with the original change_id."
             ),
             "raw_dict",
         ),

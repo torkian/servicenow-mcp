@@ -106,6 +106,8 @@ change_coordinator:
   - create_problem
   - update_problem
   - close_problem
+  # Bulk Operations
+  - bulk_update_change_requests
 
 knowledge_author:
   # KB Management
@@ -430,3 +432,4 @@ full:
   # Bulk Operations
   - execute_bulk_operations
   - bulk_update_incidents
+  - bulk_update_change_requests

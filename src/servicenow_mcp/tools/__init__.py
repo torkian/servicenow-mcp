@@ -156,6 +156,7 @@ from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria_condition,
 )
 from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_change_requests,
     bulk_update_incidents,
     execute_bulk_operations,
 )
@@ -369,6 +370,7 @@ __all__ = [
     # Bulk operations
     "execute_bulk_operations",
     "bulk_update_incidents",
+    "bulk_update_change_requests",
 
     # CMDB tools
     "list_cmdb_classes",

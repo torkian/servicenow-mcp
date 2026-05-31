@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add bulk_update_change_requests tool (PATCH multiple change requests in one batch call)
-2. Add bulk_update_problems tool (PATCH multiple problems in one batch call)
+1. Add bulk_update_problems tool (PATCH multiple problems in one batch call)
 3. Add list_incident_comments tool (GET comments/work-notes for an incident)
 4. Add get_ci_outage tool (GET single cmdb_ci_outage by sys_id)
 5. Add create_ci_outage tool (POST cmdb_ci_outage; start an outage record for a CI)
@@ -62,3 +61,4 @@
 52. 2026-05-28 — Add close_problem tool (PATCH problem state to Closed/4; number/sys_id resolver; optional close_notes/fix_notes/cause_notes/work_notes; 404 guard; registered in service_desk, change_coordinator, full packages; 12 new tests; 1264 total tests; 91% coverage)
 53. 2026-05-29 — Add list_cmdb_ci_outages tool (cmdb_ci_outage table; filters for ci_sys_id, outage_type, resolved, begin_after/begin_before with datetime validation; reference fields normalised; pagination; registered in system_administrator and full packages; 21 new tests; 1285 total tests; 91% coverage)
 54. 2026-05-30 — Add bulk_update_incidents tool (PATCH multiple incidents in one Batch API call; IncidentUpdate model with 13 updatable fields; incident numbers batch-resolved via single numberIN GET; per-result incident_id enrichment; registered in service_desk and full packages; 23 new tests; 1308 total tests; 91% coverage)
+55. 2026-05-31 — Add bulk_update_change_requests tool (PATCH multiple change requests in one Batch API call; ChangeRequestUpdate model with 13 updatable fields including risk/type/start_date/end_date; CHG numbers batch-resolved via single numberIN GET; per-result change_id enrichment; registered in change_coordinator and full packages; 20 new tests; 1328 total tests; 91% coverage)

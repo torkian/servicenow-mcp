@@ -339,3 +339,168 @@ def bulk_update_incidents(
 
     result["results"] = enriched
     return result
+
+
+# ---------------------------------------------------------------------------
+# Bulk update change requests
+# ---------------------------------------------------------------------------
+
+_CHANGE_REQUEST_UPDATE_FIELDS = (
+    "short_description",
+    "description",
+    "state",
+    "type",
+    "category",
+    "risk",
+    "impact",
+    "priority",
+    "assignment_group",
+    "assigned_to",
+    "start_date",
+    "end_date",
+    "work_notes",
+)
+
+
+class ChangeRequestUpdate(BaseModel):
+    """One change request update within a bulk batch request."""
+
+    change_id: str = Field(
+        ...,
+        description="Change request number (e.g. CHG0010001) or 32-character sys_id",
+    )
+    short_description: Optional[str] = Field(None, description="Short description")
+    description: Optional[str] = Field(None, description="Detailed description")
+    state: Optional[str] = Field(None, description="State code (e.g. '-1'=Draft, '0'=Open, '1'=Scheduled)")
+    type: Optional[str] = Field(None, description="Change type: normal, standard, or emergency")
+    category: Optional[str] = Field(None, description="Category")
+    risk: Optional[str] = Field(None, description="Risk level: low, moderate, high, or very_high")
+    impact: Optional[str] = Field(None, description="Impact code")
+    priority: Optional[str] = Field(None, description="Priority code")
+    assignment_group: Optional[str] = Field(None, description="Assignment group name or sys_id")
+    assigned_to: Optional[str] = Field(None, description="Assigned-to user name or sys_id")
+    start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
+    end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
+    work_notes: Optional[str] = Field(None, description="Work notes to append")
+
+
+class BulkUpdateChangeRequestsParams(BaseModel):
+    """Parameters for bulk-updating multiple change requests in one batch call."""
+
+    updates: List[ChangeRequestUpdate] = Field(
+        ...,
+        description="List of change request updates (1–100 items). Each entry must include change_id plus at least one field to change.",
+    )
+
+
+def _resolve_change_request_numbers(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    numbers: List[str],
+) -> Dict[str, str]:
+    """Resolve change request numbers to sys_ids via a single GET.
+
+    Returns a dict mapping number → sys_id for every number found.
+    Raises requests.RequestException on HTTP failure.
+    """
+    query = "numberIN" + ",".join(numbers)
+    response = _make_request(
+        "GET",
+        f"{config.api_url}/table/change_request",
+        params={
+            "sysparm_query": query,
+            "sysparm_fields": "sys_id,number",
+            "sysparm_limit": len(numbers),
+        },
+        headers=auth_manager.get_headers(),
+        timeout=config.timeout,
+    )
+    response.raise_for_status()
+    return {r["number"]: r["sys_id"] for r in response.json().get("result", [])}
+
+
+def bulk_update_change_requests(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: BulkUpdateChangeRequestsParams,
+) -> Dict[str, Any]:
+    """PATCH multiple change requests in ServiceNow using a single Batch API call.
+
+    Change request numbers are resolved to sys_ids with one preliminary GET
+    before the batch PATCH is issued. Up to 100 change requests per call.
+    Each result entry reports the change_id, ok flag, HTTP status, and response body.
+    """
+    if not params.updates:
+        return {"success": False, "message": "No updates provided"}
+
+    if len(params.updates) > 100:
+        return {
+            "success": False,
+            "message": f"Too many updates: {len(params.updates)} (maximum 100)",
+        }
+
+    numbers_to_resolve: List[str] = [
+        u.change_id for u in params.updates if not _is_sys_id(u.change_id)
+    ]
+
+    number_to_sys_id: Dict[str, str] = {}
+    if numbers_to_resolve:
+        try:
+            number_to_sys_id = _resolve_change_request_numbers(
+                config, auth_manager, numbers_to_resolve
+            )
+        except requests.RequestException as e:
+            logger.error("Failed to resolve change request numbers: %s", e)
+            return {
+                "success": False,
+                "message": f"Failed to resolve change request numbers: {_format_http_error(e)}",
+            }
+
+    batch_requests: List[BulkOperationRequest] = []
+    unresolved: List[str] = []
+
+    for idx, update in enumerate(params.updates):
+        if _is_sys_id(update.change_id):
+            sys_id = update.change_id
+        else:
+            sys_id = number_to_sys_id.get(update.change_id)
+            if sys_id is None:
+                unresolved.append(update.change_id)
+                continue
+
+        body = {
+            field: getattr(update, field)
+            for field in _CHANGE_REQUEST_UPDATE_FIELDS
+            if getattr(update, field) is not None
+        }
+
+        batch_requests.append(
+            BulkOperationRequest(
+                id=str(idx),
+                method="PATCH",
+                url=f"/api/now/v2/table/change_request/{sys_id}",
+                body=body if body else None,
+            )
+        )
+
+    if unresolved:
+        return {
+            "success": False,
+            "message": f"Change request(s) not found: {', '.join(unresolved)}",
+            "unresolved": unresolved,
+        }
+
+    if not batch_requests:
+        return {"success": False, "message": "No valid updates to execute"}
+
+    bulk_params = BulkOperationsParams(requests=batch_requests)
+    result = execute_bulk_operations(config, auth_manager, bulk_params)
+
+    enriched = []
+    for entry in result.get("results", []):
+        original_idx = int(entry["id"])
+        original_update = params.updates[original_idx]
+        enriched.append({**entry, "change_id": original_update.change_id})
+
+    result["results"] = enriched
+    return result
