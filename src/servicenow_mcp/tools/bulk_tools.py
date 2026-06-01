@@ -504,3 +504,172 @@ def bulk_update_change_requests(
 
     result["results"] = enriched
     return result
+
+
+# ---------------------------------------------------------------------------
+# Bulk update problems
+# ---------------------------------------------------------------------------
+
+_PROBLEM_UPDATE_FIELDS = (
+    "short_description",
+    "description",
+    "state",
+    "priority",
+    "impact",
+    "urgency",
+    "assigned_to",
+    "assignment_group",
+    "work_notes",
+    "known_error",
+    "cause_notes",
+    "fix_notes",
+    "category",
+)
+
+
+class ProblemUpdate(BaseModel):
+    """One problem update within a bulk batch request."""
+
+    problem_id: str = Field(
+        ...,
+        description="Problem number (e.g. PRB0001234) or 32-character sys_id",
+    )
+    short_description: Optional[str] = Field(None, description="Short description")
+    description: Optional[str] = Field(None, description="Detailed description")
+    state: Optional[str] = Field(
+        None, description="State code (e.g. '1'=Open, '2'=Known Error, '3'=Pending Change, '4'=Closed/Resolved)"
+    )
+    priority: Optional[str] = Field(None, description="Priority code")
+    impact: Optional[str] = Field(None, description="Impact code")
+    urgency: Optional[str] = Field(None, description="Urgency code")
+    assigned_to: Optional[str] = Field(None, description="Assigned-to user name or sys_id")
+    assignment_group: Optional[str] = Field(None, description="Assignment group name or sys_id")
+    work_notes: Optional[str] = Field(None, description="Work notes to append")
+    known_error: Optional[str] = Field(
+        None, description="Mark as known error: 'true' or 'false'"
+    )
+    cause_notes: Optional[str] = Field(None, description="Root cause notes")
+    fix_notes: Optional[str] = Field(None, description="Fix / workaround notes")
+    category: Optional[str] = Field(None, description="Category")
+
+
+class BulkUpdateProblemsParams(BaseModel):
+    """Parameters for bulk-updating multiple problems in one batch call."""
+
+    updates: List[ProblemUpdate] = Field(
+        ...,
+        description="List of problem updates (1–100 items). Each entry must include problem_id plus at least one field to change.",
+    )
+
+
+def _resolve_problem_numbers(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    numbers: List[str],
+) -> Dict[str, str]:
+    """Resolve a list of problem numbers to sys_ids via a single GET.
+
+    Returns a dict mapping number → sys_id for every number found.
+    Raises requests.RequestException on HTTP failure.
+    """
+    query = "numberIN" + ",".join(numbers)
+    response = _make_request(
+        "GET",
+        f"{config.api_url}/table/problem",
+        params={
+            "sysparm_query": query,
+            "sysparm_fields": "sys_id,number",
+            "sysparm_limit": len(numbers),
+        },
+        headers=auth_manager.get_headers(),
+        timeout=config.timeout,
+    )
+    response.raise_for_status()
+    return {r["number"]: r["sys_id"] for r in response.json().get("result", [])}
+
+
+def bulk_update_problems(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: BulkUpdateProblemsParams,
+) -> Dict[str, Any]:
+    """PATCH multiple problems in ServiceNow using a single Batch API call.
+
+    Problem numbers are resolved to sys_ids with one preliminary GET request
+    before the batch PATCH is issued. Up to 100 problems can be updated per call.
+    Each result entry reports the problem_id, ok flag, HTTP status, and response body.
+    """
+    if not params.updates:
+        return {"success": False, "message": "No updates provided"}
+
+    if len(params.updates) > 100:
+        return {
+            "success": False,
+            "message": f"Too many updates: {len(params.updates)} (maximum 100)",
+        }
+
+    numbers_to_resolve: List[str] = [
+        u.problem_id for u in params.updates if not _is_sys_id(u.problem_id)
+    ]
+
+    number_to_sys_id: Dict[str, str] = {}
+    if numbers_to_resolve:
+        try:
+            number_to_sys_id = _resolve_problem_numbers(
+                config, auth_manager, numbers_to_resolve
+            )
+        except requests.RequestException as e:
+            logger.error("Failed to resolve problem numbers: %s", e)
+            return {
+                "success": False,
+                "message": f"Failed to resolve problem numbers: {_format_http_error(e)}",
+            }
+
+    batch_requests: List[BulkOperationRequest] = []
+    unresolved: List[str] = []
+
+    for idx, update in enumerate(params.updates):
+        if _is_sys_id(update.problem_id):
+            sys_id = update.problem_id
+        else:
+            sys_id = number_to_sys_id.get(update.problem_id)
+            if sys_id is None:
+                unresolved.append(update.problem_id)
+                continue
+
+        body = {
+            field: getattr(update, field)
+            for field in _PROBLEM_UPDATE_FIELDS
+            if getattr(update, field) is not None
+        }
+
+        batch_requests.append(
+            BulkOperationRequest(
+                id=str(idx),
+                method="PATCH",
+                url=f"/api/now/v2/table/problem/{sys_id}",
+                body=body if body else None,
+            )
+        )
+
+    if unresolved:
+        return {
+            "success": False,
+            "message": f"Problem(s) not found: {', '.join(unresolved)}",
+            "unresolved": unresolved,
+        }
+
+    if not batch_requests:
+        return {"success": False, "message": "No valid updates to execute"}
+
+    bulk_params = BulkOperationsParams(requests=batch_requests)
+    result = execute_bulk_operations(config, auth_manager, bulk_params)
+
+    enriched = []
+    for entry in result.get("results", []):
+        original_idx = int(entry["id"])
+        original_update = params.updates[original_idx]
+        enriched.append({**entry, "problem_id": original_update.problem_id})
+
+    result["results"] = enriched
+    return result

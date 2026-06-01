@@ -158,6 +158,7 @@ from servicenow_mcp.tools.user_criteria_tools import (
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_requests,
     bulk_update_incidents,
+    bulk_update_problems,
     execute_bulk_operations,
 )
 from servicenow_mcp.tools.cmdb_tools import (
@@ -371,6 +372,7 @@ __all__ = [
     "execute_bulk_operations",
     "bulk_update_incidents",
     "bulk_update_change_requests",
+    "bulk_update_problems",
 
     # CMDB tools
     "list_cmdb_classes",

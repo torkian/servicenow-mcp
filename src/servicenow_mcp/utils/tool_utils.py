@@ -459,10 +459,12 @@ from servicenow_mcp.tools.bulk_tools import (
     BulkOperationsParams,
     BulkUpdateIncidentsParams,
     BulkUpdateChangeRequestsParams,
+    BulkUpdateProblemsParams,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_requests as bulk_update_change_requests_tool,
     bulk_update_incidents as bulk_update_incidents_tool,
+    bulk_update_problems as bulk_update_problems_tool,
     execute_bulk_operations as execute_bulk_operations_tool,
 )
 from servicenow_mcp.tools.cmdb_tools import (
@@ -1466,6 +1468,22 @@ def get_tool_definitions(
                 "Change request numbers are resolved to sys_ids with one preliminary GET "
                 "before the batch PATCH is issued. Up to 100 change requests per call. "
                 "Returns per-change ok/status_code with the original change_id."
+            ),
+            "raw_dict",
+        ),
+        "bulk_update_problems": (
+            bulk_update_problems_tool,
+            BulkUpdateProblemsParams,
+            Dict[str, Any],
+            (
+                "PATCH multiple ServiceNow problems in a single Batch API call. "
+                "Each update entry specifies a problem_id (PRB number or sys_id) and "
+                "the fields to change (short_description, state, priority, impact, urgency, "
+                "assigned_to, assignment_group, known_error, cause_notes, fix_notes, "
+                "work_notes, category). "
+                "Problem numbers are resolved to sys_ids with one preliminary GET "
+                "before the batch PATCH is issued. Up to 100 problems per call. "
+                "Returns per-problem ok/status_code with the original problem_id."
             ),
             "raw_dict",
         ),
