@@ -20,6 +20,7 @@ service_desk:
   # Incident Tasks
   - create_incident_task
   - list_incident_tasks
+  - list_incident_comments
   # Problem Management
   - list_problems
   - get_problem
@@ -260,6 +261,7 @@ full:
   # Incident Tasks
   - create_incident_task
   - list_incident_tasks
+  - list_incident_comments
   # Catalog (Core)
   - list_catalogs
   - get_catalog

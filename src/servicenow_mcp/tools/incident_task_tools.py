@@ -57,6 +57,24 @@ class ListIncidentTasksParams(BaseModel):
     state: Optional[str] = Field(None, description="Filter by task state")
 
 
+class ListIncidentCommentsParams(BaseModel):
+    """Parameters for listing journal entries (comments/work notes) on an incident."""
+
+    incident_id: str = Field(
+        ...,
+        description="Incident sys_id or number (e.g. INC0010001)",
+    )
+    entry_type: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by entry type: 'comments' for customer-visible comments, "
+            "'work_notes' for internal notes. Omit to return all entries."
+        ),
+    )
+    limit: int = Field(20, description="Maximum number of entries to return")
+    offset: int = Field(0, description="Pagination offset")
+
+
 def _resolve_incident_sys_id(
     instance_url: str,
     headers: Dict[str, str],
@@ -203,3 +221,78 @@ def list_incident_tasks(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing incident tasks: {e}")
         return {"success": False, "message": f"Error listing incident tasks: {_format_http_error(e)}"}
+
+
+def list_incident_comments(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List journal entries (comments and work notes) for a specific incident.
+
+    Queries the sys_journal_field table filtered to the incident's sys_id.
+    Optionally filter to 'comments' (customer-visible) or 'work_notes' (internal).
+    """
+    result = _unwrap_and_validate_params(
+        params, ListIncidentCommentsParams, required_fields=["incident_id"]
+    )
+    if not result["success"]:
+        return result
+
+    validated: ListIncidentCommentsParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    incident_sys_id = _resolve_incident_sys_id(instance_url, headers, validated.incident_id)
+    if not incident_sys_id:
+        return {"success": False, "message": f"Incident not found: {validated.incident_id}"}
+
+    query_parts = [
+        "name=incident",
+        f"element_id={incident_sys_id}",
+    ]
+    if validated.entry_type:
+        query_parts.append(f"element={validated.entry_type}")
+
+    url = f"{instance_url}/api/now/table/sys_journal_field"
+    query_params = {
+        "sysparm_query": "^".join(query_parts),
+        "sysparm_limit": validated.limit,
+        "sysparm_offset": validated.offset,
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": "sys_id,element,element_id,value,sys_created_on,sys_created_by",
+    }
+
+    try:
+        resp = _make_request("GET", url, headers=headers, params=query_params)
+        resp.raise_for_status()
+        entries = resp.json().get("result", [])
+        comments = [
+            {
+                "sys_id": e.get("sys_id"),
+                "type": e.get("element"),
+                "value": e.get("value"),
+                "created_on": e.get("sys_created_on"),
+                "created_by": e.get("sys_created_by"),
+            }
+            for e in entries
+        ]
+        return {
+            "success": True,
+            "comments": comments,
+            "count": len(comments),
+            "has_more": len(comments) == validated.limit,
+            "next_offset": validated.offset + len(comments) if len(comments) == validated.limit else None,
+            "incident_id": incident_sys_id,
+            "message": f"Found {len(comments)} journal entries",
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing incident comments: {e}")
+        return {"success": False, "message": f"Error listing incident comments: {_format_http_error(e)}"}

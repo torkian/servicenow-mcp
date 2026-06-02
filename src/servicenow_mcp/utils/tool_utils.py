@@ -192,10 +192,12 @@ from servicenow_mcp.tools.incident_tools import (
 )
 from servicenow_mcp.tools.incident_task_tools import (
     CreateIncidentTaskParams,
+    ListIncidentCommentsParams,
     ListIncidentTasksParams,
 )
 from servicenow_mcp.tools.incident_task_tools import (
     create_incident_task as create_incident_task_tool,
+    list_incident_comments as list_incident_comments_tool,
     list_incident_tasks as list_incident_tasks_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
@@ -681,6 +683,13 @@ def get_tool_definitions(
             ListIncidentTasksParams,
             str,
             "List tasks (sc_task) linked to a specific incident in ServiceNow",
+            "json",
+        ),
+        "list_incident_comments": (
+            list_incident_comments_tool,
+            ListIncidentCommentsParams,
+            str,
+            "List journal entries (comments and work notes) for an incident in ServiceNow",
             "json",
         ),
         # Catalog Tools
