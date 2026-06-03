@@ -619,6 +619,59 @@ def _format_ci_outage(record: Dict) -> Dict:
     }
 
 
+class GetCIOutageParams(BaseModel):
+    """Parameters for retrieving a single CMDB CI outage record."""
+
+    sys_id: str = Field(..., description="sys_id of the cmdb_ci_outage record to retrieve")
+
+
+def get_ci_outage(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single CMDB CI outage record by its sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetCIOutageParams.
+
+    Returns:
+        Dictionary with ``success`` and ``outage`` keys.
+    """
+    result = _unwrap_and_validate_params(params, GetCIOutageParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{CMDB_CI_OUTAGE_TABLE}/{validated.sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(CMDB_CI_OUTAGE_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"CI outage not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {"success": False, "message": f"CI outage not found: {validated.sys_id}"}
+        return {"success": True, "outage": _format_ci_outage(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving CI outage: {e}")
+        return {"success": False, "message": f"Error retrieving CI outage: {_format_http_error(e)}"}
+
+
 def list_cmdb_ci_outages(
     auth_manager: AuthManager,
     server_config: ServerConfig,

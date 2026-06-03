@@ -166,6 +166,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     create_ci,
     get_ci,
     get_ci_by_name,
+    get_ci_outage,
     list_cmdb_classes,
     list_cmdb_ci_outages,
     list_cis,
@@ -384,6 +385,7 @@ __all__ = [
     "create_ci",
     "update_ci",
     "list_cmdb_ci_outages",
+    "get_ci_outage",
 
     # CMDB relationship tools
     "list_ci_relationships",

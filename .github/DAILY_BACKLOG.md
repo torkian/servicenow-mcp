@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_ci_outage tool (GET single cmdb_ci_outage by sys_id)
-2. Add create_ci_outage tool (POST cmdb_ci_outage; start an outage record for a CI)
+1. Add create_ci_outage tool (POST cmdb_ci_outage; start an outage record for a CI)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -62,3 +61,4 @@
 55. 2026-05-31 — Add bulk_update_change_requests tool (PATCH multiple change requests in one Batch API call; ChangeRequestUpdate model with 13 updatable fields including risk/type/start_date/end_date; CHG numbers batch-resolved via single numberIN GET; per-result change_id enrichment; registered in change_coordinator and full packages; 20 new tests; 1328 total tests; 91% coverage)
 56. 2026-06-01 — Add bulk_update_problems tool (PATCH multiple problems in one Batch API call; ProblemUpdate model with 13 updatable fields including known_error/cause_notes/fix_notes; PRB numbers batch-resolved via single numberIN GET; per-result problem_id enrichment; registered in service_desk, change_coordinator, and full packages; 21 new tests; 1349 total tests; 92% coverage)
 57. 2026-06-02 — Add list_incident_comments tool (GET sys_journal_field entries for an incident; optional entry_type filter for comments vs work_notes; number/sys_id resolver; pagination with has_more/next_offset; 15 new tests; 1364 total tests; 92% coverage)
+58. 2026-06-03 — Add get_ci_outage tool (GET cmdb_ci_outage/{sys_id}; GetCIOutageParams with required sys_id; 404/empty-result guards; _format_ci_outage normalisation; registered in system_administrator and full packages; 12 new tests; 1376 total tests; 92% coverage)

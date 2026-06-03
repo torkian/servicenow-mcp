@@ -472,6 +472,7 @@ from servicenow_mcp.tools.bulk_tools import (
 from servicenow_mcp.tools.cmdb_tools import (
     CreateCIParams,
     GetCIByNameParams,
+    GetCIOutageParams,
     GetCIParams,
     ListCIsParams,
     ListCMDBClassesParams,
@@ -482,6 +483,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     create_ci as create_ci_tool,
     get_ci as get_ci_tool,
     get_ci_by_name as get_ci_by_name_tool,
+    get_ci_outage as get_ci_outage_tool,
     list_cmdb_classes as list_cmdb_classes_tool,
     list_cmdb_ci_outages as list_cmdb_ci_outages_tool,
     list_cis as list_cis_tool,
@@ -1565,6 +1567,13 @@ def get_tool_definitions(
                 "Filter by affected CI sys_id, outage type, resolved state, "
                 "and begin date range. Supports pagination."
             ),
+            "raw_dict",
+        ),
+        "get_ci_outage": (
+            get_ci_outage_tool,
+            GetCIOutageParams,
+            Dict[str, Any],
+            "Retrieve a single CMDB CI outage record by its sys_id",
             "raw_dict",
         ),
         # CMDB Relationship Tools

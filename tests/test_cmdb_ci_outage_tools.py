@@ -1,11 +1,13 @@
-"""Tests for list_cmdb_ci_outages in cmdb_tools.py."""
+"""Tests for list_cmdb_ci_outages and get_ci_outage in cmdb_tools.py."""
 
 import unittest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.cmdb_tools import (
+    GetCIOutageParams,
     ListCMDBCIOutagesParams,
     _format_ci_outage,
+    get_ci_outage,
     list_cmdb_ci_outages,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -301,6 +303,121 @@ class TestListCMDBCIOutages(unittest.TestCase):
         call_args = mock_req.call_args
         url = call_args[0][1]
         self.assertIn("cmdb_ci_outage", url)
+
+
+class TestGetCIOutageParams(unittest.TestCase):
+    def test_requires_sys_id(self):
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            GetCIOutageParams()
+
+    def test_valid_params(self):
+        p = GetCIOutageParams(sys_id="out001")
+        self.assertEqual(p.sys_id, "out001")
+
+
+class TestGetCIOutage(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth_manager()
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_returns_outage(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": FAKE_OUTAGE}
+        mock_req.return_value = mock_resp
+
+        result = get_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["outage"]["sys_id"], "out001")
+        self.assertEqual(result["outage"]["type"], "hardware")
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_404_returns_failure(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_req.return_value = mock_resp
+
+        result = get_ci_outage(self.auth, self.config, {"sys_id": "nonexistent"})
+        self.assertFalse(result["success"])
+        self.assertIn("nonexistent", result["message"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_empty_result_returns_failure(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": {}}
+        mock_req.return_value = mock_resp
+
+        result = get_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_missing_sys_id_returns_failure(self):
+        result = get_ci_outage(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        import requests as req_lib
+        mock_req.side_effect = req_lib.exceptions.ConnectionError("network error")
+
+        result = get_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving CI outage", result["message"])
+
+    def test_missing_instance_url(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        auth.instance_url = None
+        config = MagicMock()
+        config.instance_url = None
+
+        result = get_ci_outage(auth, config, {"sys_id": "out001"})
+        self.assertFalse(result["success"])
+
+    def test_missing_headers(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = None
+        auth.instance_url = "https://dev99999.service-now.com"
+
+        result = get_ci_outage(auth, self.config, {"sys_id": "out001"})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_url_contains_sys_id(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": FAKE_OUTAGE}
+        mock_req.return_value = mock_resp
+
+        get_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        call_args = mock_req.call_args
+        url = call_args[0][1]
+        self.assertIn("cmdb_ci_outage/out001", url)
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_sysparm_fields_requested(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": FAKE_OUTAGE}
+        mock_req.return_value = mock_resp
+
+        get_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        call_kwargs = mock_req.call_args[1]
+        self.assertIn("sysparm_fields", call_kwargs["params"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_normalises_reference_fields(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"result": FAKE_OUTAGE}
+        mock_req.return_value = mock_resp
+
+        result = get_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        self.assertEqual(result["outage"]["ci_sys_id"], "ci001")
+        self.assertEqual(result["outage"]["cause_ci"], "ci002")
 
 
 if __name__ == "__main__":
