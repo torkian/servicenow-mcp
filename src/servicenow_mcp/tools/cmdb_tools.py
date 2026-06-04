@@ -619,6 +619,45 @@ def _format_ci_outage(record: Dict) -> Dict:
     }
 
 
+class CreateCIOutageParams(BaseModel):
+    """Parameters for creating a new CMDB CI outage record."""
+
+    cmdb_ci: str = Field(..., description="sys_id of the affected configuration item")
+    begin: str = Field(
+        ...,
+        description="Outage start datetime (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD)",
+    )
+    type: Optional[str] = Field(
+        None,
+        description="Outage type (e.g. hardware, network, application, software)",
+    )
+    end: Optional[str] = Field(
+        None,
+        description="Outage end datetime (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD)",
+    )
+    short_description: Optional[str] = Field(
+        None,
+        description="Brief description of the outage",
+    )
+    cause_ci: Optional[str] = Field(
+        None,
+        description="sys_id of the CI that caused this outage",
+    )
+    resolved: Optional[bool] = Field(
+        None,
+        description="Whether the outage is already resolved",
+    )
+    resolution_notes: Optional[str] = Field(
+        None,
+        description="Notes explaining how the outage was resolved",
+    )
+
+    @field_validator("begin", "end", mode="before")
+    @classmethod
+    def _validate_datetime_fields(cls, v):
+        return validate_servicenow_datetime(v)
+
+
 class GetCIOutageParams(BaseModel):
     """Parameters for retrieving a single CMDB CI outage record."""
 
@@ -670,6 +709,67 @@ def get_ci_outage(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error retrieving CI outage: {e}")
         return {"success": False, "message": f"Error retrieving CI outage: {_format_http_error(e)}"}
+
+
+def create_ci_outage(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new CMDB CI outage record in the cmdb_ci_outage table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateCIOutageParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, and ``outage`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, CreateCIOutageParams, required_fields=["cmdb_ci", "begin"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: Dict[str, Any] = {
+        "cmdb_ci": validated.cmdb_ci,
+        "begin": validated.begin,
+    }
+    if validated.type is not None:
+        body["type"] = validated.type
+    if validated.end is not None:
+        body["end"] = validated.end
+    if validated.short_description is not None:
+        body["short_description"] = validated.short_description
+    if validated.cause_ci is not None:
+        body["cause_ci"] = validated.cause_ci
+    if validated.resolved is not None:
+        body["resolved"] = "true" if validated.resolved else "false"
+    if validated.resolution_notes is not None:
+        body["resolution_notes"] = validated.resolution_notes
+
+    url = f"{instance_url}/api/now/table/{CMDB_CI_OUTAGE_TABLE}"
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "sys_id": record.get("sys_id"),
+            "outage": _format_ci_outage(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating CI outage: {e}")
+        return {"success": False, "message": f"Error creating CI outage: {_format_http_error(e)}"}
 
 
 def list_cmdb_ci_outages(

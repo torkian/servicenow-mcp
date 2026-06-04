@@ -1,7 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add create_ci_outage tool (POST cmdb_ci_outage; start an outage record for a CI)
+1. Add update_ci_outage tool (PATCH cmdb_ci_outage/{sys_id}; set end time, resolution notes, mark resolved)
+2. Add delete_ci_outage tool (DELETE cmdb_ci_outage/{sys_id})
+3. Add list_user_groups tool (sys_user_group table; filters for name/manager/active)
+4. Add get_user_group tool (sys_user_group/{sys_id} with 404 guard)
+5. Add add_user_to_group tool (sys_user_grmember table; POST junction record)
+6. Add remove_user_from_group tool (DELETE sys_user_grmember/{sys_id})
+7. Add list_group_members tool (sys_user_grmember filtered by group sys_id)
+8. Add close_incident_task tool (PATCH sc_task state to Closed)
+9. Add resolve_sla_breach tool (PATCH task_sla with paused=true and stage=Completed)
+10. Add list_notifications tool (sysevent_email_log table; recent notification history)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -62,3 +71,4 @@
 56. 2026-06-01 — Add bulk_update_problems tool (PATCH multiple problems in one Batch API call; ProblemUpdate model with 13 updatable fields including known_error/cause_notes/fix_notes; PRB numbers batch-resolved via single numberIN GET; per-result problem_id enrichment; registered in service_desk, change_coordinator, and full packages; 21 new tests; 1349 total tests; 92% coverage)
 57. 2026-06-02 — Add list_incident_comments tool (GET sys_journal_field entries for an incident; optional entry_type filter for comments vs work_notes; number/sys_id resolver; pagination with has_more/next_offset; 15 new tests; 1364 total tests; 92% coverage)
 58. 2026-06-03 — Add get_ci_outage tool (GET cmdb_ci_outage/{sys_id}; GetCIOutageParams with required sys_id; 404/empty-result guards; _format_ci_outage normalisation; registered in system_administrator and full packages; 12 new tests; 1376 total tests; 92% coverage)
+59. 2026-06-04 — Add create_ci_outage tool (POST cmdb_ci_outage; CreateCIOutageParams with required cmdb_ci/begin and optional type/end/cause_ci/resolved/resolution_notes; datetime validation on begin+end; resolved serialised as "true"/"false"; registered in system_administrator and full packages; 18 new tests; 1394 total tests; 92% coverage)

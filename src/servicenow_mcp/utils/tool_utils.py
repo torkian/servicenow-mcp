@@ -470,6 +470,7 @@ from servicenow_mcp.tools.bulk_tools import (
     execute_bulk_operations as execute_bulk_operations_tool,
 )
 from servicenow_mcp.tools.cmdb_tools import (
+    CreateCIOutageParams,
     CreateCIParams,
     GetCIByNameParams,
     GetCIOutageParams,
@@ -481,6 +482,7 @@ from servicenow_mcp.tools.cmdb_tools import (
 )
 from servicenow_mcp.tools.cmdb_tools import (
     create_ci as create_ci_tool,
+    create_ci_outage as create_ci_outage_tool,
     get_ci as get_ci_tool,
     get_ci_by_name as get_ci_by_name_tool,
     get_ci_outage as get_ci_outage_tool,
@@ -1574,6 +1576,17 @@ def get_tool_definitions(
             GetCIOutageParams,
             Dict[str, Any],
             "Retrieve a single CMDB CI outage record by its sys_id",
+            "raw_dict",
+        ),
+        "create_ci_outage": (
+            create_ci_outage_tool,
+            CreateCIOutageParams,
+            Dict[str, Any],
+            (
+                "Create a new outage record in the cmdb_ci_outage table to mark a CI "
+                "as impacted. Requires the affected CI sys_id and an outage begin datetime. "
+                "Optionally specify type, end time, cause CI, resolved state, and resolution notes."
+            ),
             "raw_dict",
         ),
         # CMDB Relationship Tools
