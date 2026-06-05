@@ -478,6 +478,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     ListCIsParams,
     ListCMDBClassesParams,
     ListCMDBCIOutagesParams,
+    UpdateCIOutageParams,
     UpdateCIParams,
 )
 from servicenow_mcp.tools.cmdb_tools import (
@@ -490,6 +491,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     list_cmdb_ci_outages as list_cmdb_ci_outages_tool,
     list_cis as list_cis_tool,
     update_ci as update_ci_tool,
+    update_ci_outage as update_ci_outage_tool,
 )
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
@@ -1586,6 +1588,18 @@ def get_tool_definitions(
                 "Create a new outage record in the cmdb_ci_outage table to mark a CI "
                 "as impacted. Requires the affected CI sys_id and an outage begin datetime. "
                 "Optionally specify type, end time, cause CI, resolved state, and resolution notes."
+            ),
+            "raw_dict",
+        ),
+        "update_ci_outage": (
+            update_ci_outage_tool,
+            UpdateCIOutageParams,
+            Dict[str, Any],
+            (
+                "Update an existing CI outage record in the cmdb_ci_outage table. "
+                "Requires the outage sys_id. Set end time and resolution_notes to document "
+                "resolution, or set resolved=True to mark the outage as resolved. "
+                "Only supplied fields are modified."
             ),
             "raw_dict",
         ),

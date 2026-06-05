@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add update_ci_outage tool (PATCH cmdb_ci_outage/{sys_id}; set end time, resolution notes, mark resolved)
-2. Add delete_ci_outage tool (DELETE cmdb_ci_outage/{sys_id})
+1. Add delete_ci_outage tool (DELETE cmdb_ci_outage/{sys_id})
 3. Add list_user_groups tool (sys_user_group table; filters for name/manager/active)
 4. Add get_user_group tool (sys_user_group/{sys_id} with 404 guard)
 5. Add add_user_to_group tool (sys_user_grmember table; POST junction record)
@@ -72,3 +71,4 @@
 57. 2026-06-02 — Add list_incident_comments tool (GET sys_journal_field entries for an incident; optional entry_type filter for comments vs work_notes; number/sys_id resolver; pagination with has_more/next_offset; 15 new tests; 1364 total tests; 92% coverage)
 58. 2026-06-03 — Add get_ci_outage tool (GET cmdb_ci_outage/{sys_id}; GetCIOutageParams with required sys_id; 404/empty-result guards; _format_ci_outage normalisation; registered in system_administrator and full packages; 12 new tests; 1376 total tests; 92% coverage)
 59. 2026-06-04 — Add create_ci_outage tool (POST cmdb_ci_outage; CreateCIOutageParams with required cmdb_ci/begin and optional type/end/cause_ci/resolved/resolution_notes; datetime validation on begin+end; resolved serialised as "true"/"false"; registered in system_administrator and full packages; 18 new tests; 1394 total tests; 92% coverage)
+60. 2026-06-05 — Add update_ci_outage tool (PATCH cmdb_ci_outage/{sys_id}; UpdateCIOutageParams with required sys_id and optional type/begin/end/short_description/cause_ci/resolved/resolution_notes; empty-body guard; 404 guard; datetime validation; resolved serialised as string; registered in system_administrator and full packages; 19 new tests; 1413 total tests; 92% coverage)

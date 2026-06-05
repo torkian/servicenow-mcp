@@ -664,6 +664,45 @@ class GetCIOutageParams(BaseModel):
     sys_id: str = Field(..., description="sys_id of the cmdb_ci_outage record to retrieve")
 
 
+class UpdateCIOutageParams(BaseModel):
+    """Parameters for updating an existing CMDB CI outage record."""
+
+    sys_id: str = Field(..., description="sys_id of the cmdb_ci_outage record to update")
+    type: Optional[str] = Field(
+        None,
+        description="Outage type (e.g. hardware, network, application, software)",
+    )
+    begin: Optional[str] = Field(
+        None,
+        description="Outage start datetime (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD)",
+    )
+    end: Optional[str] = Field(
+        None,
+        description="Outage end datetime (YYYY-MM-DD HH:MM:SS or YYYY-MM-DD)",
+    )
+    short_description: Optional[str] = Field(
+        None,
+        description="Brief description of the outage",
+    )
+    cause_ci: Optional[str] = Field(
+        None,
+        description="sys_id of the CI that caused this outage",
+    )
+    resolved: Optional[bool] = Field(
+        None,
+        description="Set to True to mark the outage as resolved",
+    )
+    resolution_notes: Optional[str] = Field(
+        None,
+        description="Notes explaining how the outage was resolved",
+    )
+
+    @field_validator("begin", "end", mode="before")
+    @classmethod
+    def _validate_datetime_fields(cls, v):
+        return validate_servicenow_datetime(v)
+
+
 def get_ci_outage(
     auth_manager: AuthManager,
     server_config: ServerConfig,
@@ -709,6 +748,70 @@ def get_ci_outage(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error retrieving CI outage: {e}")
         return {"success": False, "message": f"Error retrieving CI outage: {_format_http_error(e)}"}
+
+
+def update_ci_outage(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing CMDB CI outage record via PATCH.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateCIOutageParams.
+
+    Returns:
+        Dictionary with ``success`` and ``outage`` keys.
+    """
+    result = _unwrap_and_validate_params(params, UpdateCIOutageParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: Dict[str, Any] = {}
+    if validated.type is not None:
+        body["type"] = validated.type
+    if validated.begin is not None:
+        body["begin"] = validated.begin
+    if validated.end is not None:
+        body["end"] = validated.end
+    if validated.short_description is not None:
+        body["short_description"] = validated.short_description
+    if validated.cause_ci is not None:
+        body["cause_ci"] = validated.cause_ci
+    if validated.resolved is not None:
+        body["resolved"] = "true" if validated.resolved else "false"
+    if validated.resolution_notes is not None:
+        body["resolution_notes"] = validated.resolution_notes
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{CMDB_CI_OUTAGE_TABLE}/{validated.sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(CMDB_CI_OUTAGE_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, headers=headers, params=query_params, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"CI outage not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "outage": _format_ci_outage(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating CI outage: {e}")
+        return {"success": False, "message": f"Error updating CI outage: {_format_http_error(e)}"}
 
 
 def create_ci_outage(
