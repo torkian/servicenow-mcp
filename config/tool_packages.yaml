@@ -223,6 +223,7 @@ system_administrator:
   - get_ci_outage
   - create_ci_outage
   - update_ci_outage
+  - delete_ci_outage
   # CMDB Relationships
   - list_ci_relationships
   - get_ci_relationship
@@ -370,6 +371,7 @@ full:
   - get_ci_outage
   - create_ci_outage
   - update_ci_outage
+  - delete_ci_outage
   # CMDB Relationships
   - list_ci_relationships
   - get_ci_relationship

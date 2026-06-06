@@ -664,6 +664,12 @@ class GetCIOutageParams(BaseModel):
     sys_id: str = Field(..., description="sys_id of the cmdb_ci_outage record to retrieve")
 
 
+class DeleteCIOutageParams(BaseModel):
+    """Parameters for deleting a CMDB CI outage record."""
+
+    sys_id: str = Field(..., description="sys_id of the cmdb_ci_outage record to delete")
+
+
 class UpdateCIOutageParams(BaseModel):
     """Parameters for updating an existing CMDB CI outage record."""
 
@@ -933,3 +939,44 @@ def list_cmdb_ci_outages(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing CI outages: {e}")
         return {"success": False, "message": f"Error listing CI outages: {_format_http_error(e)}"}
+
+
+def delete_ci_outage(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a CMDB CI outage record from the cmdb_ci_outage table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteCIOutageParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(params, DeleteCIOutageParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{CMDB_CI_OUTAGE_TABLE}/{validated.sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"CI outage not found: {validated.sys_id}"}
+        if response.status_code == 204:
+            return {"success": True, "message": f"CI outage {validated.sys_id} deleted successfully"}
+        response.raise_for_status()
+        return {"success": True, "message": f"CI outage {validated.sys_id} deleted successfully"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting CI outage: {e}")
+        return {"success": False, "message": f"Error deleting CI outage: {_format_http_error(e)}"}

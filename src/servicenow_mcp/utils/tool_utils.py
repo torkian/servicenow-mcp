@@ -472,6 +472,7 @@ from servicenow_mcp.tools.bulk_tools import (
 from servicenow_mcp.tools.cmdb_tools import (
     CreateCIOutageParams,
     CreateCIParams,
+    DeleteCIOutageParams,
     GetCIByNameParams,
     GetCIOutageParams,
     GetCIParams,
@@ -484,6 +485,7 @@ from servicenow_mcp.tools.cmdb_tools import (
 from servicenow_mcp.tools.cmdb_tools import (
     create_ci as create_ci_tool,
     create_ci_outage as create_ci_outage_tool,
+    delete_ci_outage as delete_ci_outage_tool,
     get_ci as get_ci_tool,
     get_ci_by_name as get_ci_by_name_tool,
     get_ci_outage as get_ci_outage_tool,
@@ -1600,6 +1602,16 @@ def get_tool_definitions(
                 "Requires the outage sys_id. Set end time and resolution_notes to document "
                 "resolution, or set resolved=True to mark the outage as resolved. "
                 "Only supplied fields are modified."
+            ),
+            "raw_dict",
+        ),
+        "delete_ci_outage": (
+            delete_ci_outage_tool,
+            DeleteCIOutageParams,
+            Dict[str, Any],
+            (
+                "Permanently delete a CI outage record from the cmdb_ci_outage table by its sys_id. "
+                "Returns success on 204 or 200, failure on 404."
             ),
             "raw_dict",
         ),

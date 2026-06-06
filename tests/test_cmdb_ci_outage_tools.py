@@ -1,15 +1,17 @@
-"""Tests for list_cmdb_ci_outages, get_ci_outage, create_ci_outage, and update_ci_outage in cmdb_tools.py."""
+"""Tests for list_cmdb_ci_outages, get_ci_outage, create_ci_outage, update_ci_outage, and delete_ci_outage in cmdb_tools.py."""
 
 import unittest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.cmdb_tools import (
     CreateCIOutageParams,
+    DeleteCIOutageParams,
     GetCIOutageParams,
     ListCMDBCIOutagesParams,
     UpdateCIOutageParams,
     _format_ci_outage,
     create_ci_outage,
+    delete_ci_outage,
     get_ci_outage,
     list_cmdb_ci_outages,
     update_ci_outage,
@@ -853,6 +855,117 @@ class TestUpdateCIOutage(unittest.TestCase):
         update_ci_outage(self.auth, self.config, {"sys_id": "out001", "type": "software"})
         call_kwargs = mock_req.call_args[1]
         self.assertIn("sysparm_fields", call_kwargs["params"])
+
+
+class TestDeleteCIOutageParams(unittest.TestCase):
+    def test_requires_sys_id(self):
+        from pydantic import ValidationError
+        with self.assertRaises(ValidationError):
+            DeleteCIOutageParams()
+
+    def test_valid_params(self):
+        p = DeleteCIOutageParams(sys_id="out001")
+        self.assertEqual(p.sys_id, "out001")
+
+
+class TestDeleteCIOutage(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth_manager()
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_delete_success_204(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_req.return_value = mock_resp
+
+        result = delete_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        self.assertTrue(result["success"])
+        self.assertIn("out001", result["message"])
+        self.assertIn("deleted", result["message"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_delete_success_200(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_req.return_value = mock_resp
+
+        result = delete_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        self.assertTrue(result["success"])
+        self.assertIn("out001", result["message"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_404_returns_failure(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_req.return_value = mock_resp
+
+        result = delete_ci_outage(self.auth, self.config, {"sys_id": "nonexistent"})
+        self.assertFalse(result["success"])
+        self.assertIn("nonexistent", result["message"])
+        self.assertIn("not found", result["message"])
+
+    def test_missing_sys_id_returns_failure(self):
+        result = delete_ci_outage(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_uses_delete_method(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_req.return_value = mock_resp
+
+        delete_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        method, url = mock_req.call_args[0]
+        self.assertEqual(method, "DELETE")
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_url_contains_table_and_sys_id(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_req.return_value = mock_resp
+
+        delete_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        _, url = mock_req.call_args[0]
+        self.assertIn("cmdb_ci_outage", url)
+        self.assertIn("out001", url)
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        import requests as req_lib
+        mock_req.side_effect = req_lib.exceptions.ConnectionError("network error")
+
+        result = delete_ci_outage(self.auth, self.config, {"sys_id": "out001"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting CI outage", result["message"])
+
+    def test_missing_instance_url(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        auth.instance_url = None
+        config = MagicMock()
+        config.instance_url = None
+
+        result = delete_ci_outage(auth, config, {"sys_id": "out001"})
+        self.assertFalse(result["success"])
+
+    def test_missing_headers(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = None
+        auth.instance_url = "https://dev99999.service-now.com"
+
+        result = delete_ci_outage(auth, self.config, {"sys_id": "out001"})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.cmdb_tools._make_request")
+    def test_params_unwrapped_from_nested_dict(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_req.return_value = mock_resp
+
+        result = delete_ci_outage(self.auth, self.config, {"params": {"sys_id": "out002"}})
+        self.assertTrue(result["success"])
+        self.assertIn("out002", result["message"])
 
 
 if __name__ == "__main__":
