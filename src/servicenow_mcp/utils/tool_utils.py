@@ -591,6 +591,20 @@ from servicenow_mcp.tools.problem_tools import (
     list_problems as list_problems_tool,
     update_problem as update_problem_tool,
 )
+from servicenow_mcp.tools.user_group_tools import (
+    AddUserToGroupParams,
+    GetUserGroupParams,
+    ListGroupMembersParams,
+    ListUserGroupsParams,
+    RemoveUserFromGroupParams,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    add_user_to_group as add_user_to_group_tool,
+    get_user_group as get_user_group_tool,
+    list_group_members as list_group_members_tool,
+    list_user_groups as list_user_groups_tool,
+    remove_user_from_group as remove_user_from_group_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -1973,6 +1987,59 @@ def get_tool_definitions(
                 "Close a problem record by setting its state to Closed (4). "
                 "Accepts a problem number (e.g. PRB0001234) or sys_id. "
                 "Optionally include close_notes, fix_notes, cause_notes, and work_notes."
+            ),
+            "raw_dict",
+        ),
+        # User Group Management Tools
+        "list_user_groups": (
+            list_user_groups_tool,
+            ListUserGroupsParams,
+            Dict[str, Any],
+            (
+                "List user groups from the ServiceNow sys_user_group table. "
+                "Filter by name (LIKE), manager name or sys_id, active status, or "
+                "free-text query across name and description. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_user_group": (
+            get_user_group_tool,
+            GetUserGroupParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single user group by sys_id (32-char hex) or exact group name. "
+                "Returns a 404-style error when the group cannot be found."
+            ),
+            "raw_dict",
+        ),
+        "add_user_to_group": (
+            add_user_to_group_tool,
+            AddUserToGroupParams,
+            Dict[str, Any],
+            (
+                "Add a user to a ServiceNow group by creating a sys_user_grmember junction "
+                "record. Accepts both group and user as either a sys_id or a name/username."
+            ),
+            "raw_dict",
+        ),
+        "remove_user_from_group": (
+            remove_user_from_group_tool,
+            RemoveUserFromGroupParams,
+            Dict[str, Any],
+            (
+                "Remove a user from a ServiceNow group by deleting the sys_user_grmember "
+                "junction record identified by its member_sys_id."
+            ),
+            "raw_dict",
+        ),
+        "list_group_members": (
+            list_group_members_tool,
+            ListGroupMembersParams,
+            Dict[str, Any],
+            (
+                "List members of a ServiceNow user group from the sys_user_grmember table. "
+                "Accepts a group sys_id or exact group name. Returns paginated member records "
+                "with user display name and user sys_id."
             ),
             "raw_dict",
         ),

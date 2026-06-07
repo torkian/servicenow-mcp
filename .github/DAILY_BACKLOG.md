@@ -1,14 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_user_groups tool (sys_user_group table; filters for name/manager/active)
-4. Add get_user_group tool (sys_user_group/{sys_id} with 404 guard)
-5. Add add_user_to_group tool (sys_user_grmember table; POST junction record)
-6. Add remove_user_from_group tool (DELETE sys_user_grmember/{sys_id})
-7. Add list_group_members tool (sys_user_grmember filtered by group sys_id)
-8. Add close_incident_task tool (PATCH sc_task state to Closed)
-9. Add resolve_sla_breach tool (PATCH task_sla with paused=true and stage=Completed)
-10. Add list_notifications tool (sysevent_email_log table; recent notification history)
+1. Add close_incident_task tool (PATCH sc_task state to Closed)
+2. Add resolve_sla_breach tool (PATCH task_sla with paused=true and stage=Completed)
+3. Add list_notifications tool (sysevent_email_log table; recent notification history)
+4. Add get_group_roles tool (sys_group_has_role table; list roles assigned to a group)
+5. Add assign_role_to_group tool (POST sys_group_has_role junction record)
+6. Add remove_role_from_group tool (DELETE sys_group_has_role/{sys_id})
+7. Add list_user_roles tool (sys_user_has_role table; roles assigned to a specific user)
+8. Add list_catalog_item_user_criteria tool (sc_cat_item_user_criteria_mtom; visibility rules)
+9. Add escalate_incident tool (PATCH incident priority and assignment_group with audit note)
+10. Add list_change_approvals tool (sysapproval_approver filtered by source_table=change_request)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -72,3 +74,4 @@
 59. 2026-06-04 — Add create_ci_outage tool (POST cmdb_ci_outage; CreateCIOutageParams with required cmdb_ci/begin and optional type/end/cause_ci/resolved/resolution_notes; datetime validation on begin+end; resolved serialised as "true"/"false"; registered in system_administrator and full packages; 18 new tests; 1394 total tests; 92% coverage)
 60. 2026-06-05 — Add update_ci_outage tool (PATCH cmdb_ci_outage/{sys_id}; UpdateCIOutageParams with required sys_id and optional type/begin/end/short_description/cause_ci/resolved/resolution_notes; empty-body guard; 404 guard; datetime validation; resolved serialised as string; registered in system_administrator and full packages; 19 new tests; 1413 total tests; 92% coverage)
 61. 2026-06-06 — Add delete_ci_outage tool (DELETE cmdb_ci_outage/{sys_id}; DeleteCIOutageParams with required sys_id; 404 guard; 204/200 success handling; registered in system_administrator and full packages; 12 new tests; 1425 total tests; 92% coverage)
+62. 2026-06-07 — Add user group membership management tools (list_user_groups, get_user_group, add_user_to_group, remove_user_from_group, list_group_members); new user_group_tools.py targets sys_user_group and sys_user_grmember tables; name/sys_id dual lookup; reference field normalisation; pagination; 56 new tests; 1481 total tests; 92% coverage

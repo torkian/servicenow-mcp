@@ -225,6 +225,13 @@ from servicenow_mcp.tools.request_tools import (
     list_requests,
     update_request,
 )
+from servicenow_mcp.tools.user_group_tools import (
+    add_user_to_group,
+    get_user_group,
+    list_group_members,
+    list_user_groups,
+    remove_user_from_group,
+)
 
 __all__ = [
     # Incident tools
@@ -445,4 +452,11 @@ __all__ = [
     "create_request",
     "update_request",
     "list_request_items",
+
+    # User Group tools
+    "list_user_groups",
+    "get_user_group",
+    "add_user_to_group",
+    "remove_user_from_group",
+    "list_group_members",
 ]

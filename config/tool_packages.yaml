@@ -37,6 +37,9 @@ service_desk:
   - get_user
   - get_user_by_email
   - list_users
+  - list_user_groups
+  - get_user_group
+  - list_group_members
   # Knowledge Lookup
   - get_article
   - list_articles
@@ -209,6 +212,12 @@ system_administrator:
   - list_groups
   - add_group_members
   - remove_group_members
+  # User Group Membership
+  - list_user_groups
+  - get_user_group
+  - add_user_to_group
+  - remove_user_from_group
+  - list_group_members
   # System Logs
   - list_syslog_entries
   - get_syslog_entry
@@ -351,6 +360,12 @@ full:
   - add_group_members
   - remove_group_members
   - list_groups
+  # User Group Membership
+  - list_user_groups
+  - get_user_group
+  - add_user_to_group
+  - remove_user_from_group
+  - list_group_members
   # Syslog
   - list_syslog_entries
   - get_syslog_entry
