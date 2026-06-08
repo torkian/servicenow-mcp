@@ -60,6 +60,7 @@ from servicenow_mcp.tools.incident_tools import (
     get_incident_by_number,
 )
 from servicenow_mcp.tools.incident_task_tools import (
+    close_incident_task,
     create_incident_task,
     list_incident_comments,
     list_incident_tasks,
@@ -247,6 +248,7 @@ __all__ = [
     "create_incident_task",
     "list_incident_tasks",
     "list_incident_comments",
+    "close_incident_task",
     
     # Catalog tools
     "list_catalogs",

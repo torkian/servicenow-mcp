@@ -57,6 +57,17 @@ class ListIncidentTasksParams(BaseModel):
     state: Optional[str] = Field(None, description="Filter by task state")
 
 
+class CloseIncidentTaskParams(BaseModel):
+    """Parameters for closing an incident task."""
+
+    task_id: str = Field(
+        ...,
+        description="sc_task number (e.g. TASK0010001) or sys_id to close",
+    )
+    close_notes: Optional[str] = Field(None, description="Closure notes")
+    work_notes: Optional[str] = Field(None, description="Work notes to add when closing")
+
+
 class ListIncidentCommentsParams(BaseModel):
     """Parameters for listing journal entries (comments/work notes) on an incident."""
 
@@ -296,3 +307,88 @@ def list_incident_comments(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing incident comments: {e}")
         return {"success": False, "message": f"Error listing incident comments: {_format_http_error(e)}"}
+
+
+def _resolve_task_sys_id(
+    instance_url: str,
+    headers: Dict[str, str],
+    task_id: str,
+) -> Optional[str]:
+    """Return the sys_id for an sc_task number or passthrough if already a sys_id."""
+    if len(task_id) == 32 and all(c in "0123456789abcdef" for c in task_id):
+        return task_id
+
+    url = f"{instance_url}/api/now/table/sc_task"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={"sysparm_query": f"number={task_id}", "sysparm_limit": 1, "sysparm_fields": "sys_id"},
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+def close_incident_task(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Close an incident task by setting its state to Closed Complete (3).
+
+    Accepts an sc_task number (e.g. TASK0010001) or a 32-character sys_id.
+    Optionally adds close_notes and work_notes.
+    """
+    result = _unwrap_and_validate_params(
+        params, CloseIncidentTaskParams, required_fields=["task_id"]
+    )
+    if not result["success"]:
+        return result
+
+    validated: CloseIncidentTaskParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+    headers["Content-Type"] = "application/json"
+
+    task_sys_id = _resolve_task_sys_id(instance_url, headers, validated.task_id)
+    if not task_sys_id:
+        return {"success": False, "message": f"Task not found: {validated.task_id}"}
+
+    body: Dict[str, Any] = {"state": "3"}
+    if validated.close_notes is not None:
+        body["close_notes"] = validated.close_notes
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}/api/now/table/sc_task/{task_sys_id}"
+    try:
+        resp = _make_request("PATCH", url, json=body, headers=headers)
+        if resp.status_code == 404:
+            return {"success": False, "message": f"Task not found: {validated.task_id}"}
+        resp.raise_for_status()
+        task = resp.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Incident task {validated.task_id} closed successfully",
+            "task": {
+                "sys_id": task_sys_id,
+                "number": task.get("number", validated.task_id),
+                "state": task.get("state"),
+                "close_notes": task.get("close_notes"),
+            },
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error closing incident task: {e}")
+        return {"success": False, "message": f"Error closing incident task: {_format_http_error(e)}"}

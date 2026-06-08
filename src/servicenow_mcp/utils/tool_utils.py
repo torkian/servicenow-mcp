@@ -191,11 +191,13 @@ from servicenow_mcp.tools.incident_tools import (
     get_incident_by_number as get_incident_by_number_tool,
 )
 from servicenow_mcp.tools.incident_task_tools import (
+    CloseIncidentTaskParams,
     CreateIncidentTaskParams,
     ListIncidentCommentsParams,
     ListIncidentTasksParams,
 )
 from servicenow_mcp.tools.incident_task_tools import (
+    close_incident_task as close_incident_task_tool,
     create_incident_task as create_incident_task_tool,
     list_incident_comments as list_incident_comments_tool,
     list_incident_tasks as list_incident_tasks_tool,
@@ -713,6 +715,17 @@ def get_tool_definitions(
             str,
             "List journal entries (comments and work notes) for an incident in ServiceNow",
             "json",
+        ),
+        "close_incident_task": (
+            close_incident_task_tool,
+            CloseIncidentTaskParams,
+            Dict[str, Any],
+            (
+                "Close an incident task (sc_task) by setting its state to Closed Complete (3). "
+                "Accepts an sc_task number (e.g. TASK0010001) or sys_id. "
+                "Optionally include close_notes and work_notes."
+            ),
+            "raw_dict",
         ),
         # Catalog Tools
         "list_catalogs": (
