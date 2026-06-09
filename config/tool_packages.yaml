@@ -59,6 +59,7 @@ service_desk:
   - list_slas
   - list_sla_breaches
   - get_sla_breach
+  - resolve_sla_breach
   # Bulk Operations
   - bulk_update_incidents
   - bulk_update_problems
@@ -261,6 +262,7 @@ system_administrator:
   - get_sla
   - list_sla_breaches
   - get_sla_breach
+  - resolve_sla_breach
 
 full:
   # Incident Management
@@ -458,6 +460,7 @@ full:
   - get_sla
   - list_sla_breaches
   - get_sla_breach
+  - resolve_sla_breach
   # Bulk Operations
   - execute_bulk_operations
   - bulk_update_incidents

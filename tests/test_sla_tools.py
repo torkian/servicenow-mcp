@@ -13,6 +13,7 @@ from servicenow_mcp.tools.sla_tools import (
     list_sla_breach_definitions,
     list_sla_breaches,
     list_slas,
+    resolve_sla_breach,
 )
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -695,6 +696,143 @@ class TestGetSLABreach(unittest.TestCase):
         )
         args, _ = mock_req.call_args
         self.assertEqual(args[0], "GET")
+
+
+# ---------------------------------------------------------------------------
+# resolve_sla_breach
+# ---------------------------------------------------------------------------
+
+FAKE_RESOLVED_TASK_SLA = {
+    **FAKE_TASK_SLA,
+    "stage": "completed",
+    "paused": "true",
+    "end_time": "2026-05-20 11:00:00",
+}
+
+FAKE_RESOLVE_SYS_ID = "f" * 32
+
+
+class TestResolveSLABreach(unittest.TestCase):
+    def test_missing_task_sla_id_returns_failure(self):
+        result = resolve_sla_breach(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_success_returns_resolved_breach(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_RESOLVED_TASK_SLA})
+        result = resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["message"], "SLA breach resolved successfully")
+        self.assertIn("sla_breach", result)
+        self.assertEqual(result["sla_breach"]["stage"], "completed")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_body_contains_paused_and_stage(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_RESOLVED_TASK_SLA})
+        resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        _, kwargs = mock_req.call_args
+        body = kwargs.get("json", {})
+        self.assertEqual(body.get("paused"), "true")
+        self.assertEqual(body.get("stage"), "completed")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_work_notes_included_in_body_when_provided(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_RESOLVED_TASK_SLA})
+        resolve_sla_breach(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_RESOLVE_SYS_ID, "work_notes": "Resolved after task closure"},
+        )
+        _, kwargs = mock_req.call_args
+        body = kwargs.get("json", {})
+        self.assertEqual(body.get("work_notes"), "Resolved after task closure")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_work_notes_absent_when_not_provided(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_RESOLVED_TASK_SLA})
+        resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        _, kwargs = mock_req.call_args
+        body = kwargs.get("json", {})
+        self.assertNotIn("work_notes", body)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_404_returns_failure_with_sys_id(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 404
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+        result = resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn(FAKE_RESOLVE_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error resolving SLA breach", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_uses_patch_method(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_RESOLVED_TASK_SLA})
+        resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        args, _ = mock_req.call_args
+        self.assertEqual(args[0], "PATCH")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_uses_task_sla_url_with_sys_id(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_RESOLVED_TASK_SLA})
+        resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        args, _ = mock_req.call_args
+        url = args[1]
+        self.assertIn("task_sla", url)
+        self.assertTrue(url.endswith(f"/{FAKE_RESOLVE_SYS_ID}"))
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_response_includes_sys_id(self, mock_req):
+        mock_req.return_value = _make_response(
+            200, {"result": {**FAKE_RESOLVED_TASK_SLA, "sys_id": FAKE_RESOLVE_SYS_ID}}
+        )
+        result = resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sys_id"], FAKE_RESOLVE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_falls_back_to_param_sys_id_when_result_missing(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sys_id"], FAKE_RESOLVE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_sla_breach_fields_normalised(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_RESOLVED_TASK_SLA})
+        result = resolve_sla_breach(
+            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_RESOLVE_SYS_ID}
+        )
+        breach = result["sla_breach"]
+        self.assertEqual(breach["task"], "INC0012345")
+        self.assertEqual(breach["sla"], "Priority 1 Response")
+        self.assertEqual(breach["table_name"], "incident")
 
 
 if __name__ == "__main__":

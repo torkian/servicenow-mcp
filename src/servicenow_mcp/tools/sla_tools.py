@@ -467,6 +467,82 @@ def list_sla_breaches(
         }
 
 
+class ResolveSLABreachParams(BaseModel):
+    """Parameters for resolving an SLA breach record."""
+
+    task_sla_id: str = Field(
+        ...,
+        description="sys_id of the task_sla record to resolve (32-char hex)",
+    )
+    work_notes: Optional[str] = Field(
+        None,
+        description="Optional work notes to append when resolving the breach",
+    )
+
+
+def resolve_sla_breach(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Resolve an SLA breach record by pausing the timer and marking it completed.
+
+    PATCHes the task_sla record with ``paused=true`` and ``stage=completed``.
+    Use this to administratively close out a breach record once the underlying
+    task has been actioned — for example after manually resolving an incident
+    that already breached its SLA.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ResolveSLABreachParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, ``sys_id``, and
+        ``sla_breach`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, ResolveSLABreachParams, required_fields=["task_sla_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: Dict[str, Any] = {"paused": "true", "stage": "completed"}
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}{TASK_SLA_TABLE}/{validated.task_sla_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"SLA breach record not found: {validated.task_sla_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "SLA breach resolved successfully",
+            "sys_id": record.get("sys_id") or validated.task_sla_id,
+            "sla_breach": _format_task_sla(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error resolving SLA breach: {e}")
+        return {
+            "success": False,
+            "message": f"Error resolving SLA breach: {_format_http_error(e)}",
+        }
+
+
 def get_sla_breach(
     auth_manager: AuthManager,
     server_config: ServerConfig,

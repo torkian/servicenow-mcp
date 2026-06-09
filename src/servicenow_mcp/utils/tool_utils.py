@@ -571,6 +571,7 @@ from servicenow_mcp.tools.sla_tools import (
     ListSLABreachDefinitionsParams,
     ListSLABreachesParams,
     ListSLAsParams,
+    ResolveSLABreachParams,
 )
 from servicenow_mcp.tools.sla_tools import (
     get_sla as get_sla_tool,
@@ -578,6 +579,7 @@ from servicenow_mcp.tools.sla_tools import (
     list_sla_breach_definitions as list_sla_breach_definitions_tool,
     list_sla_breaches as list_sla_breaches_tool,
     list_slas as list_slas_tool,
+    resolve_sla_breach as resolve_sla_breach_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
     CloseProblemParams,
@@ -1945,6 +1947,19 @@ def get_tool_definitions(
                 "by its sys_id. Returns breach status, stage, timing details (start_time, "
                 "breach_time, end_time), percentage elapsed, and the associated task and "
                 "SLA definition references."
+            ),
+            "raw_dict",
+        ),
+        "resolve_sla_breach": (
+            resolve_sla_breach_tool,
+            ResolveSLABreachParams,
+            Dict[str, Any],
+            (
+                "Resolve an SLA breach tracking record by setting paused=true and "
+                "stage=completed on the task_sla record. Use this to administratively "
+                "close out a breach after the underlying task has been actioned. "
+                "Accepts an optional work_notes field for audit purposes. "
+                "Returns the updated sla_breach record."
             ),
             "raw_dict",
         ),

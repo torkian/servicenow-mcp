@@ -218,6 +218,7 @@ from servicenow_mcp.tools.sla_tools import (
     list_sla_breach_definitions,
     list_sla_breaches,
     list_slas,
+    resolve_sla_breach,
 )
 from servicenow_mcp.tools.request_tools import (
     create_request,
@@ -444,6 +445,7 @@ __all__ = [
     "list_sla_breach_definitions",
     "list_sla_breaches",
     "get_sla_breach",
+    "resolve_sla_breach",
 
     # User email lookup
     "get_user_by_email",
