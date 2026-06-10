@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_notifications tool (sysevent_email_log table; recent notification history)
-4. Add get_group_roles tool (sys_group_has_role table; list roles assigned to a group)
+1. Add get_group_roles tool (sys_group_has_role table; list roles assigned to a group)
 5. Add assign_role_to_group tool (POST sys_group_has_role junction record)
 6. Add remove_role_from_group tool (DELETE sys_group_has_role/{sys_id})
 7. Add list_user_roles tool (sys_user_has_role table; roles assigned to a specific user)
@@ -75,3 +74,4 @@
 62. 2026-06-07 — Add user group membership management tools (list_user_groups, get_user_group, add_user_to_group, remove_user_from_group, list_group_members); new user_group_tools.py targets sys_user_group and sys_user_grmember tables; name/sys_id dual lookup; reference field normalisation; pagination; 56 new tests; 1481 total tests; 92% coverage
 63. 2026-06-08 — Add close_incident_task tool (PATCH sc_task state=3 Closed Complete; TASK number/sys_id resolver; optional close_notes and work_notes; 404 guard; registered in service_desk and full packages; 11 new tests; 1492 total tests; 92% coverage)
 64. 2026-06-09 — Add resolve_sla_breach tool (PATCH task_sla with paused=true and stage=completed; optional work_notes; 404 guard; registered in service_desk, system_administrator, and full packages; 12 new tests; 1504 total tests; 92% coverage)
+65. 2026-06-10 — Add list_notifications tool (GET sysevent_email_log; filters for state/type/email_address/source/date range; reference fields normalised; pagination; registered in service_desk, system_administrator, full packages; 22 new tests; 1526 total tests; 92% coverage)

@@ -609,6 +609,12 @@ from servicenow_mcp.tools.user_group_tools import (
     list_user_groups as list_user_groups_tool,
     remove_user_from_group as remove_user_from_group_tool,
 )
+from servicenow_mcp.tools.notification_tools import (
+    ListNotificationsParams,
+)
+from servicenow_mcp.tools.notification_tools import (
+    list_notifications as list_notifications_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -2068,6 +2074,20 @@ def get_tool_definitions(
                 "List members of a ServiceNow user group from the sys_user_grmember table. "
                 "Accepts a group sys_id or exact group name. Returns paginated member records "
                 "with user display name and user sys_id."
+            ),
+            "raw_dict",
+        ),
+        # Notification Tools
+        "list_notifications": (
+            list_notifications_tool,
+            ListNotificationsParams,
+            Dict[str, Any],
+            (
+                "List outbound email notification records from the ServiceNow sysevent_email_log "
+                "table. Filter by delivery state (sent/failed/skipped), notification type, "
+                "recipient email address, source record sys_id, or creation date range. "
+                "Supports pagination. Useful for auditing notification delivery and diagnosing "
+                "failed emails."
             ),
             "raw_dict",
         ),

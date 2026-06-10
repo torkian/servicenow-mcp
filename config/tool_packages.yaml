@@ -60,6 +60,8 @@ service_desk:
   - list_sla_breaches
   - get_sla_breach
   - resolve_sla_breach
+  # Notifications
+  - list_notifications
   # Bulk Operations
   - bulk_update_incidents
   - bulk_update_problems
@@ -223,6 +225,8 @@ system_administrator:
   # System Logs
   - list_syslog_entries
   - get_syslog_entry
+  # Notifications
+  - list_notifications
   # CMDB
   - list_cmdb_classes
   - list_cis
@@ -373,6 +377,8 @@ full:
   # Syslog
   - list_syslog_entries
   - get_syslog_entry
+  # Notifications
+  - list_notifications
   # Catalog Criteria
   - create_user_criteria
   - create_user_criteria_condition
@@ -461,6 +467,8 @@ full:
   - list_sla_breaches
   - get_sla_breach
   - resolve_sla_breach
+  # Notification Tools
+  - list_notifications
   # Bulk Operations
   - execute_bulk_operations
   - bulk_update_incidents

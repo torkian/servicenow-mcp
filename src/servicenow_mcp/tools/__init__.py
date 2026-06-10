@@ -227,6 +227,9 @@ from servicenow_mcp.tools.request_tools import (
     list_requests,
     update_request,
 )
+from servicenow_mcp.tools.notification_tools import (
+    list_notifications,
+)
 from servicenow_mcp.tools.user_group_tools import (
     add_user_to_group,
     get_user_group,
@@ -463,4 +466,7 @@ __all__ = [
     "add_user_to_group",
     "remove_user_from_group",
     "list_group_members",
+
+    # Notification tools
+    "list_notifications",
 ]
