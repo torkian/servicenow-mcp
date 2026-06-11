@@ -615,6 +615,18 @@ from servicenow_mcp.tools.notification_tools import (
 from servicenow_mcp.tools.notification_tools import (
     list_notifications as list_notifications_tool,
 )
+from servicenow_mcp.tools.role_tools import (
+    AssignRoleToGroupParams,
+    GetGroupRolesParams,
+    ListUserRolesParams,
+    RemoveRoleFromGroupParams,
+)
+from servicenow_mcp.tools.role_tools import (
+    assign_role_to_group as assign_role_to_group_tool,
+    get_group_roles as get_group_roles_tool,
+    list_user_roles as list_user_roles_tool,
+    remove_role_from_group as remove_role_from_group_tool,
+)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -2088,6 +2100,52 @@ def get_tool_definitions(
                 "recipient email address, source record sys_id, or creation date range. "
                 "Supports pagination. Useful for auditing notification delivery and diagnosing "
                 "failed emails."
+            ),
+            "raw_dict",
+        ),
+        # Role Management Tools
+        "get_group_roles": (
+            get_group_roles_tool,
+            GetGroupRolesParams,
+            Dict[str, Any],
+            (
+                "List roles assigned to a ServiceNow user group from the sys_group_has_role "
+                "table. Accepts a group sys_id or exact group name. Returns paginated records "
+                "with role name, role sys_id, and junction record sys_id (needed to remove a role)."
+            ),
+            "raw_dict",
+        ),
+        "assign_role_to_group": (
+            assign_role_to_group_tool,
+            AssignRoleToGroupParams,
+            Dict[str, Any],
+            (
+                "Assign a role to a ServiceNow user group by creating a sys_group_has_role "
+                "junction record. Accepts group and role as either a sys_id or a name "
+                "(e.g. group_id='Help Desk', role_id='itil')."
+            ),
+            "raw_dict",
+        ),
+        "remove_role_from_group": (
+            remove_role_from_group_tool,
+            RemoveRoleFromGroupParams,
+            Dict[str, Any],
+            (
+                "Remove a role from a ServiceNow user group by deleting the sys_group_has_role "
+                "junction record identified by its member_sys_id. Use get_group_roles to obtain "
+                "the junction record sys_id."
+            ),
+            "raw_dict",
+        ),
+        "list_user_roles": (
+            list_user_roles_tool,
+            ListUserRolesParams,
+            Dict[str, Any],
+            (
+                "List roles assigned to a ServiceNow user from the sys_user_has_role table. "
+                "Accepts a user sys_id or username. Optionally filter by include_inherited "
+                "(True = only inherited roles, False = only direct grants). Returns paginated "
+                "records with role name, inheritance flag, and granting role."
             ),
             "raw_dict",
         ),

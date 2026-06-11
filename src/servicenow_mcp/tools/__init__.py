@@ -230,6 +230,12 @@ from servicenow_mcp.tools.request_tools import (
 from servicenow_mcp.tools.notification_tools import (
     list_notifications,
 )
+from servicenow_mcp.tools.role_tools import (
+    assign_role_to_group,
+    get_group_roles,
+    list_user_roles,
+    remove_role_from_group,
+)
 from servicenow_mcp.tools.user_group_tools import (
     add_user_to_group,
     get_user_group,
@@ -466,6 +472,12 @@ __all__ = [
     "add_user_to_group",
     "remove_user_from_group",
     "list_group_members",
+
+    # Role management tools
+    "get_group_roles",
+    "assign_role_to_group",
+    "remove_role_from_group",
+    "list_user_roles",
 
     # Notification tools
     "list_notifications",

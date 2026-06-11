@@ -41,6 +41,8 @@ service_desk:
   - list_user_groups
   - get_user_group
   - list_group_members
+  - get_group_roles
+  - list_user_roles
   # Knowledge Lookup
   - get_article
   - list_articles
@@ -222,6 +224,11 @@ system_administrator:
   - add_user_to_group
   - remove_user_from_group
   - list_group_members
+  # Role Management
+  - get_group_roles
+  - assign_role_to_group
+  - remove_role_from_group
+  - list_user_roles
   # System Logs
   - list_syslog_entries
   - get_syslog_entry
@@ -374,6 +381,11 @@ full:
   - add_user_to_group
   - remove_user_from_group
   - list_group_members
+  # Role Management
+  - get_group_roles
+  - assign_role_to_group
+  - remove_role_from_group
+  - list_user_roles
   # Syslog
   - list_syslog_entries
   - get_syslog_entry

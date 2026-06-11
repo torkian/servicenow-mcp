@@ -1,13 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_group_roles tool (sys_group_has_role table; list roles assigned to a group)
-5. Add assign_role_to_group tool (POST sys_group_has_role junction record)
-6. Add remove_role_from_group tool (DELETE sys_group_has_role/{sys_id})
-7. Add list_user_roles tool (sys_user_has_role table; roles assigned to a specific user)
-8. Add list_catalog_item_user_criteria tool (sc_cat_item_user_criteria_mtom; visibility rules)
-9. Add escalate_incident tool (PATCH incident priority and assignment_group with audit note)
-10. Add list_change_approvals tool (sysapproval_approver filtered by source_table=change_request)
+1. Add list_catalog_item_user_criteria tool (sc_cat_item_user_criteria_mtom; visibility rules)
+2. Add escalate_incident tool (PATCH incident priority and assignment_group with audit note)
+3. Add list_change_approvals tool (sysapproval_approver filtered by source_table=change_request)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -75,3 +71,4 @@
 63. 2026-06-08 — Add close_incident_task tool (PATCH sc_task state=3 Closed Complete; TASK number/sys_id resolver; optional close_notes and work_notes; 404 guard; registered in service_desk and full packages; 11 new tests; 1492 total tests; 92% coverage)
 64. 2026-06-09 — Add resolve_sla_breach tool (PATCH task_sla with paused=true and stage=completed; optional work_notes; 404 guard; registered in service_desk, system_administrator, and full packages; 12 new tests; 1504 total tests; 92% coverage)
 65. 2026-06-10 — Add list_notifications tool (GET sysevent_email_log; filters for state/type/email_address/source/date range; reference fields normalised; pagination; registered in service_desk, system_administrator, full packages; 22 new tests; 1526 total tests; 92% coverage)
+66. 2026-06-11 — Add role management tools (get_group_roles, assign_role_to_group, remove_role_from_group, list_user_roles); new role_tools.py covers sys_group_has_role and sys_user_has_role tables; group/role/user name-to-sys_id resolvers; include_inherited filter on list_user_roles; registered in service_desk (read-only pair) and system_administrator + full (all four); 48 new tests; 1574 total tests; 92% coverage
