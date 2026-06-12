@@ -8,6 +8,93 @@
 
 none: []
 
+# Read-only aliases: use MCP_TOOL_PACKAGE=reader (or read_only/readonly)
+reader:
+  # Package introspection
+  - list_tool_packages
+  # Incident / change / problem lookup
+  - list_incidents
+  - get_incident_by_number
+  - list_change_requests
+  - get_change_request_details
+  - list_change_tasks
+  - list_problems
+  - get_problem
+  # Service catalog + requests (lookup only)
+  - list_catalogs
+  - get_catalog
+  - list_catalog_items
+  - get_catalog_item
+  - list_catalog_categories
+  - get_optimization_recommendations
+  - list_catalog_item_variables
+  - list_catalog_item_user_criteria
+  - get_sctask
+  - list_sctasks
+  - list_requests
+  - get_request
+  - list_request_items
+  # Knowledge lookup
+  - list_knowledge_bases
+  - list_categories
+  - list_articles
+  - list_articles_by_category
+  - get_article
+  # User and group lookup
+  - get_user
+  - get_user_by_email
+  - list_customers
+  - list_users
+  - list_groups
+  - list_user_groups
+  - get_user_group
+  - list_group_members
+  - get_group_roles
+  - list_user_roles
+  # Notification + logs
+  - list_notifications
+  - list_syslog_entries
+  - get_syslog_entry
+  # CMDB / assets / attachments lookup
+  - list_cmdb_classes
+  - list_cis
+  - get_ci
+  - get_ci_by_name
+  - list_cmdb_ci_outages
+  - get_ci_outage
+  - list_ci_relationships
+  - get_ci_relationship
+  - list_ci_relationship_types
+  - list_assets
+  - get_asset
+  - list_asset_contracts
+  - get_asset_contract
+  - list_contract_assets
+  - list_attachments
+  - get_attachment
+  # Workflow and changeset lookup
+  - list_workflows
+  - get_workflow_details
+  - list_workflow_versions
+  - get_workflow_activities
+  - list_changesets
+  - get_changeset_details
+  - list_script_includes
+  - get_script_include
+  # Agile lookup
+  - list_stories
+  - list_story_dependencies
+  - list_epics
+  - list_scrum_tasks
+  - list_projects
+  # Time cards and SLA lookup
+  - list_time_cards
+  - list_sla_breach_definitions
+  - list_slas
+  - get_sla
+  - list_sla_breaches
+  - get_sla_breach
+
 service_desk:
   # Incident Management
   - create_incident
@@ -37,6 +124,7 @@ service_desk:
   # User Lookup
   - get_user
   - get_user_by_email
+  - list_customers
   - list_users
   - list_user_groups
   - get_user_group
@@ -212,6 +300,7 @@ system_administrator:
   - update_user
   - get_user
   - get_user_by_email
+  - list_customers
   - list_users
   # Group Management
   - create_group
@@ -370,6 +459,7 @@ full:
   - update_user
   - get_user
   - get_user_by_email
+  - list_customers
   - list_users
   - create_group
   - update_group

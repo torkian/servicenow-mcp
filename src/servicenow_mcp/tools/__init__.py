@@ -91,6 +91,7 @@ from servicenow_mcp.tools.user_tools import (
     update_user,
     get_user,
     get_user_by_email,
+    list_customers,
     list_users,
     create_group,
     update_group,

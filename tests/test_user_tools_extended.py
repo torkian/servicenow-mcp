@@ -8,6 +8,7 @@ from servicenow_mcp.tools.user_tools import (
     CreateUserParams,
     UpdateUserParams,
     GetUserParams,
+    ListCustomersParams,
     ListUsersParams,
     CreateGroupParams,
     UpdateGroupParams,
@@ -17,6 +18,7 @@ from servicenow_mcp.tools.user_tools import (
     create_user,
     update_user,
     get_user,
+    list_customers,
     list_users,
     create_group,
     update_group,
@@ -69,6 +71,15 @@ class TestUserToolsExtended(unittest.TestCase):
         mock_get.side_effect = RequestException("fail")
         params = ListUsersParams()
         result = list_users(self.config, self.auth, params)
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.user_tools.requests.get")
+    def test_list_customers_error(self, mock_get):
+        from requests.exceptions import RequestException
+
+        mock_get.side_effect = RequestException("fail")
+        params = ListCustomersParams()
+        result = list_customers(self.config, self.auth, params)
         self.assertFalse(result["success"])
 
     @patch("servicenow_mcp.tools.user_tools.requests.post")

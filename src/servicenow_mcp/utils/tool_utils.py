@@ -278,6 +278,7 @@ from servicenow_mcp.tools.script_include_tools import (
 from servicenow_mcp.tools.user_tools import (
     AddGroupMembersParams,
     CreateGroupParams,
+    ListCustomersParams,
     CreateUserParams,
     GetUserByEmailParams,
     GetUserParams,
@@ -304,6 +305,9 @@ from servicenow_mcp.tools.user_tools import (
 )
 from servicenow_mcp.tools.user_tools import (
     list_groups as list_groups_tool,
+)
+from servicenow_mcp.tools.user_tools import (
+    list_customers as list_customers_tool,
 )
 from servicenow_mcp.tools.user_tools import (
     list_users as list_users_tool,
@@ -1262,6 +1266,13 @@ def get_tool_definitions(
             ListUsersParams,
             Dict[str, Any],  # Expects dict
             "List users in ServiceNow",
+            "raw_dict",
+        ),
+        "list_customers": (
+            list_customers_tool,
+            ListCustomersParams,
+            Dict[str, Any],
+            "List customer companies from ServiceNow core_company",
             "raw_dict",
         ),
         "create_group": (

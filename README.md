@@ -30,6 +30,7 @@ A Model Completion Protocol (MCP) server implementation for ServiceNow, allowing
 - Updated README with accurate tool listings and usage examples
 - Added `service_desk` and `agile_management` tool packages with SCTASK and time card support
 - Corrected workflow tools documentation (was listing non-existent tools)
+- Added `list_customers` tool for querying customer companies (`core_company`) with filters and optional extra columns
 
 ## Overview
 
@@ -58,24 +59,25 @@ This project implements an MCP server that enables AI assistants to connect to S
 ### Setup
 
 1. Clone this repository:
-   ```
+   ```bash
    git clone https://github.com/torkian/servicenow-mcp.git
    cd servicenow-mcp
    ```
 
 2. Create a virtual environment and install the package:
-   ```
+   ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    pip install -e .
    ```
 
 3. Create a `.env` file with your ServiceNow credentials:
-   ```
+   ```bash
    SERVICENOW_INSTANCE_URL=https://your-instance.service-now.com
    SERVICENOW_USERNAME=your-username
    SERVICENOW_PASSWORD=your-password
    SERVICENOW_AUTH_TYPE=basic  # or oauth, api_key
+   # MCP_TOOL_PACKAGE=reader
    ```
 
 ## Usage
@@ -84,13 +86,13 @@ This project implements an MCP server that enables AI assistants to connect to S
 
 To start the MCP server:
 
-```
+```bash
 python -m servicenow_mcp.cli
 ```
 
 Or with environment variables:
 
-```
+```bash
 SERVICENOW_INSTANCE_URL=https://your-instance.service-now.com SERVICENOW_USERNAME=your-username SERVICENOW_PASSWORD=your-password SERVICENOW_AUTH_TYPE=basic python -m servicenow_mcp.cli
 ```
 
@@ -102,13 +104,13 @@ The ServiceNow MCP server can also run as a web server using Server-Sent Events 
 
 You can start the SSE server using the provided CLI:
 
-```
+```bash
 servicenow-mcp-sse --instance-url=https://your-instance.service-now.com --username=your-username --password=your-password
 ```
 
 By default, the server will listen on `0.0.0.0:8080`. You can customize the host and port:
 
-```
+```bash
 servicenow-mcp-sse --host=127.0.0.1 --port=8000
 ```
 
@@ -322,6 +324,7 @@ The default `config/tool_packages.yaml` includes the following role-based packag
 7. **add_group_members** - Add members to a group in ServiceNow
 8. **remove_group_members** - Remove members from a group in ServiceNow
 9. **list_groups** - List groups with filtering options
+10. **list_customers** - List customer companies from `core_company` with filters for id, contract type/state, and optional custom columns
 
 #### UI Policy Tools
 
@@ -366,6 +369,62 @@ To configure the ServiceNow MCP server in Claude Desktop:
 ```
 
 2. Restart Claude Desktop to apply the changes
+
+### Integration with VS Code
+
+#### Remote
+
+```bash
+# Web Mode
+cd "C:\[path]\servicenow-mcp"
+.\.venv\Scripts\Activate.ps1
+#pip install -e .
+servicenow-mcp-sse --host=127.0.0.1 --port=8000
+```
+
+`.vscode\mcp.json`
+```json
+{
+	"servers": {
+		"ServiceNow MCP (sse)": {
+      		"type": "http",
+      		"url": "http://127.0.0.1:8000/sse"
+       }
+   }
+}
+```
+
+#### Local
+
+```bash
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -e .
+```
+
+`.vscode\mcp.json`
+```json
+{
+	"servers": {
+		"ServiceNow MCP (stdio)": {
+			"type": "stdio",
+			"command": "C:/[path]/servicenow-mcp/.venv/Scripts/python.exe",
+			"args": [
+        		"-m",
+        		"servicenow_mcp.cli"
+      		],
+      	"env": {
+        		"SERVICENOW_INSTANCE_URL": "https://your-instance.service-now.com",
+        		"SERVICENOW_USERNAME": "your-username",
+        		"SERVICENOW_PASSWORD": "your-password",
+        		"SERVICENOW_AUTH_TYPE": "basic"
+            "MCP_TOOL_PACKAGE": "reader"
+      	}
+      }
+   }
+}
+```
+
 
 ### Example Usage with Claude
 
@@ -497,6 +556,18 @@ Below are some example natural language queries you can use with Claude to inter
 - "Find all active users in the system with 'doctor' in their title"
 - "Create a user that will act as an approver for the Radiology department"
 - "List all IT support groups in the system"
+- "List 3 customers with SSO enabled"
+- "List customers with contract state active"
+- "List customers and include extra columns country, city, and phone"
+
+#### Customer Query Examples
+- "List customers with contract type premium"
+- "List customers with SSO configured"
+- "Search customers by name containing Zava"
+- "List customers and include u_primaryse.email (Primary System Engineer email)"
+- "List customers and include u_deputyse.email (Service Delivery Manager email)"
+- "List customers and include u_sdm.email (Service Delivery Manager email)"
+- "List customers and include u_primarysupportgroup.manager.email (Primary Support Group manager email)"
 
 #### UI Policy Examples
 - "Create a UI policy for the 'Software Request' item (sys_id: abc...) named 'Show Justification' that applies when 'software_cost' is greater than 100."

@@ -5,6 +5,7 @@ This module provides tools for managing users and groups in ServiceNow.
 """
 
 import logging
+import re
 from typing import List, Optional
 
 import requests
@@ -15,6 +16,38 @@ from servicenow_mcp.utils.config import ServerConfig
 from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
+
+
+def _fix_mojibake_text(value: str) -> str:
+    """Fix UTF-8-as-Latin-1 mojibake in text values.
+
+    When UTF-8 bytes are mistakenly decoded as Latin-1 (Windows-1252),
+    characters like ä, é, ü become garbled (e.g. BrÃ¤ndle instead of Brändle).
+    This function reverses that by re-encoding as Latin-1 then decoding as UTF-8.
+
+    The operation is idempotent for already-correct strings: if the input is
+    valid UTF-8, encoding to Latin-1 and decoding back as UTF-8 yields the
+    same result.  The try/except guards against strings that cannot be
+    represented in Latin-1 or are not valid UTF-8 after the round-trip.
+    """
+    if not value:
+        return value
+
+    try:
+        return value.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return value
+
+
+def _normalize_text_values(obj):
+    """Recursively normalize string values in nested list/dict structures."""
+    if isinstance(obj, str):
+        return _fix_mojibake_text(obj)
+    if isinstance(obj, list):
+        return [_normalize_text_values(item) for item in obj]
+    if isinstance(obj, dict):
+        return {key: _normalize_text_values(value) for key, value in obj.items()}
+    return obj
 
 
 class CreateUserParams(BaseModel):
@@ -82,6 +115,46 @@ class ListUsersParams(BaseModel):
     query: Optional[str] = Field(
         None,
         description="Case-insensitive search term that matches against name, username, or email fields. Uses ServiceNow's LIKE operator for partial matching.",
+    )
+
+
+class ListCustomersParams(BaseModel):
+    """Parameters for listing customer companies from core_company."""
+
+    limit: int = Field(20, description="Maximum number of customers to return")
+    offset: int = Field(0, description="Offset for pagination")
+    customer_id: Optional[str] = Field(None, description="Filter by u_customerid (exact match)")
+    contract_type: Optional[str] = Field(
+        None, description="Filter by u_contract_type (exact match)"
+    )
+    contract_state: Optional[str] = Field(
+        None, description="Filter by u_contract_state (exact match)"
+    )
+    only_sso: Optional[bool] = Field(
+        None,
+        description="When true, only return customers with sso_source populated. When false, only return customers without sso_source.",
+    )
+    query: Optional[str] = Field(
+        None,
+        description="Case-insensitive search term that matches against company name or customer id.",
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description=(
+            "Additional core_company fields to return. "
+            "Supports dot-walk fields. "
+            "Examples: ['industry', 'country', 'city', 'phone', "
+            "'u_primaryse.email', 'u_deputyse.email', 'u_sdm.email', 'u_primarysupportgroup.manager.email']"
+        ),
+    )
+    include_contact_emails: Optional[bool] = Field(
+        False,
+        description=(
+            "Include email fields for primary engineer, service delivery manager, "
+            "and primary support group manager. Adds: u_primaryse.email, "
+            "u_sdm.email, u_primarysupportgroup.manager.email "
+            "(plus u_deputyse.email as backward-compatible fallback)."
+        ),
     )
 
 
@@ -423,6 +496,125 @@ def list_users(
     except requests.RequestException as e:
         logger.error(f"Failed to list users: {e}")
         return {"success": False, "message": f"Failed to list users: {_format_http_error(e)}"}
+
+
+def list_customers(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ListCustomersParams,
+) -> dict:
+    """
+    List customer companies from ServiceNow core_company table.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for listing customers.
+
+    Returns:
+        Dictionary containing list of customers.
+    """
+    api_url = f"{config.api_url}/table/core_company"
+    default_fields = [
+        "sys_id",
+        "name",
+        "u_customerid",
+        "u_contract_type",
+        "u_contract_state",
+        "u_primaryse",
+        "u_primaryse.name",
+        "u_sdm",
+        "u_deputyse",
+        "u_primarysupportgroup",
+        "u_primarysupportgroup.name",
+        "u_1_level_group",
+        "u_1_level_group.name",
+        "u_second_level_support_groups",
+        "u_segmentation_temp",
+        "u_technical_customer_administrators",
+        "u_sso_status",
+        "sso_source",
+        "sys_class_name",
+        "sys_updated_on",
+    ]
+
+    extra_fields = []
+    if params.columns:
+        # Allow only safe sysparm_fields tokens like field_name or ref.field.subfield
+        safe_pattern = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*$")
+        extra_fields = [c for c in params.columns if c and safe_pattern.match(c)]
+
+    if params.include_contact_emails:
+        extra_fields.extend(
+            [
+                "u_primaryse.email",
+                "u_sdm.email",
+                "u_deputyse.email",
+                "u_primarysupportgroup.manager.email",
+            ]
+        )
+
+    fields = list(dict.fromkeys(default_fields + extra_fields))
+
+    query_params = {
+        "sysparm_limit": str(params.limit),
+        "sysparm_offset": str(params.offset),
+        "sysparm_display_value": "true",
+        "sysparm_fields": ",".join(fields),
+    }
+
+    query_parts = []
+    if params.customer_id:
+        query_parts.append(f"u_customerid={params.customer_id}")
+    if params.contract_type:
+        query_parts.append(f"u_contract_type={params.contract_type}")
+    if params.contract_state:
+        query_parts.append(f"u_contract_state={params.contract_state}")
+    if params.only_sso is True:
+        query_parts.append("sso_sourceISNOTEMPTY")
+    if params.only_sso is False:
+        query_parts.append("sso_sourceISEMPTY")
+    if params.query:
+        query_parts.append(f"nameLIKE{params.query}^ORu_customeridLIKE{params.query}")
+
+    if query_parts:
+        query_params["sysparm_query"] = "^".join(query_parts)
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params=query_params,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        result = response.json().get("result", [])
+
+        # Keep requested output keys stable even when ServiceNow omits empty fields.
+        for customer in result:
+            if isinstance(customer, dict):
+                for field in fields:
+                    if field not in customer:
+                        customer[field] = ""
+
+        # Normalize common mojibake in names/display values (e.g., BrÃ¤ndle -> Brändle).
+        result = _normalize_text_values(result)
+
+        return {
+            "success": True,
+            "message": f"Found {len(result)} customers",
+            "customers": result,
+            "count": len(result),
+        }
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to list customers: {e}")
+        return {
+            "success": False,
+            "message": f"Failed to list customers: {_format_http_error(e)}",
+        }
 
 
 def list_groups(
