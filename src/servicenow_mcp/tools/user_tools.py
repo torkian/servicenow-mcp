@@ -5,6 +5,7 @@ This module provides tools for managing users and groups in ServiceNow.
 """
 
 import logging
+import re
 from typing import List, Optional
 
 import requests
@@ -82,6 +83,35 @@ class ListUsersParams(BaseModel):
     query: Optional[str] = Field(
         None,
         description="Case-insensitive search term that matches against name, username, or email fields. Uses ServiceNow's LIKE operator for partial matching.",
+    )
+
+
+class ListCustomersParams(BaseModel):
+    """Parameters for listing customer companies from core_company."""
+
+    limit: int = Field(20, description="Maximum number of customers to return")
+    offset: int = Field(0, description="Offset for pagination")
+    customer_id: Optional[str] = Field(None, description="Filter by u_customerid (exact match)")
+    contract_type: Optional[str] = Field(
+        None, description="Filter by u_contract_type (exact match)"
+    )
+    contract_state: Optional[str] = Field(
+        None, description="Filter by u_contract_state (exact match)"
+    )
+    only_sso: Optional[bool] = Field(
+        None,
+        description="When true, only return customers with sso_source populated. When false, only return customers without sso_source.",
+    )
+    query: Optional[str] = Field(
+        None,
+        description="Case-insensitive search term that matches against company name or customer id.",
+    )
+    columns: Optional[List[str]] = Field(
+        None,
+        description=(
+            "Additional core_company fields to return. "
+            "Example: ['industry', 'country', 'city', 'phone']"
+        ),
     )
 
 
@@ -423,6 +453,101 @@ def list_users(
     except requests.RequestException as e:
         logger.error(f"Failed to list users: {e}")
         return {"success": False, "message": f"Failed to list users: {_format_http_error(e)}"}
+
+
+def list_customers(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ListCustomersParams,
+) -> dict:
+    """
+    List customer companies from ServiceNow core_company table.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for listing customers.
+
+    Returns:
+        Dictionary containing list of customers.
+    """
+    api_url = f"{config.api_url}/table/core_company"
+    default_fields = [
+        "sys_id",
+        "name",
+        "u_customerid",
+        "u_contract_type",
+        "u_contract_state",
+        "u_primaryse",
+        "u_deputyse",
+        "u_primarysupportgroup",
+        "u_1_level_group",
+        "u_second_level_support_groups",
+        "u_segmentation_temp",
+        "u_technical_customer_administrators",
+        "u_sso_status",
+        "sso_source",
+        "sys_class_name",
+        "sys_updated_on",
+    ]
+
+    extra_fields = []
+    if params.columns:
+        # Allow only safe sysparm_fields tokens like field_name or ref.field_name
+        safe_pattern = re.compile(r"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$")
+        extra_fields = [c for c in params.columns if c and safe_pattern.match(c)]
+
+    fields = list(dict.fromkeys(default_fields + extra_fields))
+
+    query_params = {
+        "sysparm_limit": str(params.limit),
+        "sysparm_offset": str(params.offset),
+        "sysparm_display_value": "true",
+        "sysparm_fields": ",".join(fields),
+    }
+
+    query_parts = []
+    if params.customer_id:
+        query_parts.append(f"u_customerid={params.customer_id}")
+    if params.contract_type:
+        query_parts.append(f"u_contract_type={params.contract_type}")
+    if params.contract_state:
+        query_parts.append(f"u_contract_state={params.contract_state}")
+    if params.only_sso is True:
+        query_parts.append("sso_sourceISNOTEMPTY")
+    if params.only_sso is False:
+        query_parts.append("sso_sourceISEMPTY")
+    if params.query:
+        query_parts.append(f"nameLIKE{params.query}^ORu_customeridLIKE{params.query}")
+
+    if query_parts:
+        query_params["sysparm_query"] = "^".join(query_parts)
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params=query_params,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        result = response.json().get("result", [])
+
+        return {
+            "success": True,
+            "message": f"Found {len(result)} customers",
+            "customers": result,
+            "count": len(result),
+        }
+
+    except requests.RequestException as e:
+        logger.error(f"Failed to list customers: {e}")
+        return {
+            "success": False,
+            "message": f"Failed to list customers: {_format_http_error(e)}",
+        }
 
 
 def list_groups(

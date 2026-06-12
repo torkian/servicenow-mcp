@@ -11,6 +11,7 @@ from servicenow_mcp.tools.user_tools import (
     CreateGroupParams,
     CreateUserParams,
     GetUserParams,
+    ListCustomersParams,
     ListUsersParams,
     ListGroupsParams,
     RemoveGroupMembersParams,
@@ -20,6 +21,7 @@ from servicenow_mcp.tools.user_tools import (
     create_group,
     create_user,
     get_user,
+    list_customers,
     list_users,
     list_groups,
     remove_group_members,
@@ -205,6 +207,51 @@ class TestUserTools(unittest.TestCase):
         self.assertEqual(call_args[0][0], f"{self.config.api_url}/table/sys_user")
         self.assertEqual(call_args[1]["params"]["sysparm_limit"], "10")
         self.assertIn("department=Radiology", call_args[1]["params"]["sysparm_query"])
+
+    @patch("requests.get")
+    def test_list_customers(self, mock_get):
+        """Test list_customers function."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": [
+                {
+                    "sys_id": "company123",
+                    "name": "Zava",
+                    "u_customerid": "101597",
+                },
+                {
+                    "sys_id": "company456",
+                    "name": "Contoso",
+                    "u_customerid": "200001",
+                },
+            ]
+        }
+        mock_get.return_value = mock_response
+
+        params = ListCustomersParams(
+            query="Zava",
+            only_sso=True,
+            limit=10,
+            columns=["country", "city"],
+        )
+
+        result = list_customers(self.config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(len(result["customers"]), 2)
+        self.assertEqual(result["count"], 2)
+        self.assertEqual(result["customers"][0]["name"], "Zava")
+
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
+        self.assertEqual(call_args[0][0], f"{self.config.api_url}/table/core_company")
+        self.assertEqual(call_args[1]["params"]["sysparm_limit"], "10")
+        self.assertIn("sso_sourceISNOTEMPTY", call_args[1]["params"]["sysparm_query"])
+        self.assertIn("nameLIKEZava", call_args[1]["params"]["sysparm_query"])
+        self.assertIn("country", call_args[1]["params"]["sysparm_fields"])
+        self.assertIn("city", call_args[1]["params"]["sysparm_fields"])
+        self.assertNotIn("u_centron_id", call_args[1]["params"]["sysparm_fields"])
 
     @patch("requests.get")
     def test_list_groups(self, mock_get):

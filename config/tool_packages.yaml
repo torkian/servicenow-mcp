@@ -37,6 +37,7 @@ service_desk:
   # User Lookup
   - get_user
   - get_user_by_email
+  - list_customers
   - list_users
   - list_user_groups
   - get_user_group
@@ -212,6 +213,7 @@ system_administrator:
   - update_user
   - get_user
   - get_user_by_email
+  - list_customers
   - list_users
   # Group Management
   - create_group
@@ -370,6 +372,7 @@ full:
   - update_user
   - get_user
   - get_user_by_email
+  - list_customers
   - list_users
   - create_group
   - update_group
