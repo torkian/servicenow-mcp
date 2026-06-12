@@ -18,6 +18,38 @@ from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 logger = logging.getLogger(__name__)
 
 
+def _fix_mojibake_text(value: str) -> str:
+    """Fix UTF-8-as-Latin-1 mojibake in text values.
+
+    When UTF-8 bytes are mistakenly decoded as Latin-1 (Windows-1252),
+    characters like ä, é, ü become garbled (e.g. BrÃ¤ndle instead of Brändle).
+    This function reverses that by re-encoding as Latin-1 then decoding as UTF-8.
+
+    The operation is idempotent for already-correct strings: if the input is
+    valid UTF-8, encoding to Latin-1 and decoding back as UTF-8 yields the
+    same result.  The try/except guards against strings that cannot be
+    represented in Latin-1 or are not valid UTF-8 after the round-trip.
+    """
+    if not value:
+        return value
+
+    try:
+        return value.encode("latin-1").decode("utf-8")
+    except (UnicodeEncodeError, UnicodeDecodeError):
+        return value
+
+
+def _normalize_text_values(obj):
+    """Recursively normalize string values in nested list/dict structures."""
+    if isinstance(obj, str):
+        return _fix_mojibake_text(obj)
+    if isinstance(obj, list):
+        return [_normalize_text_values(item) for item in obj]
+    if isinstance(obj, dict):
+        return {key: _normalize_text_values(value) for key, value in obj.items()}
+    return obj
+
+
 class CreateUserParams(BaseModel):
     """Parameters for creating a user."""
 
@@ -110,7 +142,18 @@ class ListCustomersParams(BaseModel):
         None,
         description=(
             "Additional core_company fields to return. "
-            "Example: ['industry', 'country', 'city', 'phone']"
+            "Supports dot-walk fields. "
+            "Examples: ['industry', 'country', 'city', 'phone', "
+            "'u_primaryse.email', 'u_deputyse.email', 'u_sdm.email', 'u_primarysupportgroup.manager.email']"
+        ),
+    )
+    include_contact_emails: Optional[bool] = Field(
+        False,
+        description=(
+            "Include email fields for primary engineer, service delivery manager, "
+            "and primary support group manager. Adds: u_primaryse.email, "
+            "u_sdm.email, u_primarysupportgroup.manager.email "
+            "(plus u_deputyse.email as backward-compatible fallback)."
         ),
     )
 
@@ -479,9 +522,13 @@ def list_customers(
         "u_contract_type",
         "u_contract_state",
         "u_primaryse",
+        "u_primaryse.name",
+        "u_sdm",
         "u_deputyse",
         "u_primarysupportgroup",
+        "u_primarysupportgroup.name",
         "u_1_level_group",
+        "u_1_level_group.name",
         "u_second_level_support_groups",
         "u_segmentation_temp",
         "u_technical_customer_administrators",
@@ -493,9 +540,19 @@ def list_customers(
 
     extra_fields = []
     if params.columns:
-        # Allow only safe sysparm_fields tokens like field_name or ref.field_name
-        safe_pattern = re.compile(r"^[A-Za-z0-9_]+(\.[A-Za-z0-9_]+)?$")
+        # Allow only safe sysparm_fields tokens like field_name or ref.field.subfield
+        safe_pattern = re.compile(r"^[A-Za-z0-9_]+(?:\.[A-Za-z0-9_]+)*$")
         extra_fields = [c for c in params.columns if c and safe_pattern.match(c)]
+
+    if params.include_contact_emails:
+        extra_fields.extend(
+            [
+                "u_primaryse.email",
+                "u_sdm.email",
+                "u_deputyse.email",
+                "u_primarysupportgroup.manager.email",
+            ]
+        )
 
     fields = list(dict.fromkeys(default_fields + extra_fields))
 
@@ -534,6 +591,16 @@ def list_customers(
         response.raise_for_status()
 
         result = response.json().get("result", [])
+
+        # Keep requested output keys stable even when ServiceNow omits empty fields.
+        for customer in result:
+            if isinstance(customer, dict):
+                for field in fields:
+                    if field not in customer:
+                        customer[field] = ""
+
+        # Normalize common mojibake in names/display values (e.g., BrÃ¤ndle -> Brändle).
+        result = _normalize_text_values(result)
 
         return {
             "success": True,

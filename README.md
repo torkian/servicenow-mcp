@@ -59,24 +59,25 @@ This project implements an MCP server that enables AI assistants to connect to S
 ### Setup
 
 1. Clone this repository:
-   ```
+   ```bash
    git clone https://github.com/torkian/servicenow-mcp.git
    cd servicenow-mcp
    ```
 
 2. Create a virtual environment and install the package:
-   ```
+   ```bash
    python -m venv .venv
    source .venv/bin/activate  # On Windows: .venv\Scripts\activate
    pip install -e .
    ```
 
 3. Create a `.env` file with your ServiceNow credentials:
-   ```
+   ```bash
    SERVICENOW_INSTANCE_URL=https://your-instance.service-now.com
    SERVICENOW_USERNAME=your-username
    SERVICENOW_PASSWORD=your-password
    SERVICENOW_AUTH_TYPE=basic  # or oauth, api_key
+   # MCP_TOOL_PACKAGE=reader
    ```
 
 ## Usage
@@ -85,13 +86,13 @@ This project implements an MCP server that enables AI assistants to connect to S
 
 To start the MCP server:
 
-```
+```bash
 python -m servicenow_mcp.cli
 ```
 
 Or with environment variables:
 
-```
+```bash
 SERVICENOW_INSTANCE_URL=https://your-instance.service-now.com SERVICENOW_USERNAME=your-username SERVICENOW_PASSWORD=your-password SERVICENOW_AUTH_TYPE=basic python -m servicenow_mcp.cli
 ```
 
@@ -103,13 +104,13 @@ The ServiceNow MCP server can also run as a web server using Server-Sent Events 
 
 You can start the SSE server using the provided CLI:
 
-```
+```bash
 servicenow-mcp-sse --instance-url=https://your-instance.service-now.com --username=your-username --password=your-password
 ```
 
 By default, the server will listen on `0.0.0.0:8080`. You can customize the host and port:
 
-```
+```bash
 servicenow-mcp-sse --host=127.0.0.1 --port=8000
 ```
 
@@ -373,10 +374,11 @@ To configure the ServiceNow MCP server in Claude Desktop:
 
 #### Remote
 
-```shell
+```bash
 # Web Mode
 cd "C:\[path]\servicenow-mcp"
 .\.venv\Scripts\Activate.ps1
+#pip install -e .
 servicenow-mcp-sse --host=127.0.0.1 --port=8000
 ```
 
@@ -394,11 +396,10 @@ servicenow-mcp-sse --host=127.0.0.1 --port=8000
 
 #### Local
 
-```shell
+```bash
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .
-
 ```
 
 `.vscode\mcp.json`
@@ -417,6 +418,7 @@ pip install -e .
         		"SERVICENOW_USERNAME": "your-username",
         		"SERVICENOW_PASSWORD": "your-password",
         		"SERVICENOW_AUTH_TYPE": "basic"
+            "MCP_TOOL_PACKAGE": "reader"
       	}
       }
    }
@@ -559,10 +561,13 @@ Below are some example natural language queries you can use with Claude to inter
 - "List customers and include extra columns country, city, and phone"
 
 #### Customer Query Examples
-- "List customers where customer_id is 101969"
 - "List customers with contract type premium"
 - "List customers with SSO configured"
 - "Search customers by name containing Zava"
+- "List customers and include u_primaryse.email (Primary System Engineer email)"
+- "List customers and include u_deputyse.email (Service Delivery Manager email)"
+- "List customers and include u_sdm.email (Service Delivery Manager email)"
+- "List customers and include u_primarysupportgroup.manager.email (Primary Support Group manager email)"
 
 #### UI Policy Examples
 - "Create a UI policy for the 'Software Request' item (sys_id: abc...) named 'Show Justification' that applies when 'software_cost' is greater than 100."
