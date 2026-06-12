@@ -6,10 +6,6 @@ import pytest
 import requests
 
 from servicenow_mcp.tools.role_tools import (
-    AssignRoleToGroupParams,
-    GetGroupRolesParams,
-    ListUserRolesParams,
-    RemoveRoleFromGroupParams,
     _format_group_role,
     _format_user_role,
     _resolve_group_sys_id,
