@@ -156,6 +156,7 @@ from servicenow_mcp.tools.ui_policy_tools import (
 from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria,
     create_user_criteria_condition,
+    list_catalog_item_user_criteria,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_requests,
@@ -392,6 +393,7 @@ __all__ = [
     # User Criteria tools
     "create_user_criteria",
     "create_user_criteria_condition",
+    "list_catalog_item_user_criteria",
 
     # Bulk operations
     "execute_bulk_operations",

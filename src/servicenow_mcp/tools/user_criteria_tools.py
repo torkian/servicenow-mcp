@@ -15,7 +15,16 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _make_request
+from servicenow_mcp.utils.helpers import (
+    _build_sysparm_params,
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _join_query_parts,
+    _make_request,
+    _paginated_list_response,
+    _unwrap_and_validate_params,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -298,3 +307,128 @@ def create_user_criteria_condition(
             success=False,
             message=f"Failed to create user criteria condition: {_format_http_error(e)}",
         )
+
+
+# ---------------------------------------------------------------------------
+# list_catalog_item_user_criteria
+# ---------------------------------------------------------------------------
+
+_VISIBILITY_TABLES = {
+    "can_see": "sc_cat_item_user_criteria_mtom",
+    "cannot_see": "sc_cat_item_user_criteria_no_mtom",
+}
+
+_CRITERIA_LINK_FIELDS = [
+    "sys_id",
+    "sc_cat_item",
+    "user_criteria",
+]
+
+
+class ListCatalogItemUserCriteriaParams(BaseModel):
+    """Parameters for listing catalog item user criteria visibility rules."""
+
+    visibility: Literal["can_see", "cannot_see"] = Field(
+        "can_see",
+        description=(
+            "Which visibility table to query: 'can_see' returns allow-list rules "
+            "(sc_cat_item_user_criteria_mtom); 'cannot_see' returns deny-list rules "
+            "(sc_cat_item_user_criteria_no_mtom)"
+        ),
+    )
+    catalog_item_id: Optional[str] = Field(
+        None,
+        description="Filter by catalog item sys_id — returns only rules for that item",
+    )
+    user_criteria_id: Optional[str] = Field(
+        None,
+        description="Filter by user_criteria sys_id — returns only rules using that criteria",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+
+
+def _format_criteria_link(record: Dict) -> Dict:
+    """Normalise a raw sc_cat_item_user_criteria_mtom record."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "catalog_item_id": _display(record.get("sc_cat_item")),
+        "catalog_item_name": record.get("sc_cat_item", {}).get("display_value")
+        if isinstance(record.get("sc_cat_item"), dict)
+        else None,
+        "user_criteria_id": _display(record.get("user_criteria")),
+        "user_criteria_name": record.get("user_criteria", {}).get("display_value")
+        if isinstance(record.get("user_criteria"), dict)
+        else None,
+    }
+
+
+def list_catalog_item_user_criteria(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List catalog item visibility rules from the user criteria junction tables.
+
+    Queries either ``sc_cat_item_user_criteria_mtom`` (allow-list) or
+    ``sc_cat_item_user_criteria_no_mtom`` (deny-list) depending on the
+    ``visibility`` parameter.  Results can be filtered by catalog item or
+    user criteria sys_id and support pagination.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListCatalogItemUserCriteriaParams.
+
+    Returns:
+        Dictionary with ``success``, ``rules`` (list), ``count``, ``visibility``,
+        and pagination keys (``has_more``, ``next_offset``).
+    """
+    result = _unwrap_and_validate_params(params, ListCatalogItemUserCriteriaParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    table = _VISIBILITY_TABLES[validated.visibility]
+
+    filters = []
+    if validated.catalog_item_id:
+        filters.append(f"sc_cat_item={validated.catalog_item_id}")
+    if validated.user_criteria_id:
+        filters.append(f"user_criteria={validated.user_criteria_id}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(_CRITERIA_LINK_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{table}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        rules = [_format_criteria_link(r) for r in response.json().get("result", [])]
+        paginated = _paginated_list_response(rules, validated.limit, validated.offset, "rules")
+        paginated["visibility"] = validated.visibility
+        return paginated
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing catalog item user criteria: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing catalog item user criteria: {_format_http_error(e)}",
+        }

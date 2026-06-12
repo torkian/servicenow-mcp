@@ -452,12 +452,16 @@ from servicenow_mcp.tools.ui_policy_tools import (
 from servicenow_mcp.tools.user_criteria_tools import (
     CreateUserCriteriaConditionParams,
     CreateUserCriteriaParams,
+    ListCatalogItemUserCriteriaParams,
 )
 from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria as create_user_criteria_tool,
 )
 from servicenow_mcp.tools.user_criteria_tools import (
     create_user_criteria_condition as create_user_criteria_condition_tool,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    list_catalog_item_user_criteria as list_catalog_item_user_criteria_tool,
 )
 from servicenow_mcp.tools.bulk_tools import (
     BulkOperationsParams,
@@ -1492,6 +1496,20 @@ def get_tool_definitions(
             Dict[str, Any],
             "Apply a User Criteria record to a Service Catalog entity (item, category, or catalog) to grant or deny access for matching users",
             "dict",
+        ),
+        "list_catalog_item_user_criteria": (
+            list_catalog_item_user_criteria_tool,
+            ListCatalogItemUserCriteriaParams,
+            Dict[str, Any],
+            (
+                "List catalog item visibility rules from the ServiceNow user criteria "
+                "junction tables. Query sc_cat_item_user_criteria_mtom (allow-list) or "
+                "sc_cat_item_user_criteria_no_mtom (deny-list) by setting visibility to "
+                "'can_see' or 'cannot_see'. Filter by catalog_item_id or user_criteria_id. "
+                "Supports pagination. Useful for auditing which user criteria control "
+                "access to specific catalog items."
+            ),
+            "raw_dict",
         ),
         # Bulk Operations
         "execute_bulk_operations": (

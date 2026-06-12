@@ -93,6 +93,7 @@ catalog_builder:
   - create_ui_policy_action
   - create_user_criteria
   - create_user_criteria_condition
+  - list_catalog_item_user_criteria
   # Optimization
   - get_optimization_recommendations
 
@@ -394,6 +395,7 @@ full:
   # Catalog Criteria
   - create_user_criteria
   - create_user_criteria_condition
+  - list_catalog_item_user_criteria
   # UI Policy
   - create_ui_policy
   - create_ui_policy_action
