@@ -5,11 +5,35 @@
 [![codecov](https://codecov.io/gh/torkian/servicenow-mcp/graph/badge.svg)](https://codecov.io/gh/torkian/servicenow-mcp)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-258%20passed-brightgreen.svg)](https://github.com/torkian/servicenow-mcp/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1604%20passed-brightgreen.svg)](https://github.com/torkian/servicenow-mcp/actions/workflows/ci.yml)
 
 A Model Completion Protocol (MCP) server implementation for ServiceNow, allowing AI assistants to interact with ServiceNow instances.
 
 > **This is a maintained fork of [echelon-ai-labs/servicenow-mcp](https://github.com/echelon-ai-labs/servicenow-mcp)** with active development, bug fixes, and new features.
+
+## What's New (v3.0)
+
+The toolset has **nearly doubled — from 89 to 176 tools** — adding entire new domains plus a major quality pass.
+
+### New Domains
+- **CMDB** — full CI lifecycle, classes, CI lookup by name, relationships, and outage management
+- **Asset Management** — assets and asset contracts (create / update / expire / list)
+- **Problem Management** — create, track, update, close, and list problems
+- **Service Requests** — request and request-item (RITM) management
+- **SLA** — SLAs plus SLA-breach tracking and resolution
+- **Bulk Operations** — mass updates across incidents, problems, and change requests
+- **UI Policy** — create UI policies and UI policy actions
+- **Attachments** — upload, list, fetch, and delete record attachments
+
+### Also Added
+- Incident tasks & comments, change tasks, and cancel/reopen for incidents and changes
+- User-group membership, role assignment, and user-criteria tools; `get_user_by_email`
+- Catalog lookup, variable sets and choices; `execute_script_include`; notifications & syslog
+
+### Quality & Stability
+- **1,604 tests passing** (0 failing) — orphaned tests removed, drifted tests fixed
+- Shared helpers extracted (`utils/helpers.py`, `utils/tool_utils.py`) for pagination, rate limiting, retry, and date validation — removing ~740 lines of duplication
+- Lint cleanup: Ruff config modernized, imports sorted, blind exception asserts narrowed
 
 ## What's New (v2.0)
 
@@ -191,142 +215,219 @@ The default `config/tool_packages.yaml` includes the following role-based packag
 
 ## Available Tools
 
-**Note:** The availability of the following tools depends on the loaded tool package (see Tool Packaging section above). By default (`full` package), all tools are available.
+**Note:** Tool availability depends on the loaded tool package (see Tool Packaging above). By default (`full` package), all 176 tools are available.
 
-#### Incident Management Tools
+### Incidents
+- `add_comment`
+- `create_incident`
+- `delete_incident`
+- `escalate_incident`
+- `get_incident_by_number`
+- `list_incidents`
+- `reopen_incident`
+- `resolve_incident`
+- `update_incident`
+- `close_incident_task`
+- `create_incident_task`
+- `list_incident_comments`
+- `list_incident_tasks`
 
-1. **create_incident** - Create a new incident in ServiceNow
-2. **update_incident** - Update an existing incident in ServiceNow
-3. **add_comment** - Add a comment to an incident in ServiceNow
-4. **resolve_incident** - Resolve an incident in ServiceNow
-5. **list_incidents** - List incidents from ServiceNow
-6. **get_incident_by_number** - Get a specific incident by its INC number
+### Problems
+- `close_problem`
+- `create_problem`
+- `get_problem`
+- `list_problems`
+- `update_problem`
 
-#### Service Catalog Tools
+### Changes
+- `add_change_task`
+- `approve_change`
+- `cancel_change_request`
+- `create_change_request`
+- `create_change_task`
+- `get_change_request_details`
+- `list_change_requests`
+- `list_change_tasks`
+- `reject_change`
+- `reopen_change_request`
+- `submit_change_for_approval`
+- `update_change_request`
 
-1. **list_catalog_items** - List service catalog items from ServiceNow
-2. **get_catalog_item** - Get a specific service catalog item from ServiceNow
-3. **list_catalog_categories** - List service catalog categories from ServiceNow
-4. **create_catalog_category** - Create a new service catalog category in ServiceNow
-5. **update_catalog_category** - Update an existing service catalog category in ServiceNow
-6. **move_catalog_items** - Move catalog items between categories in ServiceNow
-7. **create_catalog_item_variable** - Create a new variable (form field) for a catalog item
-8. **list_catalog_item_variables** - List all variables for a catalog item
-9. **update_catalog_item_variable** - Update an existing variable for a catalog item
-10. **create_catalog_item** - Create a new service catalog item in ServiceNow
+### Requests
+- `create_request`
+- `get_request`
+- `list_request_items`
+- `list_requests`
+- `update_request`
+- `get_sctask`
+- `list_sctasks`
+- `update_sctask`
 
-#### Catalog Optimization Tools
+### Service Catalog
+- `create_catalog_category`
+- `create_catalog_item`
+- `get_catalog`
+- `get_catalog_item`
+- `list_catalog_categories`
+- `list_catalog_items`
+- `list_catalogs`
+- `move_catalog_items`
+- `update_catalog_category`
+- `create_catalog_item_variable`
+- `create_catalog_item_variable_set`
+- `create_catalog_variable_choice`
+- `delete_catalog_item_variable`
+- `list_catalog_item_variables`
+- `update_catalog_item_variable`
+- `get_optimization_recommendations`
+- `update_catalog_item`
 
-1. **get_optimization_recommendations** - Get recommendations for optimizing the service catalog
-2. **update_catalog_item** - Update a service catalog item
+### Knowledge
+- `create_article`
+- `create_category`
+- `create_knowledge_article`
+- `create_knowledge_base`
+- `get_article`
+- `list_articles`
+- `list_articles_by_category`
+- `list_categories`
+- `list_knowledge_bases`
+- `publish_article`
+- `update_article`
 
-#### Change Management Tools
+### CMDB
+- `create_ci`
+- `create_ci_outage`
+- `delete_ci_outage`
+- `get_ci`
+- `get_ci_by_name`
+- `get_ci_outage`
+- `list_cis`
+- `list_cmdb_ci_outages`
+- `list_cmdb_classes`
+- `update_ci`
+- `update_ci_outage`
+- `create_ci_relationship`
+- `delete_ci_relationship`
+- `get_ci_relationship`
+- `list_ci_relationship_types`
+- `list_ci_relationships`
 
-1. **create_change_request** - Create a new change request in ServiceNow
-2. **update_change_request** - Update an existing change request
-3. **list_change_requests** - List change requests with filtering options
-4. **get_change_request_details** - Get detailed information about a specific change request
-5. **add_change_task** - Add a task to a change request
-6. **submit_change_for_approval** - Submit a change request for approval
-7. **approve_change** - Approve a change request
-8. **reject_change** - Reject a change request
+### Asset Management
+- `create_asset`
+- `delete_asset`
+- `get_asset`
+- `list_assets`
+- `update_asset`
+- `create_asset_contract`
+- `expire_asset_contract`
+- `get_asset_contract`
+- `list_asset_contracts`
+- `list_contract_assets`
+- `update_asset_contract`
 
-#### Agile Management Tools
+### SLA
+- `get_sla`
+- `get_sla_breach`
+- `list_sla_breach_definitions`
+- `list_sla_breaches`
+- `list_slas`
+- `resolve_sla_breach`
 
-##### Story Management
-1. **create_story** - Create a new user story in ServiceNow
-2. **update_story** - Update an existing user story in ServiceNow
-3. **list_stories** - List user stories with filtering options
-4. **create_story_dependency** - Create a dependency between two stories
-5. **delete_story_dependency** - Delete a dependency between stories
+### Users, Groups & Roles
+- `add_group_members`
+- `create_group`
+- `create_user`
+- `get_user`
+- `get_user_by_email`
+- `list_groups`
+- `list_users`
+- `remove_group_members`
+- `update_group`
+- `update_user`
+- `add_user_to_group`
+- `get_user_group`
+- `list_group_members`
+- `list_user_groups`
+- `remove_user_from_group`
+- `assign_role_to_group`
+- `get_group_roles`
+- `list_user_roles`
+- `remove_role_from_group`
+- `create_user_criteria`
+- `create_user_criteria_condition`
+- `list_catalog_item_user_criteria`
 
-##### Epic Management
-1. **create_epic** - Create a new epic in ServiceNow
-2. **update_epic** - Update an existing epic in ServiceNow
-3. **list_epics** - List epics from ServiceNow with filtering options
+### Workflows
+- `activate_workflow`
+- `add_workflow_activity`
+- `create_workflow`
+- `deactivate_workflow`
+- `delete_workflow_activity`
+- `get_workflow_activities`
+- `get_workflow_details`
+- `list_workflow_versions`
+- `list_workflows`
+- `reorder_workflow_activities`
+- `update_workflow`
+- `update_workflow_activity`
 
-##### Scrum Task Management
-1. **create_scrum_task** - Create a new scrum task in ServiceNow
-2. **update_scrum_task** - Update an existing scrum task in ServiceNow
-3. **list_scrum_tasks** - List scrum tasks from ServiceNow with filtering options
+### Changesets & Script Includes
+- `add_file_to_changeset`
+- `commit_changeset`
+- `create_changeset`
+- `get_changeset_details`
+- `list_changesets`
+- `publish_changeset`
+- `update_changeset`
+- `create_script_include`
+- `delete_script_include`
+- `execute_script_include`
+- `get_script_include`
+- `list_script_includes`
+- `update_script_include`
 
-##### Project Management
-1. **create_project** - Create a new project in ServiceNow
-2. **update_project** - Update an existing project in ServiceNow
-3. **list_projects** - List projects from ServiceNow with filtering options
+### Agile
+- `create_story`
+- `create_story_dependency`
+- `delete_story_dependency`
+- `list_stories`
+- `list_story_dependencies`
+- `update_story`
+- `create_epic`
+- `list_epics`
+- `update_epic`
+- `create_scrum_task`
+- `list_scrum_tasks`
+- `update_scrum_task`
+- `create_project`
+- `list_projects`
+- `update_project`
 
-#### Service Catalog Task (SCTASK) Tools
+### Bulk Operations
+- `bulk_update_change_requests`
+- `bulk_update_incidents`
+- `bulk_update_problems`
+- `execute_bulk_operations`
 
-1. **get_sctask** - Get a Service Catalog Task by SCTASK number
-2. **list_sctasks** - List Service Catalog Tasks with optional filters
-3. **update_sctask** - Update a Service Catalog Task (state, assignment, time worked)
+### Attachments
+- `delete_attachment`
+- `get_attachment`
+- `list_attachments`
 
-#### Time Card Tools
+### UI Policy
+- `create_ui_policy`
+- `create_ui_policy_action`
 
-1. **list_time_cards** - List time cards, optionally filtered by task, user, or week
-2. **create_time_card** - Create a new time card entry with daily hour breakdowns
-3. **update_time_card** - Update an existing time card entry
+### Notifications & Logs
+- `list_notifications`
+- `get_syslog_entry`
+- `list_syslog_entries`
 
-#### Workflow Management Tools
-
-1. **list_workflows** - List workflows from ServiceNow
-2. **get_workflow_details** - Get detailed information about a specific workflow
-3. **list_workflow_versions** - List versions of a workflow
-4. **get_workflow_activities** - Get activities for a specific workflow
-5. **create_workflow** - Create a new workflow in ServiceNow
-6. **update_workflow** - Update an existing workflow in ServiceNow
-7. **activate_workflow** - Activate a workflow
-8. **deactivate_workflow** - Deactivate a workflow
-9. **add_workflow_activity** - Add a new activity to a workflow
-10. **update_workflow_activity** - Update an existing workflow activity
-11. **delete_workflow_activity** - Delete an activity from a workflow
-12. **reorder_workflow_activities** - Reorder activities in a workflow
-
-#### Script Include Management Tools
-
-1. **list_script_includes** - List script includes from ServiceNow
-2. **get_script_include** - Get a specific script include from ServiceNow
-3. **create_script_include** - Create a new script include in ServiceNow
-4. **update_script_include** - Update an existing script include in ServiceNow
-5. **delete_script_include** - Delete a script include from ServiceNow
-
-#### Changeset Management Tools
-
-1. **list_changesets** - List changesets from ServiceNow with filtering options
-2. **get_changeset_details** - Get detailed information about a specific changeset
-3. **create_changeset** - Create a new changeset in ServiceNow
-4. **update_changeset** - Update an existing changeset
-5. **commit_changeset** - Commit a changeset
-6. **publish_changeset** - Publish a changeset
-7. **add_file_to_changeset** - Add a file to a changeset
-
-#### Knowledge Base Management Tools
-
-1. **create_knowledge_base** - Create a new knowledge base in ServiceNow
-2. **list_knowledge_bases** - List knowledge bases with filtering options
-3. **create_category** - Create a new category in a knowledge base
-4. **create_article** - Create a new knowledge article in ServiceNow
-5. **update_article** - Update an existing knowledge article in ServiceNow
-6. **publish_article** - Publish a knowledge article in ServiceNow
-7. **list_articles** - List knowledge articles with filtering options
-8. **get_article** - Get a specific knowledge article by ID
-
-#### User Management Tools
-
-1. **create_user** - Create a new user in ServiceNow
-2. **update_user** - Update an existing user in ServiceNow
-3. **get_user** - Get a specific user by ID, username, or email
-4. **list_users** - List users with filtering options
-5. **create_group** - Create a new group in ServiceNow
-6. **update_group** - Update an existing group in ServiceNow
-7. **add_group_members** - Add members to a group in ServiceNow
-8. **remove_group_members** - Remove members from a group in ServiceNow
-9. **list_groups** - List groups with filtering options
-
-#### UI Policy Tools
-
-1. **create_ui_policy** - Creates a ServiceNow UI Policy, typically for a Catalog Item.
-2. **create_ui_policy_action** - Creates an action associated with a UI Policy to control variable states (visibility, mandatory, etc.).
+### Time Cards
+- `create_time_card`
+- `list_time_cards`
+- `update_time_card`
 
 ### Using the MCP CLI
 
