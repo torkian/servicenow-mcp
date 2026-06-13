@@ -162,6 +162,7 @@ from servicenow_mcp.tools.incident_tools import (
     AddCommentParams,
     CreateIncidentParams,
     DeleteIncidentParams,
+    EscalateIncidentParams,
     ListIncidentsParams,
     ReopenIncidentParams,
     ResolveIncidentParams,
@@ -181,6 +182,7 @@ from servicenow_mcp.tools.incident_tools import (
     delete_incident as delete_incident_tool,
 )
 from servicenow_mcp.tools.incident_tools import (
+    escalate_incident as escalate_incident_tool,
     reopen_incident as reopen_incident_tool,
     resolve_incident as resolve_incident_tool,
 )
@@ -702,6 +704,18 @@ def get_tool_definitions(
             ReopenIncidentParams,
             str,
             "Reopen a resolved or closed incident, setting its state back to New or In Progress",
+            "str",
+        ),
+        "escalate_incident": (
+            escalate_incident_tool,
+            EscalateIncidentParams,
+            str,
+            (
+                "Escalate a ServiceNow incident by updating its priority and optionally reassigning "
+                "it to a different group. Accepts an incident number (e.g. INC0010001) or sys_id. "
+                "A required priority value ('1'=Critical … '5'=Planning) is set via PATCH. "
+                "Optionally supply assignment_group to reassign and audit_note to document the reason."
+            ),
             "str",
         ),
         "list_incidents": (

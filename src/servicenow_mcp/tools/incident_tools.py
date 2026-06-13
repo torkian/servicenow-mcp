@@ -84,6 +84,22 @@ class ReopenIncidentParams(BaseModel):
     work_notes: Optional[str] = Field(None, description="Work notes to add when reopening")
 
 
+class EscalateIncidentParams(BaseModel):
+    """Parameters for escalating an incident's priority and/or assignment group."""
+
+    incident_id: str = Field(..., description="Incident number (e.g. INC0010001) or sys_id")
+    priority: str = Field(
+        ...,
+        description="New priority value: '1' = Critical, '2' = High, '3' = Moderate, '4' = Low, '5' = Planning",
+    )
+    assignment_group: Optional[str] = Field(
+        None, description="Name or sys_id of the group to reassign the incident to"
+    )
+    audit_note: Optional[str] = Field(
+        None, description="Work note documenting the reason for escalation"
+    )
+
+
 class DeleteIncidentParams(BaseModel):
     """Parameters for deleting an incident."""
 
@@ -549,6 +565,90 @@ def reopen_incident(
         return IncidentResponse(
             success=False,
             message=f"Failed to reopen incident: {_format_http_error(e)}",
+        )
+
+
+def escalate_incident(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: EscalateIncidentParams,
+) -> IncidentResponse:
+    """Escalate an incident by updating its priority and optionally reassigning it.
+
+    Resolves incident number to sys_id when needed, then PATCHes the record.
+    Appends an audit work note when provided so the escalation is traceable.
+    """
+    incident_id = params.incident_id
+    if len(incident_id) == 32 and all(c in "0123456789abcdef" for c in incident_id):
+        api_url = f"{config.api_url}/table/incident/{incident_id}"
+    else:
+        try:
+            query_url = f"{config.api_url}/table/incident"
+            query_params = {
+                "sysparm_query": f"number={incident_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id,number",
+            }
+            response = _make_request(
+                "GET",
+                query_url,
+                params=query_params,
+                headers=auth_manager.get_headers(),
+                timeout=config.timeout,
+            )
+            response.raise_for_status()
+            result = response.json().get("result", [])
+            if not result:
+                return IncidentResponse(
+                    success=False,
+                    message=f"Incident not found: {incident_id}",
+                )
+            incident_id = result[0].get("sys_id")
+            api_url = f"{config.api_url}/table/incident/{incident_id}"
+        except requests.RequestException as e:
+            logger.error(f"Failed to find incident: {e}")
+            return IncidentResponse(
+                success=False,
+                message=f"Failed to find incident: {_format_http_error(e)}",
+            )
+
+    data: dict = {"priority": params.priority}
+    if params.assignment_group:
+        data["assignment_group"] = params.assignment_group
+    if params.audit_note:
+        data["work_notes"] = params.audit_note
+
+    try:
+        response = _make_request(
+            "PATCH",
+            api_url,
+            json=data,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        if response.status_code == 404:
+            return IncidentResponse(
+                success=False,
+                message=f"Incident not found: {params.incident_id}",
+            )
+        response.raise_for_status()
+        result = response.json().get("result", {})
+        priority_labels = {"1": "Critical", "2": "High", "3": "Moderate", "4": "Low", "5": "Planning"}
+        priority_label = priority_labels.get(params.priority, params.priority)
+        msg = f"Incident escalated successfully (priority → {priority_label})"
+        if params.assignment_group:
+            msg += f", reassigned to {params.assignment_group}"
+        return IncidentResponse(
+            success=True,
+            message=msg,
+            incident_id=result.get("sys_id"),
+            incident_number=result.get("number"),
+        )
+    except requests.RequestException as e:
+        logger.error(f"Failed to escalate incident: {e}")
+        return IncidentResponse(
+            success=False,
+            message=f"Failed to escalate incident: {_format_http_error(e)}",
         )
 
 
