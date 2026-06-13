@@ -1,9 +1,11 @@
 
 import unittest
 from unittest.mock import MagicMock, patch
-from servicenow_mcp.tools.incident_tools import get_incident_by_number, GetIncidentByNumberParams
-from servicenow_mcp.utils.config import ServerConfig, AuthConfig, AuthType, BasicAuthConfig
+
 from servicenow_mcp.auth.auth_manager import AuthManager
+from servicenow_mcp.tools.incident_tools import GetIncidentByNumberParams, get_incident_by_number
+from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
+
 
 class TestIncidentTools(unittest.TestCase):
 

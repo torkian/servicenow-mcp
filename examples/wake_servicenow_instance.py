@@ -6,10 +6,11 @@ This script attempts to wake up a hibernating ServiceNow instance by
 making requests to it and following any redirects to the wake-up page.
 """
 
+import logging
 import os
 import sys
 import time
-import logging
+
 import requests
 from dotenv import load_dotenv
 

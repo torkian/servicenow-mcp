@@ -5,24 +5,25 @@ This module contains tests for the script include tools in the ServiceNow MCP se
 """
 
 import unittest
-import requests
 from unittest.mock import MagicMock, patch
+
+import requests
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.script_include_tools import (
-    ListScriptIncludesParams,
-    GetScriptIncludeParams,
     CreateScriptIncludeParams,
-    UpdateScriptIncludeParams,
     DeleteScriptIncludeParams,
+    GetScriptIncludeParams,
+    ListScriptIncludesParams,
     ScriptIncludeResponse,
-    list_script_includes,
-    get_script_include,
+    UpdateScriptIncludeParams,
     create_script_include,
-    update_script_include,
     delete_script_include,
+    get_script_include,
+    list_script_includes,
+    update_script_include,
 )
-from servicenow_mcp.utils.config import ServerConfig, AuthConfig, AuthType, BasicAuthConfig
+from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 
 class TestScriptIncludeTools(unittest.TestCase):

@@ -12,11 +12,12 @@ Usage:
     python scripts/test_connection.py
 """
 
+import base64
 import os
 import sys
-import requests
-import base64
 from pathlib import Path
+
+import requests
 from dotenv import load_dotenv
 
 # Add the project root to the Python path

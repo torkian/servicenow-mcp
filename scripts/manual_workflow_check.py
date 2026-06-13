@@ -4,19 +4,20 @@ Test script for workflow_tools module.
 This script directly tests the workflow_tools functions with proper authentication.
 """
 
-import os
 import json
 import logging
+import os
+
 from dotenv import load_dotenv
 
 from servicenow_mcp.auth.auth_manager import AuthManager
-from servicenow_mcp.utils.config import ServerConfig, AuthConfig, AuthType, BasicAuthConfig
 from servicenow_mcp.tools.workflow_tools import (
-    list_workflows,
+    get_workflow_activities,
     get_workflow_details,
     list_workflow_versions,
-    get_workflow_activities,
+    list_workflows,
 )
+from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 # Set up logging
 logging.basicConfig(level=logging.DEBUG)

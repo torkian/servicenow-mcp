@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.contract_tools import (
     _format_contract,
     _format_contract_asset,
@@ -15,9 +16,7 @@ from servicenow_mcp.tools.contract_tools import (
     list_contract_assets,
     update_asset_contract,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
 
 FAKE_CONTRACT = {
     "sys_id": "con001",

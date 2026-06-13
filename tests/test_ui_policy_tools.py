@@ -8,14 +8,15 @@ from unittest.mock import MagicMock, patch
 import requests
 
 from servicenow_mcp.tools.ui_policy_tools import (
+    CreateUIPolicyActionParams,
     CreateUIPolicyParams,
+    UIPolicyActionResponse,
     UIPolicyResponse,
     create_ui_policy,
-    CreateUIPolicyActionParams,
-    UIPolicyActionResponse,
     create_ui_policy_action,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
+from pydantic import ValidationError
 
 
 class TestCreateUIPolicy(unittest.TestCase):
@@ -380,7 +381,7 @@ class TestCreateUIPolicyAction(unittest.TestCase):
 
     def test_action_params_invalid_behaviour_rejected(self):
         """Invalid behaviour literal values are rejected by Pydantic."""
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             CreateUIPolicyActionParams(
                 ui_policy_id="p",
                 field_name="f",

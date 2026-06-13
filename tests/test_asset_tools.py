@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.asset_tools import (
     CreateAssetParams,
     DeleteAssetParams,
@@ -18,9 +19,7 @@ from servicenow_mcp.tools.asset_tools import (
     list_assets,
     update_asset,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
 
 FAKE_ASSET = {
     "sys_id": "asset001",

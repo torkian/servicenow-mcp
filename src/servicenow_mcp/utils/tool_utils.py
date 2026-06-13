@@ -1,5 +1,60 @@
 from typing import Any, Callable, Dict, Tuple, Type
 
+from servicenow_mcp.tools.asset_tools import (
+    CreateAssetParams,
+    DeleteAssetParams,
+    GetAssetParams,
+    ListAssetsParams,
+    UpdateAssetParams,
+)
+from servicenow_mcp.tools.asset_tools import (
+    create_asset as create_asset_tool,
+)
+from servicenow_mcp.tools.asset_tools import (
+    delete_asset as delete_asset_tool,
+)
+from servicenow_mcp.tools.asset_tools import (
+    get_asset as get_asset_tool,
+)
+from servicenow_mcp.tools.asset_tools import (
+    list_assets as list_assets_tool,
+)
+from servicenow_mcp.tools.asset_tools import (
+    update_asset as update_asset_tool,
+)
+from servicenow_mcp.tools.attachment_tools import (
+    DeleteAttachmentParams,
+    GetAttachmentParams,
+    ListAttachmentsParams,
+)
+from servicenow_mcp.tools.attachment_tools import (
+    delete_attachment as delete_attachment_tool,
+)
+from servicenow_mcp.tools.attachment_tools import (
+    get_attachment as get_attachment_tool,
+)
+from servicenow_mcp.tools.attachment_tools import (
+    list_attachments as list_attachments_tool,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    BulkOperationsParams,
+    BulkUpdateChangeRequestsParams,
+    BulkUpdateIncidentsParams,
+    BulkUpdateProblemsParams,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_change_requests as bulk_update_change_requests_tool,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_incidents as bulk_update_incidents_tool,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_problems as bulk_update_problems_tool,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    execute_bulk_operations as execute_bulk_operations_tool,
+)
+
 # Import all necessary tool implementation functions and params models
 # (This list needs to be kept complete and up-to-date)
 from servicenow_mcp.tools.catalog_optimization import (
@@ -24,16 +79,13 @@ from servicenow_mcp.tools.catalog_tools import (
     UpdateCatalogCategoryParams,
 )
 from servicenow_mcp.tools.catalog_tools import (
-    get_catalog as get_catalog_tool,
-)
-from servicenow_mcp.tools.catalog_tools import (
-    list_catalogs as list_catalogs_tool,
-)
-from servicenow_mcp.tools.catalog_tools import (
     create_catalog_category as create_catalog_category_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     create_catalog_item as create_catalog_item_tool,
+)
+from servicenow_mcp.tools.catalog_tools import (
+    get_catalog as get_catalog_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     get_catalog_item as get_catalog_item_tool,
@@ -43,6 +95,9 @@ from servicenow_mcp.tools.catalog_tools import (
 )
 from servicenow_mcp.tools.catalog_tools import (
     list_catalog_items as list_catalog_items_tool,
+)
+from servicenow_mcp.tools.catalog_tools import (
+    list_catalogs as list_catalogs_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     move_catalog_items as move_catalog_items_tool,
@@ -158,39 +213,113 @@ from servicenow_mcp.tools.changeset_tools import (
 from servicenow_mcp.tools.changeset_tools import (
     update_changeset as update_changeset_tool,
 )
-from servicenow_mcp.tools.incident_tools import (
-    AddCommentParams,
-    CreateIncidentParams,
-    DeleteIncidentParams,
-    EscalateIncidentParams,
-    ListIncidentsParams,
-    ReopenIncidentParams,
-    ResolveIncidentParams,
-    UpdateIncidentParams,
-    GetIncidentByNumberParams,
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    CreateCIRelationshipParams,
+    DeleteCIRelationshipParams,
+    GetCIRelationshipParams,
+    ListCIRelationshipsParams,
+    ListCIRelationshipTypesParams,
 )
-from servicenow_mcp.tools.incident_tools import (
-    add_comment as add_comment_tool,
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    create_ci_relationship as create_ci_relationship_tool,
 )
-from servicenow_mcp.tools.incident_tools import (
-    create_incident as create_incident_tool,
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    delete_ci_relationship as delete_ci_relationship_tool,
 )
-from servicenow_mcp.tools.incident_tools import (
-    list_incidents as list_incidents_tool,
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    get_ci_relationship as get_ci_relationship_tool,
 )
-from servicenow_mcp.tools.incident_tools import (
-    delete_incident as delete_incident_tool,
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    list_ci_relationship_types as list_ci_relationship_types_tool,
 )
-from servicenow_mcp.tools.incident_tools import (
-    escalate_incident as escalate_incident_tool,
-    reopen_incident as reopen_incident_tool,
-    resolve_incident as resolve_incident_tool,
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    list_ci_relationships as list_ci_relationships_tool,
 )
-from servicenow_mcp.tools.incident_tools import (
-    update_incident as update_incident_tool,
+from servicenow_mcp.tools.cmdb_tools import (
+    CreateCIOutageParams,
+    CreateCIParams,
+    DeleteCIOutageParams,
+    GetCIByNameParams,
+    GetCIOutageParams,
+    GetCIParams,
+    ListCIsParams,
+    ListCMDBCIOutagesParams,
+    ListCMDBClassesParams,
+    UpdateCIOutageParams,
+    UpdateCIParams,
 )
-from servicenow_mcp.tools.incident_tools import (
-    get_incident_by_number as get_incident_by_number_tool,
+from servicenow_mcp.tools.cmdb_tools import (
+    create_ci as create_ci_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    create_ci_outage as create_ci_outage_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    delete_ci_outage as delete_ci_outage_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    get_ci as get_ci_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    get_ci_by_name as get_ci_by_name_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    get_ci_outage as get_ci_outage_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    list_cis as list_cis_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    list_cmdb_ci_outages as list_cmdb_ci_outages_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    list_cmdb_classes as list_cmdb_classes_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    update_ci as update_ci_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    update_ci_outage as update_ci_outage_tool,
+)
+from servicenow_mcp.tools.contract_tools import (
+    CreateAssetContractParams,
+    ExpireAssetContractParams,
+    GetAssetContractParams,
+    ListAssetContractsParams,
+    ListContractAssetsParams,
+    UpdateAssetContractParams,
+)
+from servicenow_mcp.tools.contract_tools import (
+    create_asset_contract as create_asset_contract_tool,
+)
+from servicenow_mcp.tools.contract_tools import (
+    expire_asset_contract as expire_asset_contract_tool,
+)
+from servicenow_mcp.tools.contract_tools import (
+    get_asset_contract as get_asset_contract_tool,
+)
+from servicenow_mcp.tools.contract_tools import (
+    list_asset_contracts as list_asset_contracts_tool,
+)
+from servicenow_mcp.tools.contract_tools import (
+    list_contract_assets as list_contract_assets_tool,
+)
+from servicenow_mcp.tools.contract_tools import (
+    update_asset_contract as update_asset_contract_tool,
+)
+from servicenow_mcp.tools.epic_tools import (
+    CreateEpicParams,
+    ListEpicsParams,
+    UpdateEpicParams,
+)
+from servicenow_mcp.tools.epic_tools import (
+    create_epic as create_epic_tool,
+)
+from servicenow_mcp.tools.epic_tools import (
+    list_epics as list_epics_tool,
+)
+from servicenow_mcp.tools.epic_tools import (
+    update_epic as update_epic_tool,
 )
 from servicenow_mcp.tools.incident_task_tools import (
     CloseIncidentTaskParams,
@@ -200,9 +329,53 @@ from servicenow_mcp.tools.incident_task_tools import (
 )
 from servicenow_mcp.tools.incident_task_tools import (
     close_incident_task as close_incident_task_tool,
+)
+from servicenow_mcp.tools.incident_task_tools import (
     create_incident_task as create_incident_task_tool,
+)
+from servicenow_mcp.tools.incident_task_tools import (
     list_incident_comments as list_incident_comments_tool,
+)
+from servicenow_mcp.tools.incident_task_tools import (
     list_incident_tasks as list_incident_tasks_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    AddCommentParams,
+    CreateIncidentParams,
+    DeleteIncidentParams,
+    EscalateIncidentParams,
+    GetIncidentByNumberParams,
+    ListIncidentsParams,
+    ReopenIncidentParams,
+    ResolveIncidentParams,
+    UpdateIncidentParams,
+)
+from servicenow_mcp.tools.incident_tools import (
+    add_comment as add_comment_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    create_incident as create_incident_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    delete_incident as delete_incident_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    escalate_incident as escalate_incident_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    get_incident_by_number as get_incident_by_number_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    list_incidents as list_incidents_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    reopen_incident as reopen_incident_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    resolve_incident as resolve_incident_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    update_incident as update_incident_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
     CreateArticleParams,
@@ -250,6 +423,88 @@ from servicenow_mcp.tools.knowledge_base import (
 from servicenow_mcp.tools.knowledge_base import (
     update_article as update_article_tool,
 )
+from servicenow_mcp.tools.notification_tools import (
+    ListNotificationsParams,
+)
+from servicenow_mcp.tools.notification_tools import (
+    list_notifications as list_notifications_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    CloseProblemParams,
+    CreateProblemParams,
+    GetProblemParams,
+    ListProblemsParams,
+    UpdateProblemParams,
+)
+from servicenow_mcp.tools.problem_tools import (
+    close_problem as close_problem_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    create_problem as create_problem_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    get_problem as get_problem_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    list_problems as list_problems_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    update_problem as update_problem_tool,
+)
+from servicenow_mcp.tools.project_tools import (
+    CreateProjectParams,
+    ListProjectsParams,
+    UpdateProjectParams,
+)
+from servicenow_mcp.tools.project_tools import (
+    create_project as create_project_tool,
+)
+from servicenow_mcp.tools.project_tools import (
+    list_projects as list_projects_tool,
+)
+from servicenow_mcp.tools.project_tools import (
+    update_project as update_project_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    CreateRequestParams,
+    GetRequestParams,
+    ListRequestItemsParams,
+    ListRequestsParams,
+    UpdateRequestParams,
+)
+from servicenow_mcp.tools.request_tools import (
+    create_request as create_request_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    get_request as get_request_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    list_request_items as list_request_items_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    list_requests as list_requests_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    update_request as update_request_tool,
+)
+from servicenow_mcp.tools.role_tools import (
+    AssignRoleToGroupParams,
+    GetGroupRolesParams,
+    ListUserRolesParams,
+    RemoveRoleFromGroupParams,
+)
+from servicenow_mcp.tools.role_tools import (
+    assign_role_to_group as assign_role_to_group_tool,
+)
+from servicenow_mcp.tools.role_tools import (
+    get_group_roles as get_group_roles_tool,
+)
+from servicenow_mcp.tools.role_tools import (
+    list_user_roles as list_user_roles_tool,
+)
+from servicenow_mcp.tools.role_tools import (
+    remove_role_from_group as remove_role_from_group_tool,
+)
 from servicenow_mcp.tools.script_include_tools import (
     CreateScriptIncludeParams,
     DeleteScriptIncludeParams,
@@ -276,6 +531,156 @@ from servicenow_mcp.tools.script_include_tools import (
 )
 from servicenow_mcp.tools.script_include_tools import (
     update_script_include as update_script_include_tool,
+)
+from servicenow_mcp.tools.scrum_task_tools import (
+    CreateScrumTaskParams,
+    ListScrumTasksParams,
+    UpdateScrumTaskParams,
+)
+from servicenow_mcp.tools.scrum_task_tools import (
+    create_scrum_task as create_scrum_task_tool,
+)
+from servicenow_mcp.tools.scrum_task_tools import (
+    list_scrum_tasks as list_scrum_tasks_tool,
+)
+from servicenow_mcp.tools.scrum_task_tools import (
+    update_scrum_task as update_scrum_task_tool,
+)
+from servicenow_mcp.tools.sctask_tools import (
+    GetSCTaskParams,
+    ListSCTasksParams,
+    UpdateSCTaskParams,
+)
+from servicenow_mcp.tools.sctask_tools import (
+    get_sctask as get_sctask_tool,
+)
+from servicenow_mcp.tools.sctask_tools import (
+    list_sctasks as list_sctasks_tool,
+)
+from servicenow_mcp.tools.sctask_tools import (
+    update_sctask as update_sctask_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    GetSLABreachParams,
+    GetSLAParams,
+    ListSLABreachDefinitionsParams,
+    ListSLABreachesParams,
+    ListSLAsParams,
+    ResolveSLABreachParams,
+)
+from servicenow_mcp.tools.sla_tools import (
+    get_sla as get_sla_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    get_sla_breach as get_sla_breach_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    list_sla_breach_definitions as list_sla_breach_definitions_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    list_sla_breaches as list_sla_breaches_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    list_slas as list_slas_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    resolve_sla_breach as resolve_sla_breach_tool,
+)
+from servicenow_mcp.tools.story_tools import (
+    CreateStoryDependencyParams,
+    CreateStoryParams,
+    DeleteStoryDependencyParams,
+    ListStoriesParams,
+    ListStoryDependenciesParams,
+    UpdateStoryParams,
+)
+from servicenow_mcp.tools.story_tools import (
+    create_story as create_story_tool,
+)
+from servicenow_mcp.tools.story_tools import (
+    create_story_dependency as create_story_dependency_tool,
+)
+from servicenow_mcp.tools.story_tools import (
+    delete_story_dependency as delete_story_dependency_tool,
+)
+from servicenow_mcp.tools.story_tools import (
+    list_stories as list_stories_tool,
+)
+from servicenow_mcp.tools.story_tools import (
+    list_story_dependencies as list_story_dependencies_tool,
+)
+from servicenow_mcp.tools.story_tools import (
+    update_story as update_story_tool,
+)
+from servicenow_mcp.tools.syslog_tools import (
+    GetSyslogEntryParams,
+    ListSyslogEntriesParams,
+)
+from servicenow_mcp.tools.syslog_tools import (
+    get_syslog_entry as get_syslog_entry_tool,
+)
+from servicenow_mcp.tools.syslog_tools import (
+    list_syslog_entries as list_syslog_entries_tool,
+)
+from servicenow_mcp.tools.time_card_tools import (
+    CreateTimeCardParams,
+    ListTimeCardsParams,
+    UpdateTimeCardParams,
+)
+from servicenow_mcp.tools.time_card_tools import (
+    create_time_card as create_time_card_tool,
+)
+from servicenow_mcp.tools.time_card_tools import (
+    list_time_cards as list_time_cards_tool,
+)
+from servicenow_mcp.tools.time_card_tools import (
+    update_time_card as update_time_card_tool,
+)
+from servicenow_mcp.tools.ui_policy_tools import (
+    CreateUIPolicyActionParams,
+    CreateUIPolicyParams,
+)
+from servicenow_mcp.tools.ui_policy_tools import (
+    create_ui_policy as create_ui_policy_tool,
+)
+from servicenow_mcp.tools.ui_policy_tools import (
+    create_ui_policy_action as create_ui_policy_action_tool,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    CreateUserCriteriaConditionParams,
+    CreateUserCriteriaParams,
+    ListCatalogItemUserCriteriaParams,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    create_user_criteria as create_user_criteria_tool,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    create_user_criteria_condition as create_user_criteria_condition_tool,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    list_catalog_item_user_criteria as list_catalog_item_user_criteria_tool,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    AddUserToGroupParams,
+    GetUserGroupParams,
+    ListGroupMembersParams,
+    ListUserGroupsParams,
+    RemoveUserFromGroupParams,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    add_user_to_group as add_user_to_group_tool,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    get_user_group as get_user_group_tool,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    list_group_members as list_group_members_tool,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    list_user_groups as list_user_groups_tool,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    remove_user_from_group as remove_user_from_group_tool,
 )
 from servicenow_mcp.tools.user_tools import (
     AddGroupMembersParams,
@@ -369,270 +774,6 @@ from servicenow_mcp.tools.workflow_tools import (
 from servicenow_mcp.tools.workflow_tools import (
     update_workflow_activity as update_workflow_activity_tool,
 )
-from servicenow_mcp.tools.story_tools import (
-    CreateStoryParams,
-    UpdateStoryParams,
-    ListStoriesParams,
-    ListStoryDependenciesParams,
-    CreateStoryDependencyParams,
-    DeleteStoryDependencyParams,
-)
-from servicenow_mcp.tools.story_tools import (
-    create_story as create_story_tool,
-    update_story as update_story_tool,
-    list_stories as list_stories_tool,
-    list_story_dependencies as list_story_dependencies_tool,
-    create_story_dependency as create_story_dependency_tool,
-    delete_story_dependency as delete_story_dependency_tool,
-)
-from servicenow_mcp.tools.epic_tools import (
-    CreateEpicParams,
-    UpdateEpicParams,
-    ListEpicsParams,
-)
-from servicenow_mcp.tools.epic_tools import (
-    create_epic as create_epic_tool,
-    update_epic as update_epic_tool,
-    list_epics as list_epics_tool,
-)
-from servicenow_mcp.tools.scrum_task_tools import (
-    CreateScrumTaskParams,
-    UpdateScrumTaskParams,
-    ListScrumTasksParams,
-)
-from servicenow_mcp.tools.scrum_task_tools import (
-    create_scrum_task as create_scrum_task_tool,
-    update_scrum_task as update_scrum_task_tool,
-    list_scrum_tasks as list_scrum_tasks_tool,
-)
-from servicenow_mcp.tools.project_tools import (
-    CreateProjectParams,
-    UpdateProjectParams,
-    ListProjectsParams,
-)
-from servicenow_mcp.tools.project_tools import (
-    create_project as create_project_tool,
-    update_project as update_project_tool,
-    list_projects as list_projects_tool,
-)
-from servicenow_mcp.tools.sctask_tools import (
-    GetSCTaskParams,
-    UpdateSCTaskParams,
-    ListSCTasksParams,
-)
-from servicenow_mcp.tools.sctask_tools import (
-    get_sctask as get_sctask_tool,
-    list_sctasks as list_sctasks_tool,
-    update_sctask as update_sctask_tool,
-)
-from servicenow_mcp.tools.time_card_tools import (
-    ListTimeCardsParams,
-    CreateTimeCardParams,
-    UpdateTimeCardParams,
-)
-from servicenow_mcp.tools.time_card_tools import (
-    list_time_cards as list_time_cards_tool,
-    create_time_card as create_time_card_tool,
-    update_time_card as update_time_card_tool,
-)
-from servicenow_mcp.tools.syslog_tools import (
-    ListSyslogEntriesParams,
-    GetSyslogEntryParams,
-)
-from servicenow_mcp.tools.syslog_tools import (
-    list_syslog_entries as list_syslog_entries_tool,
-    get_syslog_entry as get_syslog_entry_tool,
-)
-from servicenow_mcp.tools.ui_policy_tools import (
-    CreateUIPolicyParams,
-    CreateUIPolicyActionParams,
-)
-from servicenow_mcp.tools.ui_policy_tools import (
-    create_ui_policy as create_ui_policy_tool,
-    create_ui_policy_action as create_ui_policy_action_tool,
-)
-from servicenow_mcp.tools.user_criteria_tools import (
-    CreateUserCriteriaConditionParams,
-    CreateUserCriteriaParams,
-    ListCatalogItemUserCriteriaParams,
-)
-from servicenow_mcp.tools.user_criteria_tools import (
-    create_user_criteria as create_user_criteria_tool,
-)
-from servicenow_mcp.tools.user_criteria_tools import (
-    create_user_criteria_condition as create_user_criteria_condition_tool,
-)
-from servicenow_mcp.tools.user_criteria_tools import (
-    list_catalog_item_user_criteria as list_catalog_item_user_criteria_tool,
-)
-from servicenow_mcp.tools.bulk_tools import (
-    BulkOperationsParams,
-    BulkUpdateIncidentsParams,
-    BulkUpdateChangeRequestsParams,
-    BulkUpdateProblemsParams,
-)
-from servicenow_mcp.tools.bulk_tools import (
-    bulk_update_change_requests as bulk_update_change_requests_tool,
-    bulk_update_incidents as bulk_update_incidents_tool,
-    bulk_update_problems as bulk_update_problems_tool,
-    execute_bulk_operations as execute_bulk_operations_tool,
-)
-from servicenow_mcp.tools.cmdb_tools import (
-    CreateCIOutageParams,
-    CreateCIParams,
-    DeleteCIOutageParams,
-    GetCIByNameParams,
-    GetCIOutageParams,
-    GetCIParams,
-    ListCIsParams,
-    ListCMDBClassesParams,
-    ListCMDBCIOutagesParams,
-    UpdateCIOutageParams,
-    UpdateCIParams,
-)
-from servicenow_mcp.tools.cmdb_tools import (
-    create_ci as create_ci_tool,
-    create_ci_outage as create_ci_outage_tool,
-    delete_ci_outage as delete_ci_outage_tool,
-    get_ci as get_ci_tool,
-    get_ci_by_name as get_ci_by_name_tool,
-    get_ci_outage as get_ci_outage_tool,
-    list_cmdb_classes as list_cmdb_classes_tool,
-    list_cmdb_ci_outages as list_cmdb_ci_outages_tool,
-    list_cis as list_cis_tool,
-    update_ci as update_ci_tool,
-    update_ci_outage as update_ci_outage_tool,
-)
-from servicenow_mcp.tools.cmdb_relationship_tools import (
-    CreateCIRelationshipParams,
-    DeleteCIRelationshipParams,
-    GetCIRelationshipParams,
-    ListCIRelationshipsParams,
-    ListCIRelationshipTypesParams,
-)
-from servicenow_mcp.tools.cmdb_relationship_tools import (
-    create_ci_relationship as create_ci_relationship_tool,
-    delete_ci_relationship as delete_ci_relationship_tool,
-    get_ci_relationship as get_ci_relationship_tool,
-    list_ci_relationships as list_ci_relationships_tool,
-    list_ci_relationship_types as list_ci_relationship_types_tool,
-)
-from servicenow_mcp.tools.asset_tools import (
-    CreateAssetParams,
-    DeleteAssetParams,
-    GetAssetParams,
-    ListAssetsParams,
-    UpdateAssetParams,
-)
-from servicenow_mcp.tools.asset_tools import (
-    create_asset as create_asset_tool,
-    delete_asset as delete_asset_tool,
-    get_asset as get_asset_tool,
-    list_assets as list_assets_tool,
-    update_asset as update_asset_tool,
-)
-from servicenow_mcp.tools.contract_tools import (
-    CreateAssetContractParams,
-    ExpireAssetContractParams,
-    GetAssetContractParams,
-    ListAssetContractsParams,
-    ListContractAssetsParams,
-    UpdateAssetContractParams,
-)
-from servicenow_mcp.tools.contract_tools import (
-    create_asset_contract as create_asset_contract_tool,
-    expire_asset_contract as expire_asset_contract_tool,
-    get_asset_contract as get_asset_contract_tool,
-    list_asset_contracts as list_asset_contracts_tool,
-    list_contract_assets as list_contract_assets_tool,
-    update_asset_contract as update_asset_contract_tool,
-)
-from servicenow_mcp.tools.attachment_tools import (
-    DeleteAttachmentParams,
-    GetAttachmentParams,
-    ListAttachmentsParams,
-)
-from servicenow_mcp.tools.attachment_tools import (
-    delete_attachment as delete_attachment_tool,
-    get_attachment as get_attachment_tool,
-    list_attachments as list_attachments_tool,
-)
-from servicenow_mcp.tools.request_tools import (
-    CreateRequestParams,
-    GetRequestParams,
-    ListRequestItemsParams,
-    ListRequestsParams,
-    UpdateRequestParams,
-)
-from servicenow_mcp.tools.request_tools import (
-    create_request as create_request_tool,
-    get_request as get_request_tool,
-    list_request_items as list_request_items_tool,
-    list_requests as list_requests_tool,
-    update_request as update_request_tool,
-)
-from servicenow_mcp.tools.sla_tools import (
-    GetSLABreachParams,
-    GetSLAParams,
-    ListSLABreachDefinitionsParams,
-    ListSLABreachesParams,
-    ListSLAsParams,
-    ResolveSLABreachParams,
-)
-from servicenow_mcp.tools.sla_tools import (
-    get_sla as get_sla_tool,
-    get_sla_breach as get_sla_breach_tool,
-    list_sla_breach_definitions as list_sla_breach_definitions_tool,
-    list_sla_breaches as list_sla_breaches_tool,
-    list_slas as list_slas_tool,
-    resolve_sla_breach as resolve_sla_breach_tool,
-)
-from servicenow_mcp.tools.problem_tools import (
-    CloseProblemParams,
-    CreateProblemParams,
-    GetProblemParams,
-    ListProblemsParams,
-    UpdateProblemParams,
-)
-from servicenow_mcp.tools.problem_tools import (
-    close_problem as close_problem_tool,
-    create_problem as create_problem_tool,
-    get_problem as get_problem_tool,
-    list_problems as list_problems_tool,
-    update_problem as update_problem_tool,
-)
-from servicenow_mcp.tools.user_group_tools import (
-    AddUserToGroupParams,
-    GetUserGroupParams,
-    ListGroupMembersParams,
-    ListUserGroupsParams,
-    RemoveUserFromGroupParams,
-)
-from servicenow_mcp.tools.user_group_tools import (
-    add_user_to_group as add_user_to_group_tool,
-    get_user_group as get_user_group_tool,
-    list_group_members as list_group_members_tool,
-    list_user_groups as list_user_groups_tool,
-    remove_user_from_group as remove_user_from_group_tool,
-)
-from servicenow_mcp.tools.notification_tools import (
-    ListNotificationsParams,
-)
-from servicenow_mcp.tools.notification_tools import (
-    list_notifications as list_notifications_tool,
-)
-from servicenow_mcp.tools.role_tools import (
-    AssignRoleToGroupParams,
-    GetGroupRolesParams,
-    ListUserRolesParams,
-    RemoveRoleFromGroupParams,
-)
-from servicenow_mcp.tools.role_tools import (
-    assign_role_to_group as assign_role_to_group_tool,
-    get_group_roles as get_group_roles_tool,
-    list_user_roles as list_user_roles_tool,
-    remove_role_from_group as remove_role_from_group_tool,
-)
 
 # Define a type alias for the Pydantic models or dataclasses used for params
 ParamsModel = Type[Any]  # Use Type[Any] for broader compatibility initially
@@ -706,18 +847,6 @@ def get_tool_definitions(
             "Reopen a resolved or closed incident, setting its state back to New or In Progress",
             "str",
         ),
-        "escalate_incident": (
-            escalate_incident_tool,
-            EscalateIncidentParams,
-            str,
-            (
-                "Escalate a ServiceNow incident by updating its priority and optionally reassigning "
-                "it to a different group. Accepts an incident number (e.g. INC0010001) or sys_id. "
-                "A required priority value ('1'=Critical … '5'=Planning) is set via PATCH. "
-                "Optionally supply assignment_group to reassign and audit_note to document the reason."
-            ),
-            "str",
-        ),
         "list_incidents": (
             list_incidents_tool,
             ListIncidentsParams,
@@ -731,6 +860,18 @@ def get_tool_definitions(
             str,
             "Incident details from ServiceNow",
             "json_dict"
+        ),
+        "escalate_incident": (
+            escalate_incident_tool,
+            EscalateIncidentParams,
+            str,
+            (
+                "Escalate a ServiceNow incident by updating its priority and optionally reassigning "
+                "it to a different group. Accepts an incident number (e.g. INC0010001) or sys_id. "
+                "A required priority value ('1'=Critical … '5'=Planning) is set via PATCH. "
+                "Optionally supply assignment_group to reassign and audit_note to document the reason."
+            ),
+            "str",
         ),
         # Incident Task Tools
         "create_incident_task": (

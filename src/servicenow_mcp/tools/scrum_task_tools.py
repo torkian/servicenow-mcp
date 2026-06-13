@@ -13,7 +13,13 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _make_request, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _make_request,
+    _unwrap_and_validate_params,
+)
 
 logger = logging.getLogger(__name__)
 

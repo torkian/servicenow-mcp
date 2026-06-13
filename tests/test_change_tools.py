@@ -251,7 +251,7 @@ class TestChangeTools(unittest.TestCase):
         # Verify that the post method was never called
         mock_post.assert_not_called()
 
-    @patch("servicenow_mcp.tools.change_tools.requests.post")
+    @patch("servicenow_mcp.tools.change_tools._make_request")
     def test_create_change_request_with_swapped_parameters_real(self, mock_post):
         """Test creating a change request with swapped parameters (auth_manager and server_config)."""
         # Mock the response

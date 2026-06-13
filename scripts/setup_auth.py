@@ -10,9 +10,10 @@ Usage:
 """
 
 import os
-import sys
 import subprocess
+import sys
 from pathlib import Path
+
 
 def clear_screen():
     """Clear the terminal screen."""

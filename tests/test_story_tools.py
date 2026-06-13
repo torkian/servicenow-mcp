@@ -6,11 +6,11 @@ from unittest.mock import MagicMock, patch
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.story_tools import (
     create_story,
-    update_story,
-    list_stories,
-    list_story_dependencies,
     create_story_dependency,
     delete_story_dependency,
+    list_stories,
+    list_story_dependencies,
+    update_story,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 

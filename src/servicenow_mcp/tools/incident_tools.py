@@ -16,8 +16,8 @@ from servicenow_mcp.utils.helpers import (
     _build_sysparm_params,
     _format_http_error,
     _join_query_parts,
-    _paginated_list_response,
     _make_request,
+    _paginated_list_response,
 )
 
 logger = logging.getLogger(__name__)

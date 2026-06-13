@@ -19,10 +19,10 @@ from servicenow_mcp.utils.helpers import (
     _get_headers,
     _get_instance_url,
     _join_query_parts,
+    _make_request,
     _paginated_list_response,
     _unwrap_and_validate_params,
     validate_servicenow_datetime,
-    _make_request,
 )
 
 logger = logging.getLogger(__name__)

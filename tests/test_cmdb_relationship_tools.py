@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     _format_rel_type,
     _format_relationship,
@@ -12,9 +13,7 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
     list_ci_relationship_types,
     list_ci_relationships,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
 
 # ---------------------------------------------------------------------------
 # Fixtures

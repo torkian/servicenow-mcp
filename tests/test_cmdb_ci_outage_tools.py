@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.cmdb_tools import (
     CreateCIOutageParams,
     DeleteCIOutageParams,
@@ -17,8 +18,6 @@ from servicenow_mcp.tools.cmdb_tools import (
     update_ci_outage,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-from servicenow_mcp.auth.auth_manager import AuthManager
-
 
 FAKE_OUTAGE = {
     "sys_id": "out001",

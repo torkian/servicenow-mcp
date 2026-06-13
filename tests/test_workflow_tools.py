@@ -9,18 +9,18 @@ import requests
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.workflow_tools import (
-    list_workflows,
+    activate_workflow,
+    add_workflow_activity,
+    create_workflow,
+    deactivate_workflow,
+    delete_workflow_activity,
+    get_workflow_activities,
     get_workflow_details,
     list_workflow_versions,
-    get_workflow_activities,
-    create_workflow,
-    update_workflow,
-    activate_workflow,
-    deactivate_workflow,
-    add_workflow_activity,
-    update_workflow_activity,
-    delete_workflow_activity,
+    list_workflows,
     reorder_workflow_activities,
+    update_workflow,
+    update_workflow_activity,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
@@ -381,36 +381,11 @@ class TestWorkflowTools(unittest.TestCase):
         self.assertEqual(result["workflow"]["active"], "false")
         self.assertEqual(result["message"], "Workflow deactivated successfully")
 
-    @patch("servicenow_mcp.tools.workflow_tools.requests.get")
-    @patch("servicenow_mcp.tools.workflow_tools.requests.post")
-    def test_add_workflow_activity_success(self, mock_post, mock_get):
+    @patch("servicenow_mcp.tools.workflow_tools._make_request")
+    def test_add_workflow_activity_success(self, mock_request):
         """Test adding a workflow activity successfully."""
-        # Mock the responses for version query and activity creation
-        version_response = MagicMock()
-        version_response.json.return_value = {
-            "result": [
-                {
-                    "sys_id": "version123",
-                    "workflow": "workflow123",
-                    "name": "Version 1",
-                    "version": "1",
-                    "published": "false",
-                }
-            ]
-        }
-        version_response.raise_for_status = MagicMock()
-        
-        order_response = MagicMock()
-        order_response.json.return_value = {
-            "result": [
-                {
-                    "sys_id": "activity123",
-                    "order": "100",
-                }
-            ]
-        }
-        order_response.raise_for_status = MagicMock()
-        
+        # The current implementation creates the activity directly from a
+        # workflow_version_id with a single POST to wf_activity.
         activity_response = MagicMock()
         activity_response.json.return_value = {
             "result": {
@@ -422,22 +397,10 @@ class TestWorkflowTools(unittest.TestCase):
             }
         }
         activity_response.raise_for_status = MagicMock()
-        
-        # Configure the mocks
-        def get_side_effect(*args, **kwargs):
-            url = args[0] if args else kwargs.get('url', '')
-            if 'wf_workflow_version' in url:
-                return version_response
-            elif 'wf_activity' in url:
-                return order_response
-            return MagicMock()
-            
-        mock_get.side_effect = get_side_effect
-        mock_post.return_value = activity_response
+        mock_request.return_value = activity_response
 
-        # Call the function
         params = {
-            "workflow_id": "workflow123",
+            "workflow_version_id": "version123",
             "name": "New Activity",
             "activity_type": "approval",
             "description": "A new approval activity",
@@ -445,11 +408,10 @@ class TestWorkflowTools(unittest.TestCase):
         result = add_workflow_activity(self.auth_manager, self.server_config, params)
 
         # Verify the result
+        mock_request.assert_called_once()
         self.assertEqual(result["activity"]["sys_id"], "activity789")
         self.assertEqual(result["activity"]["name"], "New Activity")
-        self.assertEqual(result["workflow_id"], "workflow123")
-        self.assertEqual(result["version_id"], "version123")
-        self.assertEqual(result["message"], "Activity added successfully")
+        self.assertEqual(result["message"], "Workflow activity added successfully")
 
     @patch("servicenow_mcp.tools.workflow_tools.requests.patch")
     def test_update_workflow_activity_success(self, mock_patch):

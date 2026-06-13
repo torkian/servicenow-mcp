@@ -5,13 +5,13 @@ from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.change_tools import (
-    create_change_request,
-    update_change_request,
-    get_change_request_details,
     add_change_task,
-    submit_change_for_approval,
     approve_change,
+    create_change_request,
+    get_change_request_details,
     reject_change,
+    submit_change_for_approval,
+    update_change_request,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 

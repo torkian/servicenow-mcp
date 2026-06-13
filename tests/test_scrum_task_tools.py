@@ -4,7 +4,11 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
-from servicenow_mcp.tools.scrum_task_tools import create_scrum_task, update_scrum_task, list_scrum_tasks
+from servicenow_mcp.tools.scrum_task_tools import (
+    create_scrum_task,
+    list_scrum_tasks,
+    update_scrum_task,
+)
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 

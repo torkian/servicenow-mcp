@@ -16,19 +16,19 @@ from servicenow_mcp.tools.knowledge_base import (
     CreateKnowledgeBaseParams,
     GetArticleParams,
     ListArticlesParams,
+    ListCategoriesParams,
     ListKnowledgeBasesParams,
     PublishArticleParams,
     UpdateArticleParams,
-    ListCategoriesParams,
     create_article,
     create_category,
     create_knowledge_base,
     get_article,
     list_articles,
+    list_categories,
     list_knowledge_bases,
     publish_article,
     update_article,
-    list_categories,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
@@ -605,7 +605,7 @@ class TestKnowledgeBaseParams(unittest.TestCase):
         self.assertEqual("Test short description", params.short_description)
         self.assertEqual("kb001", params.knowledge_base)
         self.assertEqual("cat001", params.category)
-        self.assertEqual("text", params.article_type)
+        self.assertEqual("html", params.article_type)
 
         # All parameters
         params = CreateArticleParams(

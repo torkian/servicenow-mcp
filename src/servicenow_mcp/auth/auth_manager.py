@@ -10,7 +10,6 @@ import requests
 
 from servicenow_mcp.utils.config import AuthConfig, AuthType
 
-
 logger = logging.getLogger(__name__)
 
 

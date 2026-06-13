@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -11,8 +12,6 @@ from servicenow_mcp.tools.syslog_tools import (
     list_syslog_entries,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-from servicenow_mcp.auth.auth_manager import AuthManager
-
 
 FAKE_ENTRY = {
     "sys_id": "abc123",

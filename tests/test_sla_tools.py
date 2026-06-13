@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.sla_tools import (
     _format_sla,
     _format_task_sla,
@@ -15,9 +16,7 @@ from servicenow_mcp.tools.sla_tools import (
     list_slas,
     resolve_sla_breach,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
 
 FAKE_SYS_ID = "b" * 32
 FAKE_SLA_NAME = "Priority 1 Response"

@@ -6,6 +6,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.attachment_tools import (
     _format_attachment,
     delete_attachment,
@@ -13,9 +14,7 @@ from servicenow_mcp.tools.attachment_tools import (
     list_attachments,
     upload_attachment,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
 
 FAKE_ATTACHMENT = {
     "sys_id": "att001",

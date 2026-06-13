@@ -11,6 +11,7 @@ import requests as requests_lib
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.workflow_tools import (
+    ListWorkflowsParams,
     _get_auth_and_config,
     _unwrap_params,
     activate_workflow,
@@ -26,7 +27,6 @@ from servicenow_mcp.tools.workflow_tools import (
     reorder_workflow_activities,
     update_workflow,
     update_workflow_activity,
-    ListWorkflowsParams,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 

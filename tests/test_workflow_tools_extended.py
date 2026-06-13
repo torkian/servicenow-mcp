@@ -5,20 +5,20 @@ from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.workflow_tools import (
-    add_workflow_activity,
-    update_workflow_activity,
-    delete_workflow_activity,
-    reorder_workflow_activities,
-    list_workflows,
-    get_workflow_details,
-    list_workflow_versions,
-    get_workflow_activities,
-    create_workflow,
-    update_workflow,
-    activate_workflow,
-    deactivate_workflow,
     _get_auth_and_config,
     _unwrap_params,
+    activate_workflow,
+    add_workflow_activity,
+    create_workflow,
+    deactivate_workflow,
+    delete_workflow_activity,
+    get_workflow_activities,
+    get_workflow_details,
+    list_workflow_versions,
+    list_workflows,
+    reorder_workflow_activities,
+    update_workflow,
+    update_workflow_activity,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 

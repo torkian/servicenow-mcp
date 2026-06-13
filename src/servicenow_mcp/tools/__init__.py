@@ -3,6 +3,26 @@ Tools module for the ServiceNow MCP server.
 """
 
 # Import tools as they are implemented
+from servicenow_mcp.tools.asset_tools import (
+    create_asset,
+    delete_asset,
+    get_asset,
+    list_assets,
+    update_asset,
+)
+from servicenow_mcp.tools.attachment_tools import (
+    delete_attachment,
+    download_attachment,
+    get_attachment,
+    list_attachments,
+    upload_attachment,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_change_requests,
+    bulk_update_incidents,
+    bulk_update_problems,
+    execute_bulk_operations,
+)
 from servicenow_mcp.tools.catalog_optimization import (
     get_optimization_recommendations,
     update_catalog_item,
@@ -49,22 +69,55 @@ from servicenow_mcp.tools.changeset_tools import (
     publish_changeset,
     update_changeset,
 )
-from servicenow_mcp.tools.incident_tools import (
-    add_comment,
-    create_incident,
-    delete_incident,
-    escalate_incident,
-    list_incidents,
-    reopen_incident,
-    resolve_incident,
-    update_incident,
-    get_incident_by_number,
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    create_ci_relationship,
+    delete_ci_relationship,
+    get_ci_relationship,
+    list_ci_relationship_types,
+    list_ci_relationships,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    create_ci,
+    create_ci_outage,
+    delete_ci_outage,
+    get_ci,
+    get_ci_by_name,
+    get_ci_outage,
+    list_cis,
+    list_cmdb_ci_outages,
+    list_cmdb_classes,
+    update_ci,
+    update_ci_outage,
+)
+from servicenow_mcp.tools.contract_tools import (
+    create_asset_contract,
+    expire_asset_contract,
+    get_asset_contract,
+    list_asset_contracts,
+    list_contract_assets,
+    update_asset_contract,
+)
+from servicenow_mcp.tools.epic_tools import (
+    create_epic,
+    list_epics,
+    update_epic,
 )
 from servicenow_mcp.tools.incident_task_tools import (
     close_incident_task,
     create_incident_task,
     list_incident_comments,
     list_incident_tasks,
+)
+from servicenow_mcp.tools.incident_tools import (
+    add_comment,
+    create_incident,
+    delete_incident,
+    escalate_incident,
+    get_incident_by_number,
+    list_incidents,
+    reopen_incident,
+    resolve_incident,
+    update_incident,
 )
 from servicenow_mcp.tools.knowledge_base import (
     create_article,
@@ -74,10 +127,38 @@ from servicenow_mcp.tools.knowledge_base import (
     get_article,
     list_articles,
     list_articles_by_category,
+    list_categories,
     list_knowledge_bases,
     publish_article,
     update_article,
-    list_categories,
+)
+from servicenow_mcp.tools.notification_tools import (
+    list_notifications,
+)
+from servicenow_mcp.tools.problem_tools import (
+    close_problem,
+    create_problem,
+    get_problem,
+    list_problems,
+    update_problem,
+)
+from servicenow_mcp.tools.project_tools import (
+    create_project,
+    list_projects,
+    update_project,
+)
+from servicenow_mcp.tools.request_tools import (
+    create_request,
+    get_request,
+    list_request_items,
+    list_requests,
+    update_request,
+)
+from servicenow_mcp.tools.role_tools import (
+    assign_role_to_group,
+    get_group_roles,
+    list_user_roles,
+    remove_role_from_group,
 )
 from servicenow_mcp.tools.script_include_tools import (
     create_script_include,
@@ -87,17 +168,68 @@ from servicenow_mcp.tools.script_include_tools import (
     list_script_includes,
     update_script_include,
 )
+from servicenow_mcp.tools.scrum_task_tools import (
+    create_scrum_task,
+    list_scrum_tasks,
+    update_scrum_task,
+)
+from servicenow_mcp.tools.sctask_tools import (
+    get_sctask,
+    list_sctasks,
+    update_sctask,
+)
+from servicenow_mcp.tools.sla_tools import (
+    get_sla,
+    get_sla_breach,
+    list_sla_breach_definitions,
+    list_sla_breaches,
+    list_slas,
+    resolve_sla_breach,
+)
+from servicenow_mcp.tools.story_tools import (
+    create_story,
+    create_story_dependency,
+    delete_story_dependency,
+    list_stories,
+    list_story_dependencies,
+    update_story,
+)
+from servicenow_mcp.tools.syslog_tools import (
+    get_syslog_entry,
+    list_syslog_entries,
+)
+from servicenow_mcp.tools.time_card_tools import (
+    create_time_card,
+    list_time_cards,
+    update_time_card,
+)
+from servicenow_mcp.tools.ui_policy_tools import (
+    create_ui_policy,
+    create_ui_policy_action,
+)
+from servicenow_mcp.tools.user_criteria_tools import (
+    create_user_criteria,
+    create_user_criteria_condition,
+    list_catalog_item_user_criteria,
+)
+from servicenow_mcp.tools.user_group_tools import (
+    add_user_to_group,
+    get_user_group,
+    list_group_members,
+    list_user_groups,
+    remove_user_from_group,
+)
 from servicenow_mcp.tools.user_tools import (
+    add_group_members,
+    create_group,
     create_user,
-    update_user,
     get_user,
     get_user_by_email,
-    list_users,
-    create_group,
-    update_group,
-    add_group_members,
-    remove_group_members,
     list_groups,
+    list_users,
+    remove_group_members,
+    update_group,
+    update_user,
 )
 from servicenow_mcp.tools.workflow_tools import (
     activate_workflow,
@@ -113,150 +245,18 @@ from servicenow_mcp.tools.workflow_tools import (
     update_workflow,
     update_workflow_activity,
 )
-from servicenow_mcp.tools.story_tools import (
-    create_story,
-    update_story,
-    list_stories,
-    list_story_dependencies,
-    create_story_dependency,
-    delete_story_dependency,
-)
-from servicenow_mcp.tools.epic_tools import (
-    create_epic,
-    update_epic,
-    list_epics,
-)
-from servicenow_mcp.tools.scrum_task_tools import (
-    create_scrum_task,
-    update_scrum_task,
-    list_scrum_tasks,
-)
-from servicenow_mcp.tools.project_tools import (
-    create_project,
-    update_project,
-    list_projects,
-)
-from servicenow_mcp.tools.sctask_tools import (
-    get_sctask,
-    list_sctasks,
-    update_sctask,
-)
-from servicenow_mcp.tools.time_card_tools import (
-    list_time_cards,
-    create_time_card,
-    update_time_card,
-)
-from servicenow_mcp.tools.syslog_tools import (
-    list_syslog_entries,
-    get_syslog_entry,
-)
-from servicenow_mcp.tools.ui_policy_tools import (
-    create_ui_policy,
-    create_ui_policy_action,
-)
-from servicenow_mcp.tools.user_criteria_tools import (
-    create_user_criteria,
-    create_user_criteria_condition,
-    list_catalog_item_user_criteria,
-)
-from servicenow_mcp.tools.bulk_tools import (
-    bulk_update_change_requests,
-    bulk_update_incidents,
-    bulk_update_problems,
-    execute_bulk_operations,
-)
-from servicenow_mcp.tools.cmdb_tools import (
-    create_ci,
-    create_ci_outage,
-    delete_ci_outage,
-    get_ci,
-    get_ci_by_name,
-    get_ci_outage,
-    list_cmdb_classes,
-    list_cmdb_ci_outages,
-    list_cis,
-    update_ci,
-    update_ci_outage,
-)
-from servicenow_mcp.tools.cmdb_relationship_tools import (
-    create_ci_relationship,
-    delete_ci_relationship,
-    get_ci_relationship,
-    list_ci_relationships,
-    list_ci_relationship_types,
-)
-from servicenow_mcp.tools.asset_tools import (
-    create_asset,
-    delete_asset,
-    list_assets,
-    get_asset,
-    update_asset,
-)
-from servicenow_mcp.tools.contract_tools import (
-    list_asset_contracts,
-    get_asset_contract,
-    create_asset_contract,
-    update_asset_contract,
-    expire_asset_contract,
-    list_contract_assets,
-)
-from servicenow_mcp.tools.attachment_tools import (
-    list_attachments,
-    get_attachment,
-    delete_attachment,
-    upload_attachment,
-    download_attachment,
-)
-from servicenow_mcp.tools.problem_tools import (
-    close_problem,
-    create_problem,
-    get_problem,
-    list_problems,
-    update_problem,
-)
-from servicenow_mcp.tools.sla_tools import (
-    get_sla,
-    get_sla_breach,
-    list_sla_breach_definitions,
-    list_sla_breaches,
-    list_slas,
-    resolve_sla_breach,
-)
-from servicenow_mcp.tools.request_tools import (
-    create_request,
-    get_request,
-    list_request_items,
-    list_requests,
-    update_request,
-)
-from servicenow_mcp.tools.notification_tools import (
-    list_notifications,
-)
-from servicenow_mcp.tools.role_tools import (
-    assign_role_to_group,
-    get_group_roles,
-    list_user_roles,
-    remove_role_from_group,
-)
-from servicenow_mcp.tools.user_group_tools import (
-    add_user_to_group,
-    get_user_group,
-    list_group_members,
-    list_user_groups,
-    remove_user_from_group,
-)
 
 __all__ = [
     # Incident tools
     "create_incident",
     "update_incident",
     "delete_incident",
-    "escalate_incident",
     "add_comment",
     "resolve_incident",
     "reopen_incident",
     "list_incidents",
     "get_incident_by_number",
+    "escalate_incident",
     # Incident Task tools
     "create_incident_task",
     "list_incident_tasks",

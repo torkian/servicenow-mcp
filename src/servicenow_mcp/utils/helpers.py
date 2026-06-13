@@ -495,10 +495,14 @@ def _get_instance_url(auth_manager: Any, server_config: Any) -> Optional[str]:
     Returns:
         Instance URL string, or ``None`` if not found.
     """
-    if hasattr(server_config, "instance_url"):
-        return server_config.instance_url
-    if hasattr(auth_manager, "instance_url"):
-        return auth_manager.instance_url
+    # Prefer the first object that carries a non-empty instance_url. Checking for
+    # truthiness (rather than mere attribute presence) keeps this tolerant of
+    # swapped arguments: an AuthManager may expose an instance_url attribute set
+    # to None, which must not shadow the real value on the ServerConfig.
+    for candidate in (server_config, auth_manager):
+        url = getattr(candidate, "instance_url", None)
+        if url:
+            return url
     logger.error("Cannot find instance_url in either server_config or auth_manager")
     return None
 

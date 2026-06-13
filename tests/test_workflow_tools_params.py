@@ -2,13 +2,13 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
-from servicenow_mcp.utils.config import ServerConfig
 from servicenow_mcp.tools.workflow_tools import (
     _get_auth_and_config,
-    list_workflows,
-    get_workflow_details,
     create_workflow,
+    get_workflow_details,
+    list_workflows,
 )
+from servicenow_mcp.utils.config import ServerConfig
 
 
 class TestWorkflowToolsParams(unittest.TestCase):

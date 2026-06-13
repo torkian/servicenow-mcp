@@ -13,6 +13,7 @@ from servicenow_mcp.tools.bulk_tools import (
     execute_bulk_operations,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
+from pydantic import ValidationError
 
 _AUTH_CONFIG = AuthConfig(
     type=AuthType.BASIC,
@@ -45,7 +46,7 @@ class TestBulkOperationRequestModel(unittest.TestCase):
         self.assertEqual(req.method, "GET")
 
     def test_invalid_method_raises(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             BulkOperationRequest(id="1", method="HEAD", url="/api/now/v2/table/incident")
 
     def test_full_url_stripped_to_path(self):

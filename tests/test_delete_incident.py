@@ -8,6 +8,7 @@ import requests
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.incident_tools import DeleteIncidentParams, delete_incident
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
+from pydantic import ValidationError
 
 FAKE_SYS_ID = "b" * 32
 FAKE_NUMBER = "INC0020001"
@@ -164,7 +165,7 @@ class TestDeleteIncidentByNumber(unittest.TestCase):
 
 class TestDeleteIncidentParams(unittest.TestCase):
     def test_requires_incident_id(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             DeleteIncidentParams()
 
     def test_accepts_sys_id(self):

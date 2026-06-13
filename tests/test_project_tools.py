@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
-from servicenow_mcp.tools.project_tools import create_project, update_project, list_projects
+from servicenow_mcp.tools.project_tools import create_project, list_projects, update_project
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 

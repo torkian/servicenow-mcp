@@ -5,24 +5,24 @@ from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.user_tools import (
-    CreateUserParams,
-    UpdateUserParams,
-    GetUserParams,
-    ListUsersParams,
-    CreateGroupParams,
-    UpdateGroupParams,
     AddGroupMembersParams,
-    RemoveGroupMembersParams,
+    CreateGroupParams,
+    CreateUserParams,
+    GetUserParams,
     ListGroupsParams,
-    create_user,
-    update_user,
-    get_user,
-    list_users,
-    create_group,
-    update_group,
+    ListUsersParams,
+    RemoveGroupMembersParams,
+    UpdateGroupParams,
+    UpdateUserParams,
     add_group_members,
-    remove_group_members,
+    create_group,
+    create_user,
+    get_user,
     list_groups,
+    list_users,
+    remove_group_members,
+    update_group,
+    update_user,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 

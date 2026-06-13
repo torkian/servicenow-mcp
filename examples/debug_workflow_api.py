@@ -5,9 +5,10 @@ This script helps diagnose issues with the ServiceNow API by making direct calls
 and printing detailed information about the requests and responses.
 """
 
-import os
 import json
 import logging
+import os
+
 import requests
 from dotenv import load_dotenv
 

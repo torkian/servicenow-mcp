@@ -3,6 +3,7 @@
 import unittest
 from unittest.mock import MagicMock, patch
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.cmdb_tools import (
     CreateCIParams,
     GetCIByNameParams,
@@ -14,13 +15,11 @@ from servicenow_mcp.tools.cmdb_tools import (
     create_ci,
     get_ci,
     get_ci_by_name,
-    list_cmdb_classes,
     list_cis,
+    list_cmdb_classes,
     update_ci,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-from servicenow_mcp.auth.auth_manager import AuthManager
-
 
 FAKE_CI = {
     "sys_id": "ci001",

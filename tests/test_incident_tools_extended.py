@@ -5,16 +5,16 @@ from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.incident_tools import (
-    CreateIncidentParams,
-    UpdateIncidentParams,
     AddCommentParams,
-    ResolveIncidentParams,
+    CreateIncidentParams,
     ListIncidentsParams,
-    create_incident,
-    update_incident,
+    ResolveIncidentParams,
+    UpdateIncidentParams,
     add_comment,
-    resolve_incident,
+    create_incident,
     list_incidents,
+    resolve_incident,
+    update_incident,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 

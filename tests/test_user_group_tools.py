@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 import requests
+from pydantic import ValidationError
 
 from servicenow_mcp.tools.user_group_tools import (
     AddUserToGroupParams,
@@ -605,17 +606,17 @@ class TestParamModels:
         assert p.active is None
 
     def test_get_user_group_requires_group_id(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             GetUserGroupParams()
 
     def test_add_user_to_group_requires_fields(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             AddUserToGroupParams(group_id=GROUP_SYS_ID)
 
     def test_remove_user_from_group_requires_member_sys_id(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             RemoveUserFromGroupParams()
 
     def test_list_group_members_requires_group_id(self):
-        with pytest.raises(Exception):
+        with pytest.raises(ValidationError):
             ListGroupMembersParams()

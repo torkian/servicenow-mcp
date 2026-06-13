@@ -4,7 +4,7 @@ import unittest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.auth.auth_manager import AuthManager
-from servicenow_mcp.tools.epic_tools import create_epic, update_epic, list_epics
+from servicenow_mcp.tools.epic_tools import create_epic, list_epics, update_epic
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 

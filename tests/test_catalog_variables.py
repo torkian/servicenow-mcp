@@ -4,6 +4,7 @@ Tests for the catalog item variables tools.
 
 import unittest
 from unittest.mock import MagicMock, patch
+
 import requests
 
 from servicenow_mcp.tools.catalog_variables import (
@@ -20,7 +21,7 @@ from servicenow_mcp.tools.catalog_variables import (
     list_catalog_item_variables,
     update_catalog_item_variable,
 )
-from servicenow_mcp.utils.config import ServerConfig, AuthConfig, AuthType, BasicAuthConfig
+from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 
 class TestCatalogVariablesTools(unittest.TestCase):

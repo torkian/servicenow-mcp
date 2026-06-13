@@ -24,7 +24,7 @@ from servicenow_mcp.tools.changeset_tools import (
     publish_changeset,
     update_changeset,
 )
-from servicenow_mcp.utils.config import ServerConfig, AuthConfig, AuthType, BasicAuthConfig
+from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 
 class TestChangesetTools(unittest.TestCase):

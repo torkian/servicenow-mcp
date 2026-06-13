@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.problem_tools import (
     _format_problem,
     _resolve_problem_sys_id,
@@ -14,9 +15,7 @@ from servicenow_mcp.tools.problem_tools import (
     list_problems,
     update_problem,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
 
 FAKE_SYS_ID = "a" * 32
 FAKE_NUMBER = "PRB0001234"

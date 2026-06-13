@@ -5,15 +5,15 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.catalog_tools import (
     GetCatalogParams,
     ListCatalogsParams,
     get_catalog,
     list_catalogs,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
+from pydantic import ValidationError
 
 FAKE_CATALOG = {
     "sys_id": "cat001",
@@ -71,7 +71,7 @@ class TestGetCatalogParams(unittest.TestCase):
         self.assertEqual(p.catalog_id, "cat001")
 
     def test_missing_field_raises(self):
-        with self.assertRaises(Exception):
+        with self.assertRaises(ValidationError):
             GetCatalogParams()
 
 

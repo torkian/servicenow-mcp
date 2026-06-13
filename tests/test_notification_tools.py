@@ -5,13 +5,12 @@ from unittest.mock import MagicMock, patch
 
 import requests
 
+from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.notification_tools import (
     _format_notification,
     list_notifications,
 )
-from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
-
 
 FAKE_SYS_ID = "c" * 32
 FAKE_SOURCE_SYS_ID = "d" * 32

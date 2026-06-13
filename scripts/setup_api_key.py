@@ -13,8 +13,9 @@ Usage:
 
 import os
 import sys
-import requests
 from pathlib import Path
+
+import requests
 from dotenv import load_dotenv
 
 # Add the project root to the Python path

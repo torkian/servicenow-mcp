@@ -9,19 +9,19 @@ import requests
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.catalog_tools import (
+    CreateCatalogCategoryParams,
     GetCatalogItemParams,
     ListCatalogCategoriesParams,
     ListCatalogItemsParams,
-    CreateCatalogCategoryParams,
-    UpdateCatalogCategoryParams,
     MoveCatalogItemsParams,
+    UpdateCatalogCategoryParams,
+    create_catalog_category,
     get_catalog_item,
     get_catalog_item_variables,
     list_catalog_categories,
     list_catalog_items,
-    create_catalog_category,
-    update_catalog_category,
     move_catalog_items,
+    update_catalog_category,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 

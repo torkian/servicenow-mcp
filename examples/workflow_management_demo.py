@@ -6,9 +6,9 @@ This script demonstrates how to use the ServiceNow MCP workflow management tools
 to view, create, and modify workflows in ServiceNow.
 """
 
+import json
 import os
 import sys
-import json
 from datetime import datetime
 
 from dotenv import load_dotenv
@@ -17,20 +17,20 @@ from dotenv import load_dotenv
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), "..")))
 
 from servicenow_mcp.auth.auth_manager import AuthManager
-from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 from servicenow_mcp.tools.workflow_tools import (
-    list_workflows,
+    activate_workflow,
+    add_workflow_activity,
+    create_workflow,
+    deactivate_workflow,
+    get_workflow_activities,
     get_workflow_details,
     list_workflow_versions,
-    get_workflow_activities,
-    create_workflow,
-    update_workflow,
-    activate_workflow,
-    deactivate_workflow,
-    add_workflow_activity,
-    update_workflow_activity,
+    list_workflows,
     reorder_workflow_activities,
+    update_workflow,
+    update_workflow_activity,
 )
+from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
 
 def print_json(data):
