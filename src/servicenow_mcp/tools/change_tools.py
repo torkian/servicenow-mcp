@@ -14,10 +14,13 @@ from pydantic import BaseModel, Field, field_validator
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
 from servicenow_mcp.utils.helpers import (
+    _build_sysparm_params,
     _format_http_error,
     _get_headers,
     _get_instance_url,
+    _join_query_parts,
     _make_request,
+    _paginated_list_response,
     _unwrap_and_validate_params,
     validate_servicenow_datetime,
 )
@@ -1186,3 +1189,158 @@ def reject_change(
             "success": False,
             "message": f"Error rejecting change: {_format_http_error(e)}",
         } 
+
+APPROVAL_TABLE = "/api/now/table/sysapproval_approver"
+
+APPROVAL_FIELDS = [
+    "sys_id",
+    "document_id",
+    "source_table",
+    "approver",
+    "state",
+    "comments",
+    "due_date",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+class ListChangeApprovalsParams(BaseModel):
+    """Parameters for listing approval records for change requests."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+    change_id: Optional[str] = Field(
+        None,
+        description="Filter by change request sys_id (32-char hex) or CHG number",
+    )
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by approval state. Values: 'requested', 'approved', "
+            "'rejected', 'not_yet_requested', 'cancelled'"
+        ),
+    )
+    approver: Optional[str] = Field(
+        None,
+        description="Filter by approver user name (exact match on approver.name)",
+    )
+
+
+def _format_approval(record: Dict) -> Dict:
+    """Normalise a raw sysapproval_approver record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "change_request": _display(record.get("document_id")),
+        "approver": _display(record.get("approver")),
+        "state": record.get("state"),
+        "comments": record.get("comments"),
+        "due_date": record.get("due_date"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def _resolve_change_sys_id(
+    change_id: str,
+    instance_url: str,
+    headers: Dict,
+) -> Optional[str]:
+    """Return the sys_id for a change request given a CHG number or sys_id.
+
+    Returns None on network errors or when the record is not found.
+    """
+    if len(change_id) == 32 and all(c in "0123456789abcdef" for c in change_id):
+        return change_id
+    lookup_url = f"{instance_url}/api/now/table/change_request"
+    try:
+        resp = _make_request(
+            "GET",
+            lookup_url,
+            headers=headers,
+            params={"sysparm_query": f"number={change_id}", "sysparm_limit": 1},
+        )
+        resp.raise_for_status()
+        records = resp.json().get("result", [])
+        if not records:
+            return None
+        return records[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+def list_change_approvals(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List approval records for change requests from the sysapproval_approver table.
+
+    Always scopes results to ``source_table=change_request``.  Optionally
+    filter by a specific change request (number or sys_id), approval state,
+    or approver user name.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListChangeApprovalsParams.
+
+    Returns:
+        Dictionary with ``success``, ``approvals`` (list), ``count``, and
+        pagination keys (``has_more``, ``next_offset``).
+    """
+    result = _unwrap_and_validate_params(params, ListChangeApprovalsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    filters = ["source_table=change_request"]
+
+    if validated.change_id:
+        sys_id = _resolve_change_sys_id(validated.change_id, instance_url, headers)
+        if sys_id is None:
+            return {
+                "success": False,
+                "message": f"Change request not found: {validated.change_id}",
+            }
+        filters.append(f"document_id={sys_id}")
+
+    if validated.state:
+        filters.append(f"state={validated.state}")
+
+    if validated.approver:
+        filters.append(f"approver.name={validated.approver}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(APPROVAL_FIELDS),
+    )
+
+    url = f"{instance_url}{APPROVAL_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        approvals = [_format_approval(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(approvals, validated.limit, validated.offset, "approvals")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change approvals: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing change approvals: {_format_http_error(e)}",
+        }

@@ -140,6 +140,7 @@ from servicenow_mcp.tools.change_tools import (
     CreateChangeRequestParams,
     CreateChangeTaskParams,
     GetChangeRequestDetailsParams,
+    ListChangeApprovalsParams,
     ListChangeRequestsParams,
     ListChangeTasksParams,
     RejectChangeParams,
@@ -164,6 +165,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     get_change_request_details as get_change_request_details_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    list_change_approvals as list_change_approvals_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     list_change_requests as list_change_requests_tool,
@@ -1110,6 +1114,19 @@ def get_tool_definitions(
             ReopenChangeRequestParams,
             str,
             "Reopen a cancelled or closed change request",
+            "json",
+        ),
+        "list_change_approvals": (
+            list_change_approvals_tool,
+            ListChangeApprovalsParams,
+            str,
+            (
+                "List approval records for change requests from the "
+                "sysapproval_approver table. Scoped to source_table=change_request. "
+                "Filter by change_id (CHG number or sys_id), state "
+                "(requested/approved/rejected/not_yet_requested/cancelled), "
+                "or approver user name. Returns approvals list with pagination."
+            ),
             "json",
         ),
         # Workflow Management Tools
