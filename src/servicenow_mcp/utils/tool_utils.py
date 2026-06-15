@@ -139,6 +139,7 @@ from servicenow_mcp.tools.change_tools import (
     CancelChangeRequestParams,
     CreateChangeRequestParams,
     CreateChangeTaskParams,
+    GetChangeApprovalParams,
     GetChangeRequestDetailsParams,
     ListChangeApprovalsParams,
     ListChangeRequestsParams,
@@ -153,6 +154,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     approve_change as approve_change_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    get_change_approval as get_change_approval_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     cancel_change_request as cancel_change_request_tool,
@@ -1126,6 +1130,18 @@ def get_tool_definitions(
                 "Filter by change_id (CHG number or sys_id), state "
                 "(requested/approved/rejected/not_yet_requested/cancelled), "
                 "or approver user name. Returns approvals list with pagination."
+            ),
+            "json",
+        ),
+        "get_change_approval": (
+            get_change_approval_tool,
+            GetChangeApprovalParams,
+            str,
+            (
+                "Retrieve a single sysapproval_approver record by its sys_id. "
+                "Returns normalised approval fields: change_request, approver, "
+                "state, comments, due_date, created_on, updated_on. "
+                "Returns 404 guard when the record does not exist."
             ),
             "json",
         ),

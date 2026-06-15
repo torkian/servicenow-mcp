@@ -1205,6 +1205,12 @@ APPROVAL_FIELDS = [
 ]
 
 
+class GetChangeApprovalParams(BaseModel):
+    """Parameters for retrieving a single approval record by sys_id."""
+
+    sys_id: str = Field(..., description="The sys_id of the sysapproval_approver record to retrieve")
+
+
 class ListChangeApprovalsParams(BaseModel):
     """Parameters for listing approval records for change requests."""
 
@@ -1225,6 +1231,53 @@ class ListChangeApprovalsParams(BaseModel):
         None,
         description="Filter by approver user name (exact match on approver.name)",
     )
+
+
+def get_change_approval(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single sysapproval_approver record by its sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetChangeApprovalParams.
+
+    Returns:
+        Dictionary with ``success`` and ``approval`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, GetChangeApprovalParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{APPROVAL_TABLE}/{validated.sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(APPROVAL_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Approval record not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {"success": False, "message": f"Approval record not found: {validated.sys_id}"}
+        return {"success": True, "approval": _format_approval(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving change approval: {e}")
+        return {"success": False, "message": f"Error retrieving change approval: {_format_http_error(e)}"}
 
 
 def _format_approval(record: Dict) -> Dict:
