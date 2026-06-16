@@ -1205,6 +1205,20 @@ APPROVAL_FIELDS = [
 ]
 
 
+class ApproveChangeApprovalParams(BaseModel):
+    """Parameters for approving a specific sysapproval_approver record by sys_id."""
+
+    sys_id: str = Field(..., description="The sys_id of the sysapproval_approver record to approve")
+    comments: Optional[str] = Field(None, description="Optional approval comments")
+
+
+class RejectChangeApprovalParams(BaseModel):
+    """Parameters for rejecting a specific sysapproval_approver record by sys_id."""
+
+    sys_id: str = Field(..., description="The sys_id of the sysapproval_approver record to reject")
+    rejection_reason: str = Field(..., description="Reason for rejecting the approval")
+
+
 class GetChangeApprovalParams(BaseModel):
     """Parameters for retrieving a single approval record by sys_id."""
 
@@ -1397,3 +1411,97 @@ def list_change_approvals(
             "success": False,
             "message": f"Error listing change approvals: {_format_http_error(e)}",
         }
+
+
+def approve_change_approval(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Approve a specific sysapproval_approver record by its sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ApproveChangeApprovalParams.
+
+    Returns:
+        Dictionary with ``success`` and ``approval`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, ApproveChangeApprovalParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{APPROVAL_TABLE}/{validated.sys_id}"
+    body: Dict[str, Any] = {"state": "approved"}
+    if validated.comments:
+        body["comments"] = validated.comments
+
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Approval record not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "Approval record approved successfully",
+            "approval": _format_approval(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error approving change approval: {e}")
+        return {"success": False, "message": f"Error approving change approval: {_format_http_error(e)}"}
+
+
+def reject_change_approval(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Reject a specific sysapproval_approver record by its sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching RejectChangeApprovalParams.
+
+    Returns:
+        Dictionary with ``success`` and ``approval`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, RejectChangeApprovalParams, required_fields=["sys_id", "rejection_reason"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{APPROVAL_TABLE}/{validated.sys_id}"
+    body: Dict[str, Any] = {"state": "rejected", "comments": validated.rejection_reason}
+
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Approval record not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "Approval record rejected successfully",
+            "approval": _format_approval(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error rejecting change approval: {e}")
+        return {"success": False, "message": f"Error rejecting change approval: {_format_http_error(e)}"}

@@ -135,6 +135,7 @@ from servicenow_mcp.tools.catalog_variables import (
 )
 from servicenow_mcp.tools.change_tools import (
     AddChangeTaskParams,
+    ApproveChangeApprovalParams,
     ApproveChangeParams,
     CancelChangeRequestParams,
     CreateChangeRequestParams,
@@ -144,6 +145,7 @@ from servicenow_mcp.tools.change_tools import (
     ListChangeApprovalsParams,
     ListChangeRequestsParams,
     ListChangeTasksParams,
+    RejectChangeApprovalParams,
     RejectChangeParams,
     ReopenChangeRequestParams,
     SubmitChangeForApprovalParams,
@@ -154,6 +156,12 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     approve_change as approve_change_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    approve_change_approval as approve_change_approval_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    reject_change_approval as reject_change_approval_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     get_change_approval as get_change_approval_tool,
@@ -1141,6 +1149,30 @@ def get_tool_definitions(
                 "Retrieve a single sysapproval_approver record by its sys_id. "
                 "Returns normalised approval fields: change_request, approver, "
                 "state, comments, due_date, created_on, updated_on. "
+                "Returns 404 guard when the record does not exist."
+            ),
+            "json",
+        ),
+        "approve_change_approval": (
+            approve_change_approval_tool,
+            ApproveChangeApprovalParams,
+            str,
+            (
+                "Approve a specific sysapproval_approver record directly by its sys_id. "
+                "Sets state=approved and optionally records comments. "
+                "Use list_change_approvals or get_change_approval to obtain the sys_id first. "
+                "Returns 404 guard when the record does not exist."
+            ),
+            "json",
+        ),
+        "reject_change_approval": (
+            reject_change_approval_tool,
+            RejectChangeApprovalParams,
+            str,
+            (
+                "Reject a specific sysapproval_approver record directly by its sys_id. "
+                "Sets state=rejected and records the required rejection_reason as comments. "
+                "Use list_change_approvals or get_change_approval to obtain the sys_id first. "
                 "Returns 404 guard when the record does not exist."
             ),
             "json",

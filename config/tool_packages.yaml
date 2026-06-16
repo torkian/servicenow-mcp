@@ -68,6 +68,9 @@ service_desk:
   # Bulk Operations
   - bulk_update_incidents
   - bulk_update_problems
+  # Change Approval (read-only)
+  - list_change_approvals
+  - get_change_approval
 
 catalog_builder:
   # Core Catalog
@@ -110,7 +113,9 @@ change_coordinator:
   - create_change_task
   - submit_change_for_approval
   - approve_change
+  - approve_change_approval
   - reject_change
+  - reject_change_approval
   - cancel_change_request
   - reopen_change_request
   - list_change_approvals
@@ -326,7 +331,9 @@ full:
   - create_change_task
   - submit_change_for_approval
   - approve_change
+  - approve_change_approval
   - reject_change
+  - reject_change_approval
   - cancel_change_request
   - reopen_change_request
   - list_change_approvals
