@@ -3,6 +3,16 @@
 All notable changes to this project are documented here.
 The format is based on [Keep a Changelog](https://keepachangelog.com/), and this project adheres to [Semantic Versioning](https://semver.org/).
 
+## [3.1.0] - 2026-06-16
+
+### Added
+
+- **Change approvals**: four new tools for the change-approval workflow — `list_change_approvals`, `get_change_approval`, `approve_change_approval`, and `reject_change_approval` — bringing the total tool surface to 180.
+
+### Changed
+
+- Test suite grows to 1,665 passing tests covering the new change-approval tools.
+
 ## [3.0.0] - 2026-06-13
 
 ### Added

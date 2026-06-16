@@ -5,11 +5,15 @@
 [![codecov](https://codecov.io/gh/torkian/servicenow-mcp/graph/badge.svg)](https://codecov.io/gh/torkian/servicenow-mcp)
 [![Python 3.11+](https://img.shields.io/badge/python-3.11%2B-blue.svg)](https://www.python.org/downloads/)
 [![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
-[![Tests](https://img.shields.io/badge/tests-1604%20passed-brightgreen.svg)](https://github.com/torkian/servicenow-mcp/actions/workflows/ci.yml)
+[![Tests](https://img.shields.io/badge/tests-1665%20passed-brightgreen.svg)](https://github.com/torkian/servicenow-mcp/actions/workflows/ci.yml)
 
 A Model Completion Protocol (MCP) server implementation for ServiceNow, allowing AI assistants to interact with ServiceNow instances.
 
 > **This is a maintained fork of [echelon-ai-labs/servicenow-mcp](https://github.com/echelon-ai-labs/servicenow-mcp)** with active development, bug fixes, and new features.
+
+## What's New (v3.1)
+
+Adds the **change-approval workflow** — `list_change_approvals`, `get_change_approval`, `approve_change_approval`, and `reject_change_approval` — bringing the toolset to **180 tools**.
 
 ## What's New (v3.0)
 
@@ -215,7 +219,7 @@ The default `config/tool_packages.yaml` includes the following role-based packag
 
 ## Available Tools
 
-**Note:** Tool availability depends on the loaded tool package (see Tool Packaging above). By default (`full` package), all 176 tools are available.
+**Note:** Tool availability depends on the loaded tool package (see Tool Packaging above). By default (`full` package), all 180 tools are available.
 
 ### Incidents
 - `add_comment`
@@ -242,13 +246,17 @@ The default `config/tool_packages.yaml` includes the following role-based packag
 ### Changes
 - `add_change_task`
 - `approve_change`
+- `approve_change_approval`
 - `cancel_change_request`
 - `create_change_request`
 - `create_change_task`
+- `get_change_approval`
 - `get_change_request_details`
+- `list_change_approvals`
 - `list_change_requests`
 - `list_change_tasks`
 - `reject_change`
+- `reject_change_approval`
 - `reopen_change_request`
 - `submit_change_for_approval`
 - `update_change_request`
