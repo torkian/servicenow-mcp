@@ -142,6 +142,7 @@ from servicenow_mcp.tools.change_tools import (
     CreateChangeTaskParams,
     GetChangeApprovalParams,
     GetChangeRequestDetailsParams,
+    GetChangeTaskParams,
     ListChangeApprovalsParams,
     ListChangeRequestsParams,
     ListChangeTasksParams,
@@ -165,6 +166,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     get_change_approval as get_change_approval_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    get_change_task as get_change_task_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     cancel_change_request as cancel_change_request_tool,
@@ -1078,6 +1082,13 @@ def get_tool_definitions(
             str,  # Expects JSON string
             "Add a task to a change request",
             "json_dict",  # Tool returns Pydantic model
+        ),
+        "get_change_task": (
+            get_change_task_tool,
+            GetChangeTaskParams,
+            str,
+            "Get a single change task by its sys_id or CTASK number",
+            "json",
         ),
         "list_change_tasks": (
             list_change_tasks_tool,

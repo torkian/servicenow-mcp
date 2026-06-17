@@ -109,6 +109,7 @@ change_coordinator:
   - get_change_request_details
   # Tasks & Approval
   - add_change_task
+  - get_change_task
   - list_change_tasks
   - create_change_task
   - submit_change_for_approval
@@ -327,6 +328,7 @@ full:
   - list_change_requests
   - get_change_request_details
   - add_change_task
+  - get_change_task
   - list_change_tasks
   - create_change_task
   - submit_change_for_approval

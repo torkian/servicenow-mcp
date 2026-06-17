@@ -778,6 +778,140 @@ def approve_change(
         }
 
 
+CHANGE_TASK_FIELDS = [
+    "sys_id",
+    "number",
+    "short_description",
+    "description",
+    "state",
+    "assigned_to",
+    "assignment_group",
+    "change_request",
+    "planned_start_date",
+    "planned_end_date",
+    "close_notes",
+    "work_notes",
+    "priority",
+    "order",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+class GetChangeTaskParams(BaseModel):
+    """Parameters for retrieving a single change task by sys_id or CTASK number."""
+
+    task_id: str = Field(
+        ...,
+        description=(
+            "The change task sys_id (32-char hex) or task number (e.g. CTASK0001234)"
+        ),
+    )
+
+
+def _format_change_task(record: Dict) -> Dict:
+    """Normalise a raw change_task record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "number": record.get("number"),
+        "short_description": record.get("short_description"),
+        "description": record.get("description"),
+        "state": _display(record.get("state")),
+        "priority": _display(record.get("priority")),
+        "assigned_to": _display(record.get("assigned_to")),
+        "assignment_group": _display(record.get("assignment_group")),
+        "change_request": _display(record.get("change_request")),
+        "planned_start_date": record.get("planned_start_date"),
+        "planned_end_date": record.get("planned_end_date"),
+        "close_notes": record.get("close_notes"),
+        "order": record.get("order"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def _resolve_change_task_sys_id(
+    instance_url: str,
+    headers: dict,
+    task_id: str,
+) -> Optional[str]:
+    """Return the sys_id for a CTASK number or passthrough if already a sys_id."""
+    if len(task_id) == 32 and all(c in "0123456789abcdef" for c in task_id):
+        return task_id
+    url = f"{instance_url}/api/now/table/change_task"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={"sysparm_query": f"number={task_id}", "sysparm_limit": 1, "sysparm_fields": "sys_id"},
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+def get_change_task(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single change_task record by its sys_id or CTASK number.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetChangeTaskParams.
+
+    Returns:
+        Dictionary with ``success`` and ``task`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, GetChangeTaskParams, required_fields=["task_id"])
+    if not result["success"]:
+        return result
+    validated: GetChangeTaskParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    task_sys_id = _resolve_change_task_sys_id(instance_url, headers, validated.task_id)
+    if not task_sys_id:
+        return {"success": False, "message": f"Change task not found: {validated.task_id}"}
+
+    url = f"{instance_url}/api/now/table/change_task/{task_sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(CHANGE_TASK_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change task not found: {validated.task_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {"success": False, "message": f"Change task not found: {validated.task_id}"}
+        return {"success": True, "task": _format_change_task(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving change task: {e}")
+        return {"success": False, "message": f"Error retrieving change task: {_format_http_error(e)}"}
+
+
 class ListChangeTasksParams(BaseModel):
     """Parameters for listing tasks linked to a change request."""
 
