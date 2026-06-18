@@ -64,6 +64,7 @@ from servicenow_mcp.tools.change_tools import (
     reopen_change_request,
     submit_change_for_approval,
     update_change_request,
+    update_change_task,
 )
 from servicenow_mcp.tools.changeset_tools import (
     add_file_to_changeset,
@@ -296,6 +297,7 @@ __all__ = [
     "get_change_task",
     "list_change_tasks",
     "create_change_task",
+    "update_change_task",
     "submit_change_for_approval",
     "approve_change",
     "approve_change_approval",

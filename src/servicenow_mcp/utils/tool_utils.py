@@ -151,6 +151,7 @@ from servicenow_mcp.tools.change_tools import (
     ReopenChangeRequestParams,
     SubmitChangeForApprovalParams,
     UpdateChangeRequestParams,
+    UpdateChangeTaskParams,
 )
 from servicenow_mcp.tools.change_tools import (
     add_change_task as add_change_task_tool,
@@ -202,6 +203,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     update_change_request as update_change_request_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    update_change_task as update_change_task_tool,
 )
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
@@ -1102,6 +1106,13 @@ def get_tool_definitions(
             CreateChangeTaskParams,
             str,
             "Create a task linked to a specific change request in ServiceNow",
+            "json",
+        ),
+        "update_change_task": (
+            update_change_task_tool,
+            UpdateChangeTaskParams,
+            str,
+            "Update an existing change task (state, assignee, dates, notes)",
             "json",
         ),
         "submit_change_for_approval": (

@@ -1095,6 +1095,109 @@ def create_change_task(
         return {"success": False, "message": f"Error creating change task: {_format_http_error(e)}"}
 
 
+class UpdateChangeTaskParams(BaseModel):
+    """Parameters for updating an existing change task."""
+
+    task_id: str = Field(
+        ...,
+        description="Change task sys_id (32-char hex) or task number (e.g. CTASK0001234)",
+    )
+    short_description: Optional[str] = Field(None, description="Updated short description")
+    description: Optional[str] = Field(None, description="Updated detailed description")
+    state: Optional[str] = Field(
+        None,
+        description="New state value (-5=Pending, 1=Open, 2=Work In Progress, 3=Closed Complete, 4=Closed Incomplete, 7=Closed Skipped)",
+    )
+    assigned_to: Optional[str] = Field(None, description="Username or sys_id of the new assignee")
+    assignment_group: Optional[str] = Field(None, description="Name or sys_id of the new assignment group")
+    planned_start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
+    planned_end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
+    work_notes: Optional[str] = Field(None, description="Work notes to append to the task")
+    close_notes: Optional[str] = Field(None, description="Closure notes (used when closing the task)")
+
+    @field_validator("planned_start_date", "planned_end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
+
+
+def update_change_task(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing change_task record (state, assignee, dates, notes, etc.).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateChangeTaskParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``task`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, UpdateChangeTaskParams, required_fields=["task_id"])
+    if not result["success"]:
+        return result
+    validated: UpdateChangeTaskParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    task_sys_id = _resolve_change_task_sys_id(instance_url, headers, validated.task_id)
+    if not task_sys_id:
+        return {"success": False, "message": f"Change task not found: {validated.task_id}"}
+
+    body: Dict[str, Any] = {}
+    if validated.short_description is not None:
+        body["short_description"] = validated.short_description
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.state is not None:
+        body["state"] = validated.state
+    if validated.assigned_to is not None:
+        body["assigned_to"] = validated.assigned_to
+    if validated.assignment_group is not None:
+        body["assignment_group"] = validated.assignment_group
+    if validated.planned_start_date is not None:
+        body["planned_start_date"] = validated.planned_start_date
+    if validated.planned_end_date is not None:
+        body["planned_end_date"] = validated.planned_end_date
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+    if validated.close_notes is not None:
+        body["close_notes"] = validated.close_notes
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    headers["Content-Type"] = "application/json"
+    url = f"{instance_url}/api/now/table/change_task/{task_sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(CHANGE_TASK_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, json=body, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change task not found: {validated.task_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change task updated: {validated.task_id}",
+            "task": _format_change_task(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating change task: {e}")
+        return {"success": False, "message": f"Error updating change task: {_format_http_error(e)}"}
+
+
 class CancelChangeRequestParams(BaseModel):
     """Parameters for cancelling a change request."""
 

@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add update_change_task tool (PATCH change_task; state/assigned_to/work_notes)
-2. Add close_change_task tool (PATCH change_task state=3 Closed Complete)
+1. Add close_change_task tool (PATCH change_task state=3 Closed Complete)
 3. Add list_change_risk_assessments tool (risk_assessment table filtered by change_request)
 4. Add bulk_update_change_tasks tool (Batch API; CTASK numbers resolver)
 5. Add list_change_schedules tool (cmn_schedule records linked to change windows)
@@ -80,3 +79,4 @@
 70. 2026-06-15 — Add get_change_approval tool (GET sysapproval_approver/{sys_id}; 404 guard; empty-result guard; normalised fields via _format_approval; registered in change_coordinator and full packages; 12 new tests; 1635 total tests; 92% coverage)
 71. 2026-06-16 — Add approve_change_approval and reject_change_approval tools
 72. 2026-06-17 — Add get_change_task tool (GET change_task/{sys_id or CTASK number}; _resolve_change_task_sys_id passthrough; _format_change_task normalises 16 fields including state/priority/assigned_to/assignment_group/change_request as display values; registered in change_coordinator and full packages; 19 new tests; 1675 total tests; 92% coverage) (PATCH sysapproval_approver/{sys_id} directly; approve sets state=approved with optional comments; reject sets state=rejected with required rejection_reason; both have 404 guards; both registered in change_coordinator and full packages; added list_change_approvals + get_change_approval to service_desk package for read-only access; 21 new tests; 1656 total tests; 92% coverage)
+73. 2026-06-18 — Add update_change_task tool (PATCH change_task by sys_id or CTASK number; UpdateChangeTaskParams with 9 optional fields: state/assigned_to/assignment_group/short_description/description/planned_start_date/planned_end_date/work_notes/close_notes; empty-body guard; 404 guard; datetime validation; registered in change_coordinator and full packages; 17 new tests; 1692 total tests; 92% coverage)
