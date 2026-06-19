@@ -113,6 +113,7 @@ change_coordinator:
   - list_change_tasks
   - create_change_task
   - update_change_task
+  - close_change_task
   - submit_change_for_approval
   - approve_change
   - approve_change_approval
@@ -333,6 +334,7 @@ full:
   - list_change_tasks
   - create_change_task
   - update_change_task
+  - close_change_task
   - submit_change_for_approval
   - approve_change
   - approve_change_approval

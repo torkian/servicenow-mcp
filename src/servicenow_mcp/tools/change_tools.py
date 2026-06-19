@@ -1198,6 +1198,81 @@ def update_change_task(
         return {"success": False, "message": f"Error updating change task: {_format_http_error(e)}"}
 
 
+class CloseChangeTaskParams(BaseModel):
+    """Parameters for closing a change task."""
+
+    task_id: str = Field(
+        ...,
+        description="Change task sys_id (32-char hex) or task number (e.g. CTASK0001234)",
+    )
+    state: str = Field(
+        "3",
+        description="Closed state value: 3=Closed Complete (default), 4=Closed Incomplete, 7=Closed Skipped",
+    )
+    close_notes: Optional[str] = Field(None, description="Closure notes")
+    work_notes: Optional[str] = Field(None, description="Work notes to add when closing")
+
+
+def close_change_task(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Close a change_task record by setting its state to Closed Complete (or another closed state).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CloseChangeTaskParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``task`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, CloseChangeTaskParams, required_fields=["task_id"])
+    if not result["success"]:
+        return result
+    validated: CloseChangeTaskParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+    headers["Content-Type"] = "application/json"
+
+    task_sys_id = _resolve_change_task_sys_id(instance_url, headers, validated.task_id)
+    if not task_sys_id:
+        return {"success": False, "message": f"Change task not found: {validated.task_id}"}
+
+    body: Dict[str, Any] = {"state": validated.state}
+    if validated.close_notes is not None:
+        body["close_notes"] = validated.close_notes
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}/api/now/table/change_task/{task_sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(CHANGE_TASK_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, json=body, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change task not found: {validated.task_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change task {validated.task_id} closed successfully",
+            "task": _format_change_task(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error closing change task: {e}")
+        return {"success": False, "message": f"Error closing change task: {_format_http_error(e)}"}
+
+
 class CancelChangeRequestParams(BaseModel):
     """Parameters for cancelling a change request."""
 

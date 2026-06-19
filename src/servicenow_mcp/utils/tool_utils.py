@@ -138,6 +138,7 @@ from servicenow_mcp.tools.change_tools import (
     ApproveChangeApprovalParams,
     ApproveChangeParams,
     CancelChangeRequestParams,
+    CloseChangeTaskParams,
     CreateChangeRequestParams,
     CreateChangeTaskParams,
     GetChangeApprovalParams,
@@ -206,6 +207,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     update_change_task as update_change_task_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    close_change_task as close_change_task_tool,
 )
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
@@ -1113,6 +1117,13 @@ def get_tool_definitions(
             UpdateChangeTaskParams,
             str,
             "Update an existing change task (state, assignee, dates, notes)",
+            "json",
+        ),
+        "close_change_task": (
+            close_change_task_tool,
+            CloseChangeTaskParams,
+            str,
+            "Close a change task by setting its state to Closed Complete (or Closed Incomplete/Skipped)",
             "json",
         ),
         "submit_change_for_approval": (
