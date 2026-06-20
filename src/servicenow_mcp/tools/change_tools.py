@@ -1817,3 +1817,127 @@ def reject_change_approval(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error rejecting change approval: {e}")
         return {"success": False, "message": f"Error rejecting change approval: {_format_http_error(e)}"}
+
+
+RISK_ASSESSMENT_TABLE = "/api/now/table/risk_assessment"
+
+RISK_ASSESSMENT_FIELDS = [
+    "sys_id",
+    "source",
+    "source_table",
+    "questionnaire",
+    "result",
+    "state",
+    "risk",
+    "sys_created_by",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+class ListChangeRiskAssessmentsParams(BaseModel):
+    """Parameters for listing risk assessments linked to a change request."""
+
+    change_id: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by change request sys_id (32-char hex) or CHG number. "
+            "When omitted, returns risk assessments for all change requests."
+        ),
+    )
+    state: Optional[str] = Field(
+        None,
+        description="Filter by assessment state (e.g. 'draft', 'pending', 'complete')",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+
+
+def _format_risk_assessment(record: Dict) -> Dict:
+    """Normalise a raw risk_assessment record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "change_request": _display(record.get("source")),
+        "questionnaire": _display(record.get("questionnaire")),
+        "result": _display(record.get("result")),
+        "state": _display(record.get("state")),
+        "risk": _display(record.get("risk")),
+        "created_by": record.get("sys_created_by"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def list_change_risk_assessments(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List risk_assessment records scoped to change requests.
+
+    Queries the ``risk_assessment`` table with ``source_table=change_request``.
+    Optionally filter by a specific change request (CHG number or sys_id) and
+    by assessment state.  Returns a paginated list with ``has_more`` /
+    ``next_offset`` fields.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListChangeRiskAssessmentsParams.
+
+    Returns:
+        Dictionary with ``success``, ``risk_assessments`` (list), ``count``,
+        ``has_more``, and ``next_offset``.
+    """
+    result = _unwrap_and_validate_params(params, ListChangeRiskAssessmentsParams)
+    if not result["success"]:
+        return result
+    validated: ListChangeRiskAssessmentsParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    filters = ["source_table=change_request"]
+
+    if validated.change_id:
+        sys_id = _resolve_change_sys_id(validated.change_id, instance_url, headers)
+        if sys_id is None:
+            return {
+                "success": False,
+                "message": f"Change request not found: {validated.change_id}",
+            }
+        filters.append(f"source={sys_id}")
+
+    if validated.state:
+        filters.append(f"state={validated.state}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(RISK_ASSESSMENT_FIELDS),
+    )
+
+    url = f"{instance_url}{RISK_ASSESSMENT_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        assessments = [_format_risk_assessment(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(assessments, validated.limit, validated.offset, "risk_assessments")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change risk assessments: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing change risk assessments: {_format_http_error(e)}",
+        }

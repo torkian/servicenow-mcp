@@ -146,6 +146,7 @@ from servicenow_mcp.tools.change_tools import (
     GetChangeTaskParams,
     ListChangeApprovalsParams,
     ListChangeRequestsParams,
+    ListChangeRiskAssessmentsParams,
     ListChangeTasksParams,
     RejectChangeApprovalParams,
     RejectChangeParams,
@@ -210,6 +211,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     close_change_task as close_change_task_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    list_change_risk_assessments as list_change_risk_assessments_tool,
 )
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
@@ -1207,6 +1211,19 @@ def get_tool_definitions(
                 "Sets state=rejected and records the required rejection_reason as comments. "
                 "Use list_change_approvals or get_change_approval to obtain the sys_id first. "
                 "Returns 404 guard when the record does not exist."
+            ),
+            "json",
+        ),
+        "list_change_risk_assessments": (
+            list_change_risk_assessments_tool,
+            ListChangeRiskAssessmentsParams,
+            str,
+            (
+                "List risk_assessment records scoped to change requests "
+                "(source_table=change_request). Optionally filter by a specific "
+                "change request (CHG number or sys_id) and by assessment state "
+                "(draft/pending/complete). Returns assessments list with pagination "
+                "(has_more/next_offset)."
             ),
             "json",
         ),

@@ -123,6 +123,7 @@ change_coordinator:
   - reopen_change_request
   - list_change_approvals
   - get_change_approval
+  - list_change_risk_assessments
   # Problem Management (changes often linked to problems)
   - list_problems
   - get_problem
@@ -344,6 +345,7 @@ full:
   - reopen_change_request
   - list_change_approvals
   - get_change_approval
+  - list_change_risk_assessments
   # Workflow
   - list_workflows
   - get_workflow_details
