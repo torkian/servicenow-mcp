@@ -19,6 +19,7 @@ from servicenow_mcp.tools.attachment_tools import (
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_requests,
+    bulk_update_change_tasks,
     bulk_update_incidents,
     bulk_update_problems,
     execute_bulk_operations,
@@ -417,6 +418,7 @@ __all__ = [
     "execute_bulk_operations",
     "bulk_update_incidents",
     "bulk_update_change_requests",
+    "bulk_update_change_tasks",
     "bulk_update_problems",
 
     # CMDB tools

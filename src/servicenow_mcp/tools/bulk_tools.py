@@ -673,3 +673,163 @@ def bulk_update_problems(
 
     result["results"] = enriched
     return result
+
+
+# ---------------------------------------------------------------------------
+# Bulk update change tasks
+# ---------------------------------------------------------------------------
+
+_CHANGE_TASK_UPDATE_FIELDS = (
+    "short_description",
+    "description",
+    "state",
+    "assigned_to",
+    "assignment_group",
+    "planned_start_date",
+    "planned_end_date",
+    "work_notes",
+    "close_notes",
+)
+
+
+class ChangeTaskUpdate(BaseModel):
+    """One change task update within a bulk batch request."""
+
+    task_id: str = Field(
+        ...,
+        description="Change task number (e.g. CTASK0001234) or 32-character sys_id",
+    )
+    short_description: Optional[str] = Field(None, description="Short description")
+    description: Optional[str] = Field(None, description="Detailed description")
+    state: Optional[str] = Field(
+        None,
+        description="State code (-5=Pending, 1=Open, 2=Work In Progress, 3=Closed Complete, 4=Closed Incomplete, 7=Closed Skipped)",
+    )
+    assigned_to: Optional[str] = Field(None, description="Assigned-to user name or sys_id")
+    assignment_group: Optional[str] = Field(None, description="Assignment group name or sys_id")
+    planned_start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
+    planned_end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
+    work_notes: Optional[str] = Field(None, description="Work notes to append")
+    close_notes: Optional[str] = Field(None, description="Closure notes")
+
+
+class BulkUpdateChangeTasksParams(BaseModel):
+    """Parameters for bulk-updating multiple change tasks in one batch call."""
+
+    updates: List[ChangeTaskUpdate] = Field(
+        ...,
+        description="List of change task updates (1–100 items). Each entry must include task_id plus at least one field to change.",
+    )
+
+
+def _resolve_change_task_numbers(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    numbers: List[str],
+) -> Dict[str, str]:
+    """Resolve a list of CTASK numbers to sys_ids via a single GET.
+
+    Returns a dict mapping number → sys_id for every number found.
+    Raises requests.RequestException on HTTP failure.
+    """
+    query = "numberIN" + ",".join(numbers)
+    response = _make_request(
+        "GET",
+        f"{config.api_url}/table/change_task",
+        params={
+            "sysparm_query": query,
+            "sysparm_fields": "sys_id,number",
+            "sysparm_limit": len(numbers),
+        },
+        headers=auth_manager.get_headers(),
+        timeout=config.timeout,
+    )
+    response.raise_for_status()
+    return {r["number"]: r["sys_id"] for r in response.json().get("result", [])}
+
+
+def bulk_update_change_tasks(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: BulkUpdateChangeTasksParams,
+) -> Dict[str, Any]:
+    """PATCH multiple change tasks in ServiceNow using a single Batch API call.
+
+    CTASK numbers are resolved to sys_ids with one preliminary GET request
+    before the batch PATCH is issued. Up to 100 tasks can be updated per call.
+    Each result entry reports the task_id, ok flag, HTTP status, and response body.
+    """
+    if not params.updates:
+        return {"success": False, "message": "No updates provided"}
+
+    if len(params.updates) > 100:
+        return {
+            "success": False,
+            "message": f"Too many updates: {len(params.updates)} (maximum 100)",
+        }
+
+    numbers_to_resolve: List[str] = [
+        u.task_id for u in params.updates if not _is_sys_id(u.task_id)
+    ]
+
+    number_to_sys_id: Dict[str, str] = {}
+    if numbers_to_resolve:
+        try:
+            number_to_sys_id = _resolve_change_task_numbers(
+                config, auth_manager, numbers_to_resolve
+            )
+        except requests.RequestException as e:
+            logger.error("Failed to resolve change task numbers: %s", e)
+            return {
+                "success": False,
+                "message": f"Failed to resolve change task numbers: {_format_http_error(e)}",
+            }
+
+    batch_requests: List[BulkOperationRequest] = []
+    unresolved: List[str] = []
+
+    for idx, update in enumerate(params.updates):
+        if _is_sys_id(update.task_id):
+            sys_id = update.task_id
+        else:
+            sys_id = number_to_sys_id.get(update.task_id)
+            if sys_id is None:
+                unresolved.append(update.task_id)
+                continue
+
+        body = {
+            field: getattr(update, field)
+            for field in _CHANGE_TASK_UPDATE_FIELDS
+            if getattr(update, field) is not None
+        }
+
+        batch_requests.append(
+            BulkOperationRequest(
+                id=str(idx),
+                method="PATCH",
+                url=f"/api/now/v2/table/change_task/{sys_id}",
+                body=body if body else None,
+            )
+        )
+
+    if unresolved:
+        return {
+            "success": False,
+            "message": f"Change task(s) not found: {', '.join(unresolved)}",
+            "unresolved": unresolved,
+        }
+
+    if not batch_requests:
+        return {"success": False, "message": "No valid updates to execute"}
+
+    bulk_params = BulkOperationsParams(requests=batch_requests)
+    result = execute_bulk_operations(config, auth_manager, bulk_params)
+
+    enriched = []
+    for entry in result.get("results", []):
+        original_idx = int(entry["id"])
+        original_update = params.updates[original_idx]
+        enriched.append({**entry, "task_id": original_update.task_id})
+
+    result["results"] = enriched
+    return result

@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add bulk_update_change_tasks tool (Batch API; CTASK numbers resolver)
-2. Add list_change_schedules tool (cmn_schedule records linked to change windows)
+1. Add list_change_schedules tool (cmn_schedule records linked to change windows)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -80,3 +79,4 @@
 73. 2026-06-18 — Add update_change_task tool (PATCH change_task by sys_id or CTASK number; UpdateChangeTaskParams with 9 optional fields: state/assigned_to/assignment_group/short_description/description/planned_start_date/planned_end_date/work_notes/close_notes; empty-body guard; 404 guard; datetime validation; registered in change_coordinator and full packages; 17 new tests; 1692 total tests; 92% coverage)
 74. 2026-06-19 — Add close_change_task tool (PATCH change_task state to 3/4/7 Closed Complete/Incomplete/Skipped; CloseChangeTaskParams with required task_id and optional state/close_notes/work_notes; CTASK number/sys_id resolver; 404 guard; registered in change_coordinator and full packages; 17 new tests; 1709 total tests; 92% coverage)
 75. 2026-06-20 — Add list_change_risk_assessments tool (GET risk_assessment scoped to source_table=change_request; optional change_id CHG/sys_id resolver and state filter; _format_risk_assessment normalises reference fields; pagination with has_more/next_offset; registered in change_coordinator and full packages; 18 new tests; 1727 total tests; 92% coverage)
+76. 2026-06-21 — Add bulk_update_change_tasks tool (PATCH multiple change tasks in one Batch API call; ChangeTaskUpdate model with 9 optional fields including state/assigned_to/planned_start_date/planned_end_date/close_notes; CTASK numbers batch-resolved via single numberIN GET; per-result task_id enrichment; registered in change_coordinator and full packages; 21 new tests; 1748 total tests; 92% coverage)

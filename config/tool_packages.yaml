@@ -132,6 +132,7 @@ change_coordinator:
   - close_problem
   # Bulk Operations
   - bulk_update_change_requests
+  - bulk_update_change_tasks
   - bulk_update_problems
 
 knowledge_author:
@@ -508,4 +509,5 @@ full:
   - execute_bulk_operations
   - bulk_update_incidents
   - bulk_update_change_requests
+  - bulk_update_change_tasks
   - bulk_update_problems

@@ -39,11 +39,15 @@ from servicenow_mcp.tools.attachment_tools import (
 from servicenow_mcp.tools.bulk_tools import (
     BulkOperationsParams,
     BulkUpdateChangeRequestsParams,
+    BulkUpdateChangeTasksParams,
     BulkUpdateIncidentsParams,
     BulkUpdateProblemsParams,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_requests as bulk_update_change_requests_tool,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_change_tasks as bulk_update_change_tasks_tool,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_incidents as bulk_update_incidents_tool,
@@ -1836,6 +1840,21 @@ def get_tool_definitions(
                 "Problem numbers are resolved to sys_ids with one preliminary GET "
                 "before the batch PATCH is issued. Up to 100 problems per call. "
                 "Returns per-problem ok/status_code with the original problem_id."
+            ),
+            "raw_dict",
+        ),
+        "bulk_update_change_tasks": (
+            bulk_update_change_tasks_tool,
+            BulkUpdateChangeTasksParams,
+            Dict[str, Any],
+            (
+                "PATCH multiple ServiceNow change tasks in a single Batch API call. "
+                "Each update entry specifies a task_id (CTASK number or sys_id) and "
+                "the fields to change (short_description, description, state, assigned_to, "
+                "assignment_group, planned_start_date, planned_end_date, work_notes, close_notes). "
+                "CTASK numbers are resolved to sys_ids with one preliminary GET "
+                "before the batch PATCH is issued. Up to 100 tasks per call. "
+                "Returns per-task ok/status_code with the original task_id."
             ),
             "raw_dict",
         ),
