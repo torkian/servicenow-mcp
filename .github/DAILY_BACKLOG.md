@@ -1,7 +1,26 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_change_schedules tool (cmn_schedule records linked to change windows)
+1. Add get_change_schedule tool (GET cmn_schedule/{sys_id} with 404 guard; complement to list_change_schedules)
+2. Add create_change_schedule tool (POST cmn_schedule; name/type/time_zone/active/parent fields)
+3. Add update_change_schedule tool (PATCH cmn_schedule/{sys_id}; optional fields, empty-body guard)
+4. Add delete_change_schedule tool (DELETE cmn_schedule/{sys_id}; 204/404 guards)
+5. Add list_change_schedule_spans tool (GET cmn_schedule_span; spans within a schedule; filters for schedule_sys_id/day_of_week)
+6. Add get_request_item tool (GET sc_req_item/{sys_id}; companion to list_request_items)
+7. Add update_request_item tool (PATCH sc_req_item/{sys_id}; state/stage/work_notes/close_notes)
+8. Add list_change_conflicts tool (GET change_conflict; filters for change_id/type/state)
+9. Add create_problem_task tool (POST problem_task linked to a problem)
+10. Add list_problem_tasks tool (GET problem_task with problem number/sys_id resolver)
+11. Add close_problem_task tool (PATCH problem_task state to Closed)
+12. Add get_notification tool (GET sysevent_email_log/{sys_id}; companion to list_notifications)
+13. Add list_scheduled_jobs tool (GET sysauto_script; filters for name/active/run_as)
+14. Add get_ci_class_schema tool (GET cmdb_ci metadata for a class: fields, relationships, mandatory attrs)
+15. Add bulk_update_problem_tasks tool (Batch API; PRB-TASK number resolver)
+16. Add list_on_call_rotations tool (GET cmn_rota; filters for group/active)
+17. Add get_change_schedule_span tool (GET cmn_schedule_span/{sys_id} with 404 guard)
+18. Add list_change_windows_for_date tool (query cmn_schedule_span with date range to find active windows)
+19. Add cancel_incident tool (PATCH incident state=8 Cancelled; number/sys_id resolver)
+20. Add list_ci_dependencies tool (cmdb_rel_ci where parent=ci_sys_id; directional graph view)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -80,3 +99,4 @@
 74. 2026-06-19 — Add close_change_task tool (PATCH change_task state to 3/4/7 Closed Complete/Incomplete/Skipped; CloseChangeTaskParams with required task_id and optional state/close_notes/work_notes; CTASK number/sys_id resolver; 404 guard; registered in change_coordinator and full packages; 17 new tests; 1709 total tests; 92% coverage)
 75. 2026-06-20 — Add list_change_risk_assessments tool (GET risk_assessment scoped to source_table=change_request; optional change_id CHG/sys_id resolver and state filter; _format_risk_assessment normalises reference fields; pagination with has_more/next_offset; registered in change_coordinator and full packages; 18 new tests; 1727 total tests; 92% coverage)
 76. 2026-06-21 — Add bulk_update_change_tasks tool (PATCH multiple change tasks in one Batch API call; ChangeTaskUpdate model with 9 optional fields including state/assigned_to/planned_start_date/planned_end_date/close_notes; CTASK numbers batch-resolved via single numberIN GET; per-result task_id enrichment; registered in change_coordinator and full packages; 21 new tests; 1748 total tests; 92% coverage)
+77. 2026-06-22 — Add list_change_schedules tool (GET cmn_schedule; filters for name_query/schedule_type/active/time_zone; _format_change_schedule normalises type and parent reference fields; pagination with has_more/next_offset; registered in change_coordinator and full packages; 24 new tests; 1772 total tests; 92% coverage)

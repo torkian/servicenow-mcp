@@ -151,6 +151,7 @@ from servicenow_mcp.tools.change_tools import (
     ListChangeApprovalsParams,
     ListChangeRequestsParams,
     ListChangeRiskAssessmentsParams,
+    ListChangeSchedulesParams,
     ListChangeTasksParams,
     RejectChangeApprovalParams,
     RejectChangeParams,
@@ -218,6 +219,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     list_change_risk_assessments as list_change_risk_assessments_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    list_change_schedules as list_change_schedules_tool,
 )
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
@@ -1228,6 +1232,18 @@ def get_tool_definitions(
                 "change request (CHG number or sys_id) and by assessment state "
                 "(draft/pending/complete). Returns assessments list with pagination "
                 "(has_more/next_offset)."
+            ),
+            "json",
+        ),
+        "list_change_schedules": (
+            list_change_schedules_tool,
+            ListChangeSchedulesParams,
+            str,
+            (
+                "List cmn_schedule records (change windows and other schedules). "
+                "Optionally filter by schedule type (e.g. 'change_window'), "
+                "name substring, active state, or time_zone. "
+                "Returns schedules list with pagination (has_more/next_offset)."
             ),
             "json",
         ),

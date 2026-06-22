@@ -1941,3 +1941,139 @@ def list_change_risk_assessments(
             "success": False,
             "message": f"Error listing change risk assessments: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# list_change_schedules
+# ---------------------------------------------------------------------------
+
+CHANGE_SCHEDULE_TABLE = "/api/now/table/cmn_schedule"
+
+CHANGE_SCHEDULE_FIELDS = [
+    "sys_id",
+    "name",
+    "description",
+    "type",
+    "time_zone",
+    "active",
+    "parent",
+    "sys_created_by",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+class ListChangeSchedulesParams(BaseModel):
+    """Parameters for listing cmn_schedule records (change windows)."""
+
+    name_query: Optional[str] = Field(
+        None,
+        description="Substring search on the schedule name (case-insensitive LIKE match).",
+    )
+    schedule_type: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by schedule type value (e.g. 'change_window', "
+            "'on_call_rotation', 'holiday_schedule')."
+        ),
+    )
+    active: Optional[bool] = Field(
+        None,
+        description="When True, return only active schedules; False returns only inactive.",
+    )
+    time_zone: Optional[str] = Field(
+        None,
+        description="Filter by exact time_zone value (e.g. 'US/Eastern', 'UTC').",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+
+
+def _format_change_schedule(record: Dict) -> Dict:
+    """Normalise a raw cmn_schedule record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "name": record.get("name"),
+        "description": record.get("description"),
+        "type": _display(record.get("type")),
+        "time_zone": record.get("time_zone"),
+        "active": record.get("active"),
+        "parent": _display(record.get("parent")),
+        "created_by": record.get("sys_created_by"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def list_change_schedules(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List cmn_schedule records, optionally scoped to change windows.
+
+    Queries the ``cmn_schedule`` table with optional filters for schedule type,
+    name, active state, and time zone.  Returns a paginated list with
+    ``has_more`` / ``next_offset`` fields.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListChangeSchedulesParams.
+
+    Returns:
+        Dictionary with ``success``, ``schedules`` (list), ``count``,
+        ``has_more``, and ``next_offset``.
+    """
+    result = _unwrap_and_validate_params(params, ListChangeSchedulesParams)
+    if not result["success"]:
+        return result
+    validated: ListChangeSchedulesParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    filters: list = []
+
+    if validated.name_query:
+        filters.append(f"nameLIKE{validated.name_query}")
+
+    if validated.schedule_type:
+        filters.append(f"type={validated.schedule_type}")
+
+    if validated.active is not None:
+        filters.append(f"active={'true' if validated.active else 'false'}")
+
+    if validated.time_zone:
+        filters.append(f"time_zone={validated.time_zone}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters) if filters else None,
+        exclude_reference_link=True,
+        fields=",".join(CHANGE_SCHEDULE_FIELDS),
+    )
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        schedules = [_format_change_schedule(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(schedules, validated.limit, validated.offset, "schedules")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change schedules: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing change schedules: {_format_http_error(e)}",
+        }

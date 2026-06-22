@@ -61,6 +61,7 @@ from servicenow_mcp.tools.change_tools import (
     list_change_approvals,
     list_change_requests,
     list_change_risk_assessments,
+    list_change_schedules,
     list_change_tasks,
     reject_change,
     reject_change_approval,
@@ -312,6 +313,7 @@ __all__ = [
     "get_change_approval",
     "list_change_approvals",
     "list_change_risk_assessments",
+    "list_change_schedules",
 
     # Workflow management tools
     "list_workflows",
