@@ -223,6 +223,12 @@ from servicenow_mcp.tools.change_tools import (
 from servicenow_mcp.tools.change_tools import (
     list_change_schedules as list_change_schedules_tool,
 )
+from servicenow_mcp.tools.change_tools import (
+    get_change_schedule as get_change_schedule_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    GetChangeScheduleParams,
+)
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
     CommitChangesetParams,
@@ -1244,6 +1250,18 @@ def get_tool_definitions(
                 "Optionally filter by schedule type (e.g. 'change_window'), "
                 "name substring, active state, or time_zone. "
                 "Returns schedules list with pagination (has_more/next_offset)."
+            ),
+            "json",
+        ),
+        "get_change_schedule": (
+            get_change_schedule_tool,
+            GetChangeScheduleParams,
+            str,
+            (
+                "Retrieve a single cmn_schedule record by its sys_id (32-char hex) "
+                "or exact schedule name (e.g. 'Change Window - Weekend'). "
+                "Returns schedule details including type, time_zone, active state, "
+                "parent, and audit timestamps."
             ),
             "json",
         ),
