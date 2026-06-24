@@ -2174,3 +2174,106 @@ def get_change_schedule(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error retrieving change schedule: {e}")
         return {"success": False, "message": f"Error retrieving change schedule: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# create_change_schedule
+# ---------------------------------------------------------------------------
+
+
+class CreateChangeScheduleParams(BaseModel):
+    """Parameters for creating a new cmn_schedule record."""
+
+    name: str = Field(
+        ...,
+        description="Display name for the new schedule (e.g. 'Change Window - Saturday Night').",
+    )
+    schedule_type: Optional[str] = Field(
+        None,
+        description=(
+            "Schedule type value (e.g. 'change_window', 'on_call_rotation', "
+            "'holiday_schedule'). Leave unset to create a generic schedule."
+        ),
+    )
+    time_zone: Optional[str] = Field(
+        None,
+        description="IANA time zone string (e.g. 'US/Eastern', 'UTC'). Defaults to instance time zone when omitted.",
+    )
+    active: Optional[bool] = Field(
+        True,
+        description="Whether the schedule is active. Defaults to True.",
+    )
+    parent: Optional[str] = Field(
+        None,
+        description="Parent schedule sys_id (32-char hex) or exact name.",
+    )
+    description: Optional[str] = Field(
+        None,
+        description="Free-text description of the schedule.",
+    )
+
+
+def create_change_schedule(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new cmn_schedule record.
+
+    POSTs to the ``cmn_schedule`` table with the supplied fields.  If a
+    ``parent`` schedule name/sys_id is provided it is resolved to a sys_id
+    before the request is sent.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateChangeScheduleParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``schedule`` on success.
+    """
+    result = _unwrap_and_validate_params(params, CreateChangeScheduleParams, required_fields=["name"])
+    if not result["success"]:
+        return result
+    validated: CreateChangeScheduleParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+    headers["Content-Type"] = "application/json"
+
+    # Resolve parent to sys_id if supplied
+    parent_sys_id: Optional[str] = None
+    if validated.parent is not None:
+        parent_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.parent)
+        if not parent_sys_id:
+            return {"success": False, "message": f"Parent schedule not found: {validated.parent}"}
+
+    body: Dict[str, Any] = {"name": validated.name}
+    if validated.schedule_type is not None:
+        body["type"] = validated.schedule_type
+    if validated.time_zone is not None:
+        body["time_zone"] = validated.time_zone
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if parent_sys_id is not None:
+        body["parent"] = parent_sys_id
+    if validated.description is not None:
+        body["description"] = validated.description
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_TABLE}"
+    try:
+        response = _make_request("POST", url, json=body, headers=headers)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change schedule created: {record.get('name')}",
+            "schedule": _format_change_schedule(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating change schedule: {e}")
+        return {"success": False, "message": f"Error creating change schedule: {_format_http_error(e)}"}

@@ -126,6 +126,7 @@ change_coordinator:
   - list_change_risk_assessments
   - list_change_schedules
   - get_change_schedule
+  - create_change_schedule
   # Problem Management (changes often linked to problems)
   - list_problems
   - get_problem
@@ -351,6 +352,7 @@ full:
   - list_change_risk_assessments
   - list_change_schedules
   - get_change_schedule
+  - create_change_schedule
   # Workflow
   - list_workflows
   - get_workflow_details

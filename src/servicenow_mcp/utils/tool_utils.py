@@ -229,6 +229,12 @@ from servicenow_mcp.tools.change_tools import (
 from servicenow_mcp.tools.change_tools import (
     GetChangeScheduleParams,
 )
+from servicenow_mcp.tools.change_tools import (
+    create_change_schedule as create_change_schedule_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    CreateChangeScheduleParams,
+)
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
     CommitChangesetParams,
@@ -1262,6 +1268,19 @@ def get_tool_definitions(
                 "or exact schedule name (e.g. 'Change Window - Weekend'). "
                 "Returns schedule details including type, time_zone, active state, "
                 "parent, and audit timestamps."
+            ),
+            "json",
+        ),
+        "create_change_schedule": (
+            create_change_schedule_tool,
+            CreateChangeScheduleParams,
+            str,
+            (
+                "Create a new cmn_schedule record. "
+                "Required: name. Optional: schedule_type (e.g. 'change_window'), "
+                "time_zone (IANA string), active (default True), parent schedule "
+                "name/sys_id, and description. "
+                "Returns the new schedule with its sys_id and all fields."
             ),
             "json",
         ),
