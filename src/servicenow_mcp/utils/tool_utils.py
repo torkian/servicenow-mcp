@@ -235,6 +235,12 @@ from servicenow_mcp.tools.change_tools import (
 from servicenow_mcp.tools.change_tools import (
     CreateChangeScheduleParams,
 )
+from servicenow_mcp.tools.change_tools import (
+    update_change_schedule as update_change_schedule_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    UpdateChangeScheduleParams,
+)
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
     CommitChangesetParams,
@@ -1281,6 +1287,19 @@ def get_tool_definitions(
                 "time_zone (IANA string), active (default True), parent schedule "
                 "name/sys_id, and description. "
                 "Returns the new schedule with its sys_id and all fields."
+            ),
+            "json",
+        ),
+        "update_change_schedule": (
+            update_change_schedule_tool,
+            UpdateChangeScheduleParams,
+            str,
+            (
+                "Update an existing cmn_schedule record. "
+                "Required: schedule_id (sys_id or exact name). "
+                "Optional: name, schedule_type, time_zone, active, parent schedule "
+                "name/sys_id, and description. At least one optional field must be "
+                "supplied. Returns the updated schedule with all fields."
             ),
             "json",
         ),

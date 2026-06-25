@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add update_change_schedule tool (PATCH cmn_schedule/{sys_id}; optional fields, empty-body guard)
-4. Add delete_change_schedule tool (DELETE cmn_schedule/{sys_id}; 204/404 guards)
+1. Add delete_change_schedule tool (DELETE cmn_schedule/{sys_id}; 204/404 guards)
 5. Add list_change_schedule_spans tool (GET cmn_schedule_span; spans within a schedule; filters for schedule_sys_id/day_of_week)
 6. Add get_request_item tool (GET sc_req_item/{sys_id}; companion to list_request_items)
 7. Add update_request_item tool (PATCH sc_req_item/{sys_id}; state/stage/work_notes/close_notes)
@@ -100,3 +99,4 @@
 77. 2026-06-22 — Add list_change_schedules tool (GET cmn_schedule; filters for name_query/schedule_type/active/time_zone; _format_change_schedule normalises type and parent reference fields; pagination with has_more/next_offset; registered in change_coordinator and full packages; 24 new tests; 1772 total tests; 92% coverage)
 78. 2026-06-23 — Add get_change_schedule tool (GET cmn_schedule/{sys_id}; sys_id passthrough or name→sys_id resolver; 404/empty-result guards; display_value and exclude_reference_link params; registered in change_coordinator and full packages; 19 new tests; 1791 total tests; 93% coverage)
 79. 2026-06-24 — Add create_change_schedule tool (POST cmn_schedule; name/type/time_zone/active/parent/description fields; parent name→sys_id resolver; None fields excluded from body; registered in change_coordinator and full packages; 17 new tests; 1808 total tests; 93% coverage)
+80. 2026-06-25 — Add update_change_schedule tool (PATCH cmn_schedule/{sys_id}; schedule_id/name resolver; optional name/schedule_type/time_zone/active/parent/description fields; empty-body guard; 404 guard; parent name resolver; registered in change_coordinator and full packages; 21 new tests; 1829 total tests; 93% coverage)

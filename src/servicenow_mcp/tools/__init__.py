@@ -70,6 +70,7 @@ from servicenow_mcp.tools.change_tools import (
     reopen_change_request,
     submit_change_for_approval,
     update_change_request,
+    update_change_schedule,
     update_change_task,
 )
 from servicenow_mcp.tools.changeset_tools import (
@@ -318,6 +319,7 @@ __all__ = [
     "list_change_schedules",
     "get_change_schedule",
     "create_change_schedule",
+    "update_change_schedule",
 
     # Workflow management tools
     "list_workflows",

@@ -2277,3 +2277,127 @@ def create_change_schedule(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error creating change schedule: {e}")
         return {"success": False, "message": f"Error creating change schedule: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# update_change_schedule
+# ---------------------------------------------------------------------------
+
+
+class UpdateChangeScheduleParams(BaseModel):
+    """Parameters for updating an existing cmn_schedule record."""
+
+    schedule_id: str = Field(
+        ...,
+        description=(
+            "The cmn_schedule sys_id (32-char hex) or exact schedule name "
+            "to update."
+        ),
+    )
+    name: Optional[str] = Field(
+        None,
+        description="New display name for the schedule.",
+    )
+    schedule_type: Optional[str] = Field(
+        None,
+        description=(
+            "New schedule type value (e.g. 'change_window', 'on_call_rotation', "
+            "'holiday_schedule')."
+        ),
+    )
+    time_zone: Optional[str] = Field(
+        None,
+        description="New IANA time zone string (e.g. 'US/Eastern', 'UTC').",
+    )
+    active: Optional[bool] = Field(
+        None,
+        description="Set to True to activate the schedule or False to deactivate it.",
+    )
+    parent: Optional[str] = Field(
+        None,
+        description="New parent schedule sys_id (32-char hex) or exact name.",
+    )
+    description: Optional[str] = Field(
+        None,
+        description="New free-text description for the schedule.",
+    )
+
+
+def update_change_schedule(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing cmn_schedule record.
+
+    PATCHes the ``cmn_schedule`` table record identified by ``schedule_id``
+    (sys_id or name).  At least one optional field must be supplied; an
+    empty-body call is rejected before any HTTP request is made.  If a
+    ``parent`` schedule name/sys_id is provided it is resolved to a sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateChangeScheduleParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``schedule`` on success.
+    """
+    result = _unwrap_and_validate_params(params, UpdateChangeScheduleParams, required_fields=["schedule_id"])
+    if not result["success"]:
+        return result
+    validated: UpdateChangeScheduleParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    schedule_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.schedule_id)
+    if not schedule_sys_id:
+        return {"success": False, "message": f"Change schedule not found: {validated.schedule_id}"}
+
+    body: Dict[str, Any] = {}
+    if validated.name is not None:
+        body["name"] = validated.name
+    if validated.schedule_type is not None:
+        body["type"] = validated.schedule_type
+    if validated.time_zone is not None:
+        body["time_zone"] = validated.time_zone
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.description is not None:
+        body["description"] = validated.description
+
+    # Resolve parent to sys_id if supplied
+    if validated.parent is not None:
+        parent_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.parent)
+        if not parent_sys_id:
+            return {"success": False, "message": f"Parent schedule not found: {validated.parent}"}
+        body["parent"] = parent_sys_id
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    headers["Content-Type"] = "application/json"
+    url = f"{instance_url}{CHANGE_SCHEDULE_TABLE}/{schedule_sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+    try:
+        response = _make_request("PATCH", url, json=body, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change schedule not found: {validated.schedule_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change schedule updated: {validated.schedule_id}",
+            "schedule": _format_change_schedule(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating change schedule: {e}")
+        return {"success": False, "message": f"Error updating change schedule: {_format_http_error(e)}"}
