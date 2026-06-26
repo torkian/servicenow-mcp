@@ -241,6 +241,12 @@ from servicenow_mcp.tools.change_tools import (
 from servicenow_mcp.tools.change_tools import (
     UpdateChangeScheduleParams,
 )
+from servicenow_mcp.tools.change_tools import (
+    delete_change_schedule as delete_change_schedule_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    DeleteChangeScheduleParams,
+)
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
     CommitChangesetParams,
@@ -1300,6 +1306,17 @@ def get_tool_definitions(
                 "Optional: name, schedule_type, time_zone, active, parent schedule "
                 "name/sys_id, and description. At least one optional field must be "
                 "supplied. Returns the updated schedule with all fields."
+            ),
+            "json",
+        ),
+        "delete_change_schedule": (
+            delete_change_schedule_tool,
+            DeleteChangeScheduleParams,
+            str,
+            (
+                "Delete a cmn_schedule record. "
+                "Required: schedule_id (sys_id or exact name). "
+                "Returns success/failure with a message."
             ),
             "json",
         ),

@@ -2401,3 +2401,63 @@ def update_change_schedule(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating change schedule: {e}")
         return {"success": False, "message": f"Error updating change schedule: {_format_http_error(e)}"}
+
+
+class DeleteChangeScheduleParams(BaseModel):
+    """Parameters for deleting a cmn_schedule record."""
+
+    schedule_id: str = Field(
+        ...,
+        description=(
+            "The cmn_schedule sys_id (32-char hex) or exact schedule name to delete."
+        ),
+    )
+
+
+def delete_change_schedule(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a cmn_schedule record.
+
+    Resolves ``schedule_id`` as a sys_id (32-char hex) or schedule name,
+    then issues DELETE on ``cmn_schedule/{sys_id}``.  Returns 404 guard if
+    the schedule cannot be found.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteChangeScheduleParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(params, DeleteChangeScheduleParams, required_fields=["schedule_id"])
+    if not result["success"]:
+        return result
+    validated: DeleteChangeScheduleParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    schedule_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.schedule_id)
+    if not schedule_sys_id:
+        return {"success": False, "message": f"Change schedule not found: {validated.schedule_id}"}
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_TABLE}/{schedule_sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change schedule not found: {validated.schedule_id}"}
+        if response.status_code == 204:
+            return {"success": True, "message": f"Change schedule {validated.schedule_id} deleted successfully"}
+        response.raise_for_status()
+        return {"success": True, "message": f"Change schedule {validated.schedule_id} deleted successfully"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting change schedule: {e}")
+        return {"success": False, "message": f"Error deleting change schedule: {_format_http_error(e)}"}
