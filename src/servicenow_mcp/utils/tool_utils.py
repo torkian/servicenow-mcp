@@ -247,6 +247,12 @@ from servicenow_mcp.tools.change_tools import (
 from servicenow_mcp.tools.change_tools import (
     DeleteChangeScheduleParams,
 )
+from servicenow_mcp.tools.change_tools import (
+    list_change_schedule_spans as list_change_schedule_spans_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    ListChangeScheduleSpansParams,
+)
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
     CommitChangesetParams,
@@ -1317,6 +1323,18 @@ def get_tool_definitions(
                 "Delete a cmn_schedule record. "
                 "Required: schedule_id (sys_id or exact name). "
                 "Returns success/failure with a message."
+            ),
+            "json",
+        ),
+        "list_change_schedule_spans": (
+            list_change_schedule_spans_tool,
+            ListChangeScheduleSpansParams,
+            str,
+            (
+                "List cmn_schedule_span records (time blocks) within a change schedule. "
+                "Optional: schedule_id (sys_id or schedule name), day_of_week (0=Sun…6=Sat), "
+                "repeat_type ('none','daily','weekly','monthly','yearly'), name_query, limit, offset. "
+                "Returns spans with day_of_week_label, start/end times, and pagination info."
             ),
             "json",
         ),

@@ -2461,3 +2461,170 @@ def delete_change_schedule(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error deleting change schedule: {e}")
         return {"success": False, "message": f"Error deleting change schedule: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# list_change_schedule_spans
+# ---------------------------------------------------------------------------
+
+CHANGE_SCHEDULE_SPAN_TABLE = "/api/now/table/cmn_schedule_span"
+
+CHANGE_SCHEDULE_SPAN_FIELDS = [
+    "sys_id",
+    "name",
+    "schedule",
+    "type",
+    "repeat_type",
+    "day_of_week",
+    "start_date_time",
+    "end_date_time",
+    "all_day",
+    "repeat_until",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+_DAY_OF_WEEK_LABELS = {
+    "0": "Sunday",
+    "1": "Monday",
+    "2": "Tuesday",
+    "3": "Wednesday",
+    "4": "Thursday",
+    "5": "Friday",
+    "6": "Saturday",
+}
+
+
+class ListChangeScheduleSpansParams(BaseModel):
+    """Parameters for listing cmn_schedule_span records."""
+
+    schedule_id: Optional[str] = Field(
+        None,
+        description=(
+            "Filter spans to a specific parent schedule. "
+            "Accepts a cmn_schedule sys_id (32-char hex) or exact schedule name."
+        ),
+    )
+    day_of_week: Optional[int] = Field(
+        None,
+        ge=0,
+        le=6,
+        description=(
+            "Filter by day of week: 0=Sunday, 1=Monday, …, 6=Saturday. "
+            "Only applies to recurring spans (repeat_type=weekly)."
+        ),
+    )
+    repeat_type: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by repeat type: 'none', 'daily', 'weekly', 'monthly', 'yearly'."
+        ),
+    )
+    name_query: Optional[str] = Field(
+        None,
+        description="Substring search on the span name (case-insensitive LIKE match).",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20).")
+    offset: Optional[int] = Field(0, description="Pagination offset.")
+
+
+def _format_change_schedule_span(record: Dict) -> Dict:
+    """Normalise a raw cmn_schedule_span record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    raw_dow = record.get("day_of_week")
+    if isinstance(raw_dow, dict):
+        raw_dow = raw_dow.get("value") or raw_dow.get("display_value")
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "name": record.get("name"),
+        "schedule": _display(record.get("schedule")),
+        "type": _display(record.get("type")),
+        "repeat_type": _display(record.get("repeat_type")),
+        "day_of_week": raw_dow,
+        "day_of_week_label": _DAY_OF_WEEK_LABELS.get(str(raw_dow), raw_dow) if raw_dow is not None else None,
+        "start_date_time": record.get("start_date_time"),
+        "end_date_time": record.get("end_date_time"),
+        "all_day": record.get("all_day"),
+        "repeat_until": record.get("repeat_until"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def list_change_schedule_spans(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List cmn_schedule_span records, optionally scoped to a parent schedule.
+
+    Each span represents a time block within a cmn_schedule (change window).
+    Supports filtering by parent schedule (sys_id or name), day of week,
+    repeat type, and span name substring.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListChangeScheduleSpansParams.
+
+    Returns:
+        Dictionary with ``success``, ``count``, ``has_more``, ``next_offset``,
+        and ``spans`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ListChangeScheduleSpansParams)
+    if not result["success"]:
+        return result
+    validated: ListChangeScheduleSpansParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts = []
+
+    # Resolve schedule_id to sys_id if provided
+    if validated.schedule_id:
+        schedule_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.schedule_id)
+        if not schedule_sys_id:
+            return {"success": False, "message": f"Change schedule not found: {validated.schedule_id}"}
+        query_parts.append(f"schedule={schedule_sys_id}")
+
+    if validated.day_of_week is not None:
+        query_parts.append(f"day_of_week={validated.day_of_week}")
+
+    if validated.repeat_type:
+        query_parts.append(f"repeat_type={validated.repeat_type}")
+
+    if validated.name_query:
+        query_parts.append(f"nameLIKE{validated.name_query}")
+
+    limit = validated.limit or 20
+    offset = validated.offset or 0
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_SPAN_TABLE}"
+    api_params = _build_sysparm_params(
+        fields=CHANGE_SCHEDULE_SPAN_FIELDS,
+        limit=limit,
+        offset=offset,
+    )
+    if query_parts:
+        api_params["sysparm_query"] = _join_query_parts(query_parts)
+    api_params["sysparm_display_value"] = "all"
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=api_params)
+        response.raise_for_status()
+        spans = [_format_change_schedule_span(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(spans, limit, offset, "spans")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change schedule spans: {e}")
+        return {"success": False, "message": f"Error listing change schedule spans: {_format_http_error(e)}"}
