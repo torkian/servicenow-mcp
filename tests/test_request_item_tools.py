@@ -1,4 +1,4 @@
-"""Tests for the list_request_items tool in request_tools.py."""
+"""Tests for the get_request_item and list_request_items tools in request_tools.py."""
 
 import unittest
 from unittest.mock import MagicMock, patch
@@ -8,6 +8,7 @@ import requests
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.request_tools import (
     _format_request_item,
+    get_request_item,
     list_request_items,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -107,6 +108,155 @@ class TestFormatRequestItem(unittest.TestCase):
         result = _format_request_item(FAKE_ITEM)
         self.assertEqual(result["created_on"], "2026-05-21 10:00:00")
         self.assertEqual(result["updated_on"], "2026-05-21 10:30:00")
+
+
+# ---------------------------------------------------------------------------
+# get_request_item
+# ---------------------------------------------------------------------------
+
+class TestGetRequestItem(unittest.TestCase):
+
+    def test_missing_item_id_returns_failure(self):
+        result = get_request_item(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_get_by_sys_id_success(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": FAKE_ITEM})
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("item", result)
+        self.assertEqual(result["item"]["number"], "RITM0010001")
+        self.assertEqual(result["item"]["cat_item"], "MacBook Pro 16-inch")
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_get_by_ritm_number_success(self, mock_req):
+        mock_req.return_value = _make_response(
+            json_body={"result": [FAKE_ITEM]}
+        )
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": "RITM0010001"},
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["item"]["sys_id"], FAKE_RITM_SYS_ID)
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_get_by_sys_id_404_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(status_code=404)
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_get_by_sys_id_empty_result_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": {}})
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_get_by_number_not_found_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": []})
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": "RITM9999999"},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_get_by_sys_id_http_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.HTTPError("503 Service Unavailable")
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving request item", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_get_by_number_http_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": "RITM0010001"},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving request item", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_sys_id_lookup_uses_direct_url(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": FAKE_ITEM})
+        get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        called_url = mock_req.call_args[0][1]
+        self.assertIn(FAKE_RITM_SYS_ID, called_url)
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_number_lookup_uses_query_param(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": [FAKE_ITEM]})
+        get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": "RITM0010001"},
+        )
+        called_params = mock_req.call_args[1]["params"]
+        self.assertIn("RITM0010001", called_params.get("sysparm_query", ""))
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_display_value_param_set(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": FAKE_ITEM})
+        get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        called_params = mock_req.call_args[1]["params"]
+        self.assertEqual(called_params.get("sysparm_display_value"), "true")
+        self.assertEqual(called_params.get("sysparm_exclude_reference_link"), "true")
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_reference_fields_normalised(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": FAKE_ITEM})
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        self.assertEqual(result["item"]["assigned_to"], "IT Fulfillment")
+        self.assertEqual(result["item"]["assignment_group"], "IT Hardware")
+        self.assertEqual(result["item"]["opened_by"], "Jane Smith")
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_dates_present_in_result(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": FAKE_ITEM})
+        result = get_request_item(
+            _make_auth_manager(),
+            _make_config(),
+            {"item_id": FAKE_RITM_SYS_ID},
+        )
+        self.assertEqual(result["item"]["created_on"], "2026-05-21 10:00:00")
+        self.assertEqual(result["item"]["updated_on"], "2026-05-21 10:30:00")
 
 
 # ---------------------------------------------------------------------------

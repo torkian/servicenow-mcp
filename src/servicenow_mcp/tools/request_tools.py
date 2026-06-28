@@ -554,6 +554,79 @@ def _format_request_item(record: Dict) -> Dict:
     }
 
 
+class GetRequestItemParams(BaseModel):
+    """Parameters for retrieving a single requested item (RITM record)."""
+
+    item_id: str = Field(
+        ...,
+        description="RITM number (e.g. RITM0010001) or sys_id (32-char hex)",
+    )
+
+
+def get_request_item(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single requested item (sc_req_item / RITM record) by number or sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetRequestItemParams.
+
+    Returns:
+        Dictionary with ``success`` and ``item`` keys.
+    """
+    result = _unwrap_and_validate_params(params, GetRequestItemParams, required_fields=["item_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    display_params = {"sysparm_display_value": "true", "sysparm_exclude_reference_link": "true"}
+
+    if len(validated.item_id) == 32 and all(c in "0123456789abcdef" for c in validated.item_id):
+        url = f"{instance_url}{REQUEST_ITEM_TABLE}/{validated.item_id}"
+        try:
+            response = _make_request("GET", url, headers=headers, params=display_params)
+            if response.status_code == 404:
+                return {"success": False, "message": f"Request item not found: {validated.item_id}"}
+            response.raise_for_status()
+            record = response.json().get("result", {})
+            if not record:
+                return {"success": False, "message": f"Request item not found: {validated.item_id}"}
+            return {"success": True, "item": _format_request_item(record)}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error retrieving request item: {e}")
+            return {"success": False, "message": f"Error retrieving request item: {_format_http_error(e)}"}
+    else:
+        url = f"{instance_url}{REQUEST_ITEM_TABLE}"
+        try:
+            response = _make_request(
+                "GET", url, headers=headers,
+                params={
+                    "sysparm_query": f"number={validated.item_id}",
+                    "sysparm_limit": 1,
+                    **display_params,
+                },
+            )
+            response.raise_for_status()
+            records = response.json().get("result", [])
+            if not records:
+                return {"success": False, "message": f"Request item not found: {validated.item_id}"}
+            return {"success": True, "item": _format_request_item(records[0])}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error retrieving request item: {e}")
+            return {"success": False, "message": f"Error retrieving request item: {_format_http_error(e)}"}
+
+
 def list_request_items(
     auth_manager: AuthManager,
     server_config: ServerConfig,

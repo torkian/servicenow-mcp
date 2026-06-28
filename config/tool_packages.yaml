@@ -57,6 +57,7 @@ service_desk:
   - get_request
   - create_request
   - list_request_items
+  - get_request_item
   # SLA Monitoring
   - list_sla_breach_definitions
   - list_slas
@@ -508,6 +509,7 @@ full:
   - create_request
   - update_request
   - list_request_items
+  - get_request_item
   # SLA Tools
   - list_sla_breach_definitions
   - list_slas

@@ -537,6 +537,7 @@ from servicenow_mcp.tools.project_tools import (
 )
 from servicenow_mcp.tools.request_tools import (
     CreateRequestParams,
+    GetRequestItemParams,
     GetRequestParams,
     ListRequestItemsParams,
     ListRequestsParams,
@@ -547,6 +548,9 @@ from servicenow_mcp.tools.request_tools import (
 )
 from servicenow_mcp.tools.request_tools import (
     get_request as get_request_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    get_request_item as get_request_item_tool,
 )
 from servicenow_mcp.tools.request_tools import (
     list_request_items as list_request_items_tool,
@@ -2319,6 +2323,17 @@ def get_tool_definitions(
                 "List the requested items (sc_req_item / RITM records) that belong to a "
                 "service request. Accepts a request number (e.g. REQ0010001) or sys_id. "
                 "Optionally filter by item state. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_request_item": (
+            get_request_item_tool,
+            GetRequestItemParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single requested item (sc_req_item / RITM record) from "
+                "ServiceNow by RITM number (e.g. RITM0010001) or 32-character sys_id. "
+                "Returns the full item record with normalised reference fields."
             ),
             "raw_dict",
         ),

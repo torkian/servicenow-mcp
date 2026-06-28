@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_request_item tool (GET sc_req_item/{sys_id}; companion to list_request_items)
-7. Add update_request_item tool (PATCH sc_req_item/{sys_id}; state/stage/work_notes/close_notes)
+1. Add update_request_item tool (PATCH sc_req_item/{sys_id}; state/stage/work_notes/close_notes)
 8. Add list_change_conflicts tool (GET change_conflict; filters for change_id/type/state)
 9. Add create_problem_task tool (POST problem_task linked to a problem)
 10. Add list_problem_tasks tool (GET problem_task with problem number/sys_id resolver)
@@ -100,3 +99,4 @@
 80. 2026-06-25 — Add update_change_schedule tool (PATCH cmn_schedule/{sys_id}; schedule_id/name resolver; optional name/schedule_type/time_zone/active/parent/description fields; empty-body guard; 404 guard; parent name resolver; registered in change_coordinator and full packages; 21 new tests; 1829 total tests; 93% coverage)
 81. 2026-06-26 — Add delete_change_schedule tool (DELETE cmn_schedule/{sys_id}; sys_id passthrough or name resolver; 204/404 guards; network error handling; registered in change_coordinator and full packages; 13 new tests; 1842 total tests; 93% coverage)
 82. 2026-06-27 — Add list_change_schedule_spans tool (GET cmn_schedule_span; filters for schedule_id/day_of_week/repeat_type/name_query; schedule name→sys_id auto-resolved; day_of_week_label human-readable; pagination; registered in change_coordinator and full packages; 31 new tests; 1873 total tests; 93% coverage)
+83. 2026-06-28 — Add get_request_item tool (GET sc_req_item/{sys_id or RITM number}; 404/empty-result guards; _format_request_item normalisation; registered in service_desk and full packages; 13 new tests; 1886 total tests; 93% coverage)

@@ -165,6 +165,7 @@ from servicenow_mcp.tools.project_tools import (
 from servicenow_mcp.tools.request_tools import (
     create_request,
     get_request,
+    get_request_item,
     list_request_items,
     list_requests,
     update_request,
@@ -499,6 +500,7 @@ __all__ = [
     "create_request",
     "update_request",
     "list_request_items",
+    "get_request_item",
 
     # User Group tools
     "list_user_groups",
