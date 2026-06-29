@@ -688,3 +688,134 @@ def list_request_items(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing request items: {e}")
         return {"success": False, "message": f"Error listing request items: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# update_request_item
+# ---------------------------------------------------------------------------
+
+
+class UpdateRequestItemParams(BaseModel):
+    """Parameters for updating a requested item (sc_req_item / RITM record)."""
+
+    item_id: str = Field(
+        ...,
+        description="RITM number (e.g. RITM0010001) or sys_id (32-char hex)",
+    )
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Updated item state: 1=Pending Approval, 2=Approved, 3=Rejected, "
+            "4=Fulfilled, 6=Cancelled, 7=Staged, 8=Pending, 16=Open, "
+            "17=Work In Progress, 18=Closed Complete, 19=Closed Incomplete"
+        ),
+    )
+    stage: Optional[str] = Field(
+        None,
+        description=(
+            "Updated fulfillment stage (e.g. 'waiting_for_approval', "
+            "'fulfillment', 'delivery', 'completed')"
+        ),
+    )
+    assigned_to: Optional[str] = Field(None, description="Updated assignee user name or sys_id")
+    assignment_group: Optional[str] = Field(
+        None, description="Updated assignment group name or sys_id"
+    )
+    work_notes: Optional[str] = Field(None, description="Work notes to append to the item")
+    close_notes: Optional[str] = Field(None, description="Closure notes when closing the item")
+
+
+def _resolve_request_item_sys_id(
+    item_id: str,
+    instance_url: str,
+    headers: Dict,
+) -> Dict[str, Any]:
+    """Return the sys_id for a RITM number or pass through a 32-char sys_id."""
+    if len(item_id) == 32 and all(c in "0123456789abcdef" for c in item_id):
+        return {"success": True, "sys_id": item_id}
+
+    url = f"{instance_url}{REQUEST_ITEM_TABLE}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={"sysparm_query": f"number={item_id}", "sysparm_limit": 1},
+        )
+        response.raise_for_status()
+        result = response.json().get("result", [])
+        if not result:
+            return {"success": False, "message": f"Request item not found: {item_id}"}
+        return {"success": True, "sys_id": result[0]["sys_id"]}
+    except requests.exceptions.RequestException as e:
+        return {"success": False, "message": f"Error looking up request item: {_format_http_error(e)}"}
+
+
+def update_request_item(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing requested item (sc_req_item / RITM record) in ServiceNow.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateRequestItemParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, ``number``, and ``item`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, UpdateRequestItemParams, required_fields=["item_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    resolve = _resolve_request_item_sys_id(validated.item_id, instance_url, headers)
+    if not resolve["success"]:
+        return resolve
+    sys_id = resolve["sys_id"]
+
+    body: Dict[str, Any] = {}
+    if validated.state is not None:
+        body["state"] = validated.state
+    if validated.stage is not None:
+        body["stage"] = validated.stage
+    if validated.assigned_to is not None:
+        body["assigned_to"] = validated.assigned_to
+    if validated.assignment_group is not None:
+        body["assignment_group"] = validated.assignment_group
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+    if validated.close_notes is not None:
+        body["close_notes"] = validated.close_notes
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}{REQUEST_ITEM_TABLE}/{sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Request item not found: {validated.item_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "Request item updated successfully",
+            "sys_id": record.get("sys_id") or sys_id,
+            "number": record.get("number"),
+            "item": _format_request_item(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating request item: {e}")
+        return {"success": False, "message": f"Error updating request item: {_format_http_error(e)}"}

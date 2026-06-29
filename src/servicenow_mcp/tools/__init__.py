@@ -169,6 +169,7 @@ from servicenow_mcp.tools.request_tools import (
     list_request_items,
     list_requests,
     update_request,
+    update_request_item,
 )
 from servicenow_mcp.tools.role_tools import (
     assign_role_to_group,
@@ -501,6 +502,7 @@ __all__ = [
     "update_request",
     "list_request_items",
     "get_request_item",
+    "update_request_item",
 
     # User Group tools
     "list_user_groups",

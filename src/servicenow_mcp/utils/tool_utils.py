@@ -541,6 +541,7 @@ from servicenow_mcp.tools.request_tools import (
     GetRequestParams,
     ListRequestItemsParams,
     ListRequestsParams,
+    UpdateRequestItemParams,
     UpdateRequestParams,
 )
 from servicenow_mcp.tools.request_tools import (
@@ -560,6 +561,9 @@ from servicenow_mcp.tools.request_tools import (
 )
 from servicenow_mcp.tools.request_tools import (
     update_request as update_request_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    update_request_item as update_request_item_tool,
 )
 from servicenow_mcp.tools.role_tools import (
     AssignRoleToGroupParams,
@@ -2334,6 +2338,18 @@ def get_tool_definitions(
                 "Retrieve a single requested item (sc_req_item / RITM record) from "
                 "ServiceNow by RITM number (e.g. RITM0010001) or 32-character sys_id. "
                 "Returns the full item record with normalised reference fields."
+            ),
+            "raw_dict",
+        ),
+        "update_request_item": (
+            update_request_item_tool,
+            UpdateRequestItemParams,
+            Dict[str, Any],
+            (
+                "Update an existing requested item (sc_req_item / RITM record) in "
+                "ServiceNow by RITM number or sys_id. Supports updating state, stage, "
+                "assigned_to, assignment_group, work_notes, and close_notes. "
+                "Guards against empty-body calls and 404 errors."
             ),
             "raw_dict",
         ),
