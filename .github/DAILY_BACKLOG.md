@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_change_conflicts tool (GET change_conflict; filters for change_id/type/state)
 9. Add create_problem_task tool (POST problem_task linked to a problem)
 10. Add list_problem_tasks tool (GET problem_task with problem number/sys_id resolver)
 11. Add close_problem_task tool (PATCH problem_task state to Closed)
@@ -100,3 +99,4 @@
 82. 2026-06-27 — Add list_change_schedule_spans tool (GET cmn_schedule_span; filters for schedule_id/day_of_week/repeat_type/name_query; schedule name→sys_id auto-resolved; day_of_week_label human-readable; pagination; registered in change_coordinator and full packages; 31 new tests; 1873 total tests; 93% coverage)
 83. 2026-06-28 — Add get_request_item tool (GET sc_req_item/{sys_id or RITM number}; 404/empty-result guards; _format_request_item normalisation; registered in service_desk and full packages; 13 new tests; 1886 total tests; 93% coverage)
 84. 2026-06-29 — Add update_request_item tool (PATCH sc_req_item/{sys_id}; state/stage/assigned_to/assignment_group/work_notes/close_notes; _resolve_request_item_sys_id helper; RITM number/sys_id dual lookup; empty-body guard; 404 guard; registered in __init__.py and tool_utils.py; 23 new tests; 1909 total tests; 93% coverage)
+85. 2026-06-30 — Add list_change_conflicts tool (GET change_conflict; filters for change_id/type/state; CHG number/sys_id resolver; _format_change_conflict normalises reference fields; pagination; registered in change_coordinator and full packages; 25 new tests; 1934 total tests; 93% coverage)

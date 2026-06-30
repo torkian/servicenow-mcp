@@ -2628,3 +2628,136 @@ def list_change_schedule_spans(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing change schedule spans: {e}")
         return {"success": False, "message": f"Error listing change schedule spans: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# Change Conflict tools
+# ---------------------------------------------------------------------------
+
+CHANGE_CONFLICT_TABLE = "/api/now/table/change_conflict"
+
+CHANGE_CONFLICT_FIELDS = [
+    "sys_id",
+    "change_request",
+    "conflict_ci",
+    "conflict_change",
+    "type",
+    "state",
+    "blackout_window",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+class ListChangeConflictsParams(BaseModel):
+    """Parameters for listing change_conflict records."""
+
+    change_id: Optional[str] = Field(
+        None,
+        description=(
+            "Filter conflicts to a specific change request. "
+            "Accepts a CHG number (e.g. CHG0012345) or a 32-character sys_id."
+        ),
+    )
+    type: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by conflict type, e.g. 'ci_conflict' or 'schedule_conflict'."
+        ),
+    )
+    state: Optional[str] = Field(
+        None,
+        description="Filter by conflict state, e.g. 'accepted' or 'unresolved'.",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20).")
+    offset: Optional[int] = Field(0, description="Pagination offset.")
+
+
+def _format_change_conflict(record: Dict) -> Dict:
+    """Normalise a raw change_conflict record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "change_request": _display(record.get("change_request")),
+        "conflict_ci": _display(record.get("conflict_ci")),
+        "conflict_change": _display(record.get("conflict_change")),
+        "type": _display(record.get("type")),
+        "state": _display(record.get("state")),
+        "blackout_window": _display(record.get("blackout_window")),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def list_change_conflicts(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List change_conflict records, optionally scoped to a specific change request.
+
+    Each conflict record describes a scheduling or CI overlap detected for a
+    change request. Supports filtering by change request (CHG number or sys_id),
+    conflict type, and conflict state.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListChangeConflictsParams.
+
+    Returns:
+        Dictionary with ``success``, ``count``, ``has_more``, ``next_offset``,
+        and ``conflicts`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ListChangeConflictsParams)
+    if not result["success"]:
+        return result
+    validated: ListChangeConflictsParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts = []
+
+    if validated.change_id:
+        change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_id)
+        if not change_sys_id:
+            return {"success": False, "message": f"Change request not found: {validated.change_id}"}
+        query_parts.append(f"change_request={change_sys_id}")
+
+    if validated.type:
+        query_parts.append(f"type={validated.type}")
+
+    if validated.state:
+        query_parts.append(f"state={validated.state}")
+
+    limit = validated.limit or 20
+    offset = validated.offset or 0
+
+    url = f"{instance_url}{CHANGE_CONFLICT_TABLE}"
+    api_params = _build_sysparm_params(
+        fields=CHANGE_CONFLICT_FIELDS,
+        limit=limit,
+        offset=offset,
+    )
+    if query_parts:
+        api_params["sysparm_query"] = _join_query_parts(query_parts)
+    api_params["sysparm_display_value"] = "all"
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=api_params)
+        response.raise_for_status()
+        conflicts = [_format_change_conflict(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(conflicts, limit, offset, "conflicts")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change conflicts: {e}")
+        return {"success": False, "message": f"Error listing change conflicts: {_format_http_error(e)}"}

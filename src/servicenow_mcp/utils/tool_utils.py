@@ -253,6 +253,12 @@ from servicenow_mcp.tools.change_tools import (
 from servicenow_mcp.tools.change_tools import (
     ListChangeScheduleSpansParams,
 )
+from servicenow_mcp.tools.change_tools import (
+    list_change_conflicts as list_change_conflicts_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    ListChangeConflictsParams,
+)
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
     CommitChangesetParams,
@@ -1343,6 +1349,19 @@ def get_tool_definitions(
                 "Optional: schedule_id (sys_id or schedule name), day_of_week (0=Sun…6=Sat), "
                 "repeat_type ('none','daily','weekly','monthly','yearly'), name_query, limit, offset. "
                 "Returns spans with day_of_week_label, start/end times, and pagination info."
+            ),
+            "json",
+        ),
+        "list_change_conflicts": (
+            list_change_conflicts_tool,
+            ListChangeConflictsParams,
+            str,
+            (
+                "List change_conflict records from the change_conflict table. "
+                "Optional: change_id (CHG number or sys_id) to scope to one change request, "
+                "type (e.g. 'ci_conflict' or 'schedule_conflict'), "
+                "state (e.g. 'accepted' or 'unresolved'), limit, offset. "
+                "Returns conflicts list with has_more/next_offset pagination."
             ),
             "json",
         ),
