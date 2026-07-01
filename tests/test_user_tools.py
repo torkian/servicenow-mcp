@@ -285,7 +285,6 @@ class TestUserTools(unittest.TestCase):
         }
         # Generate mojibake dynamically for chars that produce non-printable
         # Latin-1 bytes (\x80-\x9f) which can't be written literally in source:
-        import sys
 
         def _mojibake(s):
             return s.encode("utf-8").decode("latin-1")

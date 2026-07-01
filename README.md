@@ -417,7 +417,7 @@ pip install -e .
         		"SERVICENOW_INSTANCE_URL": "https://your-instance.service-now.com",
         		"SERVICENOW_USERNAME": "your-username",
         		"SERVICENOW_PASSWORD": "your-password",
-        		"SERVICENOW_AUTH_TYPE": "basic"
+        		"SERVICENOW_AUTH_TYPE": "basic",
             "MCP_TOOL_PACKAGE": "reader"
       	}
       }

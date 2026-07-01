@@ -8,7 +8,7 @@
 
 none: []
 
-# Read-only aliases: use MCP_TOOL_PACKAGE=reader (or read_only/readonly)
+# Read-only aliases: use MCP_TOOL_PACKAGE=reader
 reader:
   # Package introspection
   - list_tool_packages
