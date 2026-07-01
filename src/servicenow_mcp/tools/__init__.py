@@ -261,7 +261,6 @@ __all__ = [
     "list_incident_tasks",
     "list_incident_comments",
     "close_incident_task",
-    
     # Catalog tools
     "list_catalogs",
     "get_catalog",
@@ -280,7 +279,6 @@ __all__ = [
     "update_catalog_item_variable",
     "delete_catalog_item_variable",
     "create_catalog_variable_choice",
-    
     # Change management tools
     "create_change_request",
     "update_change_request",
@@ -294,7 +292,6 @@ __all__ = [
     "reject_change",
     "cancel_change_request",
     "reopen_change_request",
-    
     # Workflow management tools
     "list_workflows",
     "get_workflow_details",
@@ -308,7 +305,6 @@ __all__ = [
     "update_workflow_activity",
     "delete_workflow_activity",
     "reorder_workflow_activities",
-    
     # Changeset tools
     "list_changesets",
     "get_changeset_details",
@@ -317,7 +313,6 @@ __all__ = [
     "commit_changeset",
     "publish_changeset",
     "add_file_to_changeset",
-    
     # Script Include tools
     "list_script_includes",
     "get_script_include",
@@ -325,7 +320,6 @@ __all__ = [
     "update_script_include",
     "delete_script_include",
     "execute_script_include",
-    
     # Knowledge Base tools
     "create_knowledge_base",
     "list_knowledge_bases",
@@ -338,18 +332,17 @@ __all__ = [
     "list_articles",
     "list_articles_by_category",
     "get_article",
-    
     # User management tools
     "create_user",
     "update_user",
     "get_user",
+    "list_customers",
     "list_users",
     "create_group",
     "update_group",
     "add_group_members",
     "remove_group_members",
     "list_groups",
-
     # Story tools
     "create_story",
     "update_story",
@@ -357,51 +350,41 @@ __all__ = [
     "list_story_dependencies",
     "create_story_dependency",
     "delete_story_dependency",
-    
     # Epic tools
     "create_epic",
     "update_epic",
     "list_epics",
-
     # Scrum Task tools
     "create_scrum_task",
     "update_scrum_task",
     "list_scrum_tasks",
-
     # Project tools
     "create_project",
     "update_project",
     "list_projects",
-
     # Service Catalog Task tools
     "get_sctask",
     "list_sctasks",
     "update_sctask",
-
     # Time Card tools
     "list_time_cards",
     "create_time_card",
     "update_time_card",
-
     # Syslog tools
     "list_syslog_entries",
     "get_syslog_entry",
-
     # UI Policy tools
     "create_ui_policy",
     "create_ui_policy_action",
-
     # User Criteria tools
     "create_user_criteria",
     "create_user_criteria_condition",
     "list_catalog_item_user_criteria",
-
     # Bulk operations
     "execute_bulk_operations",
     "bulk_update_incidents",
     "bulk_update_change_requests",
     "bulk_update_problems",
-
     # CMDB tools
     "list_cmdb_classes",
     "list_cis",
@@ -414,21 +397,18 @@ __all__ = [
     "create_ci_outage",
     "update_ci_outage",
     "delete_ci_outage",
-
     # CMDB relationship tools
     "list_ci_relationships",
     "get_ci_relationship",
     "create_ci_relationship",
     "delete_ci_relationship",
     "list_ci_relationship_types",
-
     # Asset management tools
     "create_asset",
     "delete_asset",
     "list_assets",
     "get_asset",
     "update_asset",
-
     # Contract management tools
     "list_asset_contracts",
     "get_asset_contract",
@@ -436,21 +416,18 @@ __all__ = [
     "update_asset_contract",
     "expire_asset_contract",
     "list_contract_assets",
-
     # Attachment tools
     "list_attachments",
     "get_attachment",
     "delete_attachment",
     "upload_attachment",
     "download_attachment",
-
     # Problem management tools
     "list_problems",
     "get_problem",
     "create_problem",
     "update_problem",
     "close_problem",
-
     # SLA management tools
     "list_slas",
     "get_sla",
@@ -458,30 +435,25 @@ __all__ = [
     "list_sla_breaches",
     "get_sla_breach",
     "resolve_sla_breach",
-
     # User email lookup
     "get_user_by_email",
-
     # Service Request tools
     "list_requests",
     "get_request",
     "create_request",
     "update_request",
     "list_request_items",
-
     # User Group tools
     "list_user_groups",
     "get_user_group",
     "add_user_to_group",
     "remove_user_from_group",
     "list_group_members",
-
     # Role management tools
     "get_group_roles",
     "assign_role_to_group",
     "remove_role_from_group",
     "list_user_roles",
-
     # Notification tools
     "list_notifications",
 ]
