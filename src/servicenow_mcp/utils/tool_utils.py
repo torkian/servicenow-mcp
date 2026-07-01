@@ -505,6 +505,20 @@ from servicenow_mcp.tools.notification_tools import (
 from servicenow_mcp.tools.notification_tools import (
     list_notifications as list_notifications_tool,
 )
+from servicenow_mcp.tools.problem_task_tools import (
+    CloseProblemTaskParams,
+    CreateProblemTaskParams,
+    ListProblemTasksParams,
+)
+from servicenow_mcp.tools.problem_task_tools import (
+    close_problem_task as close_problem_task_tool,
+)
+from servicenow_mcp.tools.problem_task_tools import (
+    create_problem_task as create_problem_task_tool,
+)
+from servicenow_mcp.tools.problem_task_tools import (
+    list_problem_tasks as list_problem_tasks_tool,
+)
 from servicenow_mcp.tools.problem_tools import (
     CloseProblemParams,
     CreateProblemParams,
@@ -2497,6 +2511,41 @@ def get_tool_definitions(
                 "Close a problem record by setting its state to Closed (4). "
                 "Accepts a problem number (e.g. PRB0001234) or sys_id. "
                 "Optionally include close_notes, fix_notes, cause_notes, and work_notes."
+            ),
+            "raw_dict",
+        ),
+        # Problem Task Tools
+        "create_problem_task": (
+            create_problem_task_tool,
+            CreateProblemTaskParams,
+            Dict[str, Any],
+            (
+                "Create a problem_task record linked to a parent problem in ServiceNow. "
+                "Accepts a problem number (e.g. PRB0001234) or sys_id as problem_id. "
+                "Requires short_description. Optionally set description, assigned_to, "
+                "assignment_group, priority, state, and work_notes."
+            ),
+            "raw_dict",
+        ),
+        "list_problem_tasks": (
+            list_problem_tasks_tool,
+            ListProblemTasksParams,
+            Dict[str, Any],
+            (
+                "List problem_task records linked to a specific problem. "
+                "Accepts a problem number (e.g. PRB0001234) or sys_id as problem_id. "
+                "Optionally filter by state. Supports pagination with limit and offset."
+            ),
+            "raw_dict",
+        ),
+        "close_problem_task": (
+            close_problem_task_tool,
+            CloseProblemTaskParams,
+            Dict[str, Any],
+            (
+                "Close a problem task by setting its state to Closed Complete (3). "
+                "Accepts a problem task number (e.g. PTASK0010001) or sys_id as task_id. "
+                "Optionally include close_notes and work_notes."
             ),
             "raw_dict",
         ),

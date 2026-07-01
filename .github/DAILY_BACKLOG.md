@@ -1,10 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-9. Add create_problem_task tool (POST problem_task linked to a problem)
-10. Add list_problem_tasks tool (GET problem_task with problem number/sys_id resolver)
-11. Add close_problem_task tool (PATCH problem_task state to Closed)
-12. Add get_notification tool (GET sysevent_email_log/{sys_id}; companion to list_notifications)
+9. Add get_notification tool (GET sysevent_email_log/{sys_id}; companion to list_notifications)
 13. Add list_scheduled_jobs tool (GET sysauto_script; filters for name/active/run_as)
 14. Add get_ci_class_schema tool (GET cmdb_ci metadata for a class: fields, relationships, mandatory attrs)
 15. Add bulk_update_problem_tasks tool (Batch API; PRB-TASK number resolver)
@@ -100,3 +97,4 @@
 83. 2026-06-28 — Add get_request_item tool (GET sc_req_item/{sys_id or RITM number}; 404/empty-result guards; _format_request_item normalisation; registered in service_desk and full packages; 13 new tests; 1886 total tests; 93% coverage)
 84. 2026-06-29 — Add update_request_item tool (PATCH sc_req_item/{sys_id}; state/stage/assigned_to/assignment_group/work_notes/close_notes; _resolve_request_item_sys_id helper; RITM number/sys_id dual lookup; empty-body guard; 404 guard; registered in __init__.py and tool_utils.py; 23 new tests; 1909 total tests; 93% coverage)
 85. 2026-06-30 — Add list_change_conflicts tool (GET change_conflict; filters for change_id/type/state; CHG number/sys_id resolver; _format_change_conflict normalises reference fields; pagination; registered in change_coordinator and full packages; 25 new tests; 1934 total tests; 93% coverage)
+86. 2026-07-01 — Add create_problem_task, list_problem_tasks, close_problem_task tools (problem_task table; PRB number/sys_id resolver for parent link; PTASK number/sys_id resolver for close; state filter + pagination for list; registered in service_desk and full packages; 28 new tests; 1962 total tests; 93% coverage)

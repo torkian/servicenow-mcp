@@ -151,6 +151,11 @@ from servicenow_mcp.tools.knowledge_base import (
 from servicenow_mcp.tools.notification_tools import (
     list_notifications,
 )
+from servicenow_mcp.tools.problem_task_tools import (
+    close_problem_task,
+    create_problem_task,
+    list_problem_tasks,
+)
 from servicenow_mcp.tools.problem_tools import (
     close_problem,
     create_problem,
@@ -485,6 +490,10 @@ __all__ = [
     "create_problem",
     "update_problem",
     "close_problem",
+    # Problem Task tools
+    "create_problem_task",
+    "list_problem_tasks",
+    "close_problem_task",
 
     # SLA management tools
     "list_slas",

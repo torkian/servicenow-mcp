@@ -27,6 +27,10 @@ service_desk:
   - list_problems
   - get_problem
   - close_problem
+  # Problem Tasks
+  - create_problem_task
+  - list_problem_tasks
+  - close_problem_task
   # Service Catalog Tasks
   - get_sctask
   - list_sctasks
@@ -478,6 +482,10 @@ full:
   - create_problem
   - update_problem
   - close_problem
+  # Problem Tasks
+  - create_problem_task
+  - list_problem_tasks
+  - close_problem_task
   # Story Management
   - create_story
   - update_story
