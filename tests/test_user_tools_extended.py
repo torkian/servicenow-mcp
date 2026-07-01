@@ -30,11 +30,12 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestUserToolsExtended(unittest.TestCase):
-
     def setUp(self):
         self.config = ServerConfig(
             instance_url="https://dev12345.service-now.com",
-            auth=AuthConfig(type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")),
+            auth=AuthConfig(
+                type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")
+            ),
         )
         self.auth = MagicMock(spec=AuthManager)
         self.auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
@@ -44,14 +45,18 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.post")
     def test_create_user_error(self, mock_post):
         from requests.exceptions import RequestException
+
         mock_post.side_effect = RequestException("fail")
-        params = CreateUserParams(user_name="test.user", first_name="Test", last_name="User", email="t@t.com")
+        params = CreateUserParams(
+            user_name="test.user", first_name="Test", last_name="User", email="t@t.com"
+        )
         result = create_user(self.config, self.auth, params)
         self.assertFalse(result.success)
 
     @patch("servicenow_mcp.tools.user_tools.requests.patch")
     def test_update_user_error(self, mock_patch):
         from requests.exceptions import RequestException
+
         mock_patch.side_effect = RequestException("fail")
         params = UpdateUserParams(user_id="u1", first_name="Updated")
         result = update_user(self.config, self.auth, params)
@@ -60,6 +65,7 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.get")
     def test_get_user_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         params = GetUserParams(user_name="admin")
         result = get_user(self.config, self.auth, params)
@@ -68,6 +74,7 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.get")
     def test_list_users_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         params = ListUsersParams()
         result = list_users(self.config, self.auth, params)
@@ -85,6 +92,7 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.post")
     def test_create_group_error(self, mock_post):
         from requests.exceptions import RequestException
+
         mock_post.side_effect = RequestException("fail")
         params = CreateGroupParams(name="TestGroup")
         result = create_group(self.config, self.auth, params)
@@ -93,6 +101,7 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.put")
     def test_update_group_error(self, mock_put):
         from requests.exceptions import RequestException
+
         mock_put.side_effect = RequestException("fail")
         params = UpdateGroupParams(group_id="g1", name="Updated")
         result = update_group(self.config, self.auth, params)
@@ -102,6 +111,7 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.get")
     def test_add_group_members_error(self, mock_get, mock_post):
         from requests.exceptions import RequestException
+
         mock_get.return_value = MagicMock(
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": []}),
@@ -114,6 +124,7 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.get")
     def test_remove_group_members_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         params = RemoveGroupMembersParams(group_id="g1", members=["u1"])
         result = remove_group_members(self.config, self.auth, params)
@@ -122,6 +133,7 @@ class TestUserToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_tools.requests.get")
     def test_list_groups_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         params = ListGroupsParams()
         result = list_groups(self.config, self.auth, params)
@@ -136,9 +148,15 @@ class TestUserToolsExtended(unittest.TestCase):
             json=MagicMock(return_value={"result": {"sys_id": "u1", "user_name": "alice"}}),
         )
         params = CreateUserParams(
-            user_name="alice", first_name="Alice", last_name="Smith",
-            email="alice@test.com", department="IT", title="Engineer",
-            manager="admin", location="NYC", phone="555-0100",
+            user_name="alice",
+            first_name="Alice",
+            last_name="Smith",
+            email="alice@test.com",
+            department="IT",
+            title="Engineer",
+            manager="admin",
+            location="NYC",
+            phone="555-0100",
         )
         result = create_user(self.config, self.auth, params)
         self.assertTrue(result.success)
@@ -150,9 +168,14 @@ class TestUserToolsExtended(unittest.TestCase):
             json=MagicMock(return_value={"result": {"sys_id": "u1", "user_name": "alice"}}),
         )
         params = UpdateUserParams(
-            user_id="u1", first_name="Alice", last_name="Jones",
-            email="alice@new.com", department="Eng", title="Sr Eng",
-            manager="boss", active=True,
+            user_id="u1",
+            first_name="Alice",
+            last_name="Jones",
+            email="alice@new.com",
+            department="Eng",
+            title="Sr Eng",
+            manager="boss",
+            active=True,
         )
         result = update_user(self.config, self.auth, params)
         self.assertTrue(result.success)
@@ -171,7 +194,11 @@ class TestUserToolsExtended(unittest.TestCase):
     def test_get_user_by_email(self, mock_get):
         mock_get.return_value = MagicMock(
             raise_for_status=MagicMock(),
-            json=MagicMock(return_value={"result": [{"sys_id": "u1", "user_name": "alice", "email": "alice@t.com"}]}),
+            json=MagicMock(
+                return_value={
+                    "result": [{"sys_id": "u1", "user_name": "alice", "email": "alice@t.com"}]
+                }
+            ),
         )
         params = GetUserParams(email="alice@t.com")
         result = get_user(self.config, self.auth, params)

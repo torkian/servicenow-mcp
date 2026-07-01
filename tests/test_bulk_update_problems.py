@@ -58,8 +58,7 @@ class TestBulkUpdateProblemsValidation(unittest.TestCase):
     def test_over_100_updates_returns_failure(self):
         params = BulkUpdateProblemsParams.__new__(BulkUpdateProblemsParams)
         too_many = [
-            ProblemUpdate(problem_id=_SYS_ID_A, short_description=f"Update {i}")
-            for i in range(101)
+            ProblemUpdate(problem_id=_SYS_ID_A, short_description=f"Update {i}") for i in range(101)
         ]
         object.__setattr__(params, "updates", too_many)
         result = bulk_update_problems(_config(), _auth(), params)
@@ -70,9 +69,7 @@ class TestBulkUpdateProblemsValidation(unittest.TestCase):
     def test_exactly_100_updates_is_accepted(self):
         params = BulkUpdateProblemsParams.__new__(BulkUpdateProblemsParams)
         updates = [
-            ProblemUpdate(
-                problem_id=("0" * 31 + str(i % 10)), short_description=f"u{i}"
-            )
+            ProblemUpdate(problem_id=("0" * 31 + str(i % 10)), short_description=f"u{i}")
             for i in range(100)
         ]
         object.__setattr__(params, "updates", updates)
@@ -95,9 +92,7 @@ class TestBulkUpdateProblemsAllSysIds(unittest.TestCase):
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
-        params = BulkUpdateProblemsParams(
-            updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")]
-        )
+        params = BulkUpdateProblemsParams(updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")])
         result = bulk_update_problems(_config(), _auth(), params)
 
         self.assertTrue(result["success"])
@@ -146,9 +141,7 @@ class TestBulkUpdateProblemsAllSysIds(unittest.TestCase):
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
         params = BulkUpdateProblemsParams(
-            updates=[
-                ProblemUpdate(problem_id=_SYS_ID_A, state="2", known_error="true")
-            ]
+            updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2", known_error="true")]
         )
         bulk_update_problems(_config(), _auth(), params)
 
@@ -188,9 +181,19 @@ class TestBulkUpdateProblemsAllSysIds(unittest.TestCase):
         payload = mock_post.call_args[1]["json"]
         body = json.loads(payload["requests"][0]["body"])
         for field in (
-            "short_description", "description", "state", "priority", "impact",
-            "urgency", "assigned_to", "assignment_group", "work_notes",
-            "known_error", "cause_notes", "fix_notes", "category",
+            "short_description",
+            "description",
+            "state",
+            "priority",
+            "impact",
+            "urgency",
+            "assigned_to",
+            "assignment_group",
+            "work_notes",
+            "known_error",
+            "cause_notes",
+            "fix_notes",
+            "category",
         ):
             self.assertIn(field, body)
 
@@ -217,9 +220,7 @@ class TestBulkUpdateProblemsAllSysIds(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     def test_batch_request_exception_returns_failure(self, mock_post):
         mock_post.side_effect = requests.ConnectionError("refused")
-        params = BulkUpdateProblemsParams(
-            updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")]
-        )
+        params = BulkUpdateProblemsParams(updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")])
         result = bulk_update_problems(_config(), _auth(), params)
 
         self.assertFalse(result["success"])
@@ -232,9 +233,7 @@ class TestBulkUpdateProblemsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_prb_number_resolved_before_batch(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "PRB0001234", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "PRB0001234", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
@@ -251,9 +250,7 @@ class TestBulkUpdateProblemsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_resolution_query_targets_problem_table(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "PRB0001234", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "PRB0001234", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
@@ -302,15 +299,10 @@ class TestBulkUpdateProblemsNumberResolution(unittest.TestCase):
             [{"number": f"PRB000{i}", "sys_id": ids[i]} for i in range(3)]
         )
         mock_post.return_value = _batch_response(
-            [
-                {"id": str(i), "statusCode": 200, "statusText": "OK", "body": "{}"}
-                for i in range(3)
-            ]
+            [{"id": str(i), "statusCode": 200, "statusText": "OK", "body": "{}"} for i in range(3)]
         )
         params = BulkUpdateProblemsParams(
-            updates=[
-                ProblemUpdate(problem_id=f"PRB000{i}", state="2") for i in range(3)
-            ]
+            updates=[ProblemUpdate(problem_id=f"PRB000{i}", state="2") for i in range(3)]
         )
         bulk_update_problems(_config(), _auth(), params)
         self.assertEqual(mock_get.call_count, 1)
@@ -341,9 +333,7 @@ class TestBulkUpdateProblemsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_mixed_sys_ids_and_numbers(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "PRB0001234", "sys_id": _SYS_ID_B}]
-        )
+        mock_get.return_value = _get_response([{"number": "PRB0001234", "sys_id": _SYS_ID_B}])
         mock_post.return_value = _batch_response(
             [
                 {"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"},
@@ -367,9 +357,7 @@ class TestBulkUpdateProblemsNumberResolution(unittest.TestCase):
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
-        params = BulkUpdateProblemsParams(
-            updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")]
-        )
+        params = BulkUpdateProblemsParams(updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")])
         with patch("servicenow_mcp.tools.bulk_tools.requests.get") as mock_get:
             bulk_update_problems(_config(), _auth(), params)
             mock_get.assert_not_called()
@@ -377,9 +365,7 @@ class TestBulkUpdateProblemsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_result_entries_carry_problem_id_for_number(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "PRB0001234", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "PRB0001234", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
@@ -395,9 +381,7 @@ class TestBulkUpdateProblemsNumberResolution(unittest.TestCase):
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
-        params = BulkUpdateProblemsParams(
-            updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")]
-        )
+        params = BulkUpdateProblemsParams(updates=[ProblemUpdate(problem_id=_SYS_ID_A, state="2")])
         result = bulk_update_problems(_config(), _auth(), params)
 
         self.assertEqual(result["results"][0]["problem_id"], _SYS_ID_A)

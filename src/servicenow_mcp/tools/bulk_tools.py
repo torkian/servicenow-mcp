@@ -25,6 +25,7 @@ _SYS_ID_CHARS = frozenset("0123456789abcdefABCDEF")
 def _is_sys_id(value: str) -> bool:
     return len(value) == 32 and all(c in _SYS_ID_CHARS for c in value)
 
+
 _ALLOWED_METHODS = frozenset({"DELETE", "GET", "PATCH", "POST", "PUT"})
 
 
@@ -51,9 +52,7 @@ class BulkOperationRequest(BaseModel):
     def normalize_method(cls, v: str) -> str:
         upper = v.upper()
         if upper not in _ALLOWED_METHODS:
-            raise ValueError(
-                f"Invalid HTTP method '{v}'. Allowed: {sorted(_ALLOWED_METHODS)}"
-            )
+            raise ValueError(f"Invalid HTTP method '{v}'. Allowed: {sorted(_ALLOWED_METHODS)}")
         return upper
 
     @field_validator("url", mode="before")
@@ -117,7 +116,8 @@ def execute_bulk_operations(
     batch_url = f"{config.api_url}/v1/batch"
 
     try:
-        response = _make_request("POST", 
+        response = _make_request(
+            "POST",
             batch_url,
             json=batch_payload,
             headers=auth_manager.get_headers(),
@@ -279,9 +279,7 @@ def bulk_update_incidents(
     number_to_sys_id: Dict[str, str] = {}
     if numbers_to_resolve:
         try:
-            number_to_sys_id = _resolve_incident_numbers(
-                config, auth_manager, numbers_to_resolve
-            )
+            number_to_sys_id = _resolve_incident_numbers(config, auth_manager, numbers_to_resolve)
         except requests.RequestException as e:
             logger.error("Failed to resolve incident numbers: %s", e)
             return {
@@ -371,7 +369,9 @@ class ChangeRequestUpdate(BaseModel):
     )
     short_description: Optional[str] = Field(None, description="Short description")
     description: Optional[str] = Field(None, description="Detailed description")
-    state: Optional[str] = Field(None, description="State code (e.g. '-1'=Draft, '0'=Open, '1'=Scheduled)")
+    state: Optional[str] = Field(
+        None, description="State code (e.g. '-1'=Draft, '0'=Open, '1'=Scheduled)"
+    )
     type: Optional[str] = Field(None, description="Change type: normal, standard, or emergency")
     category: Optional[str] = Field(None, description="Category")
     risk: Optional[str] = Field(None, description="Risk level: low, moderate, high, or very_high")
@@ -537,7 +537,8 @@ class ProblemUpdate(BaseModel):
     short_description: Optional[str] = Field(None, description="Short description")
     description: Optional[str] = Field(None, description="Detailed description")
     state: Optional[str] = Field(
-        None, description="State code (e.g. '1'=Open, '2'=Known Error, '3'=Pending Change, '4'=Closed/Resolved)"
+        None,
+        description="State code (e.g. '1'=Open, '2'=Known Error, '3'=Pending Change, '4'=Closed/Resolved)",
     )
     priority: Optional[str] = Field(None, description="Priority code")
     impact: Optional[str] = Field(None, description="Impact code")
@@ -545,9 +546,7 @@ class ProblemUpdate(BaseModel):
     assigned_to: Optional[str] = Field(None, description="Assigned-to user name or sys_id")
     assignment_group: Optional[str] = Field(None, description="Assignment group name or sys_id")
     work_notes: Optional[str] = Field(None, description="Work notes to append")
-    known_error: Optional[str] = Field(
-        None, description="Mark as known error: 'true' or 'false'"
-    )
+    known_error: Optional[str] = Field(None, description="Mark as known error: 'true' or 'false'")
     cause_notes: Optional[str] = Field(None, description="Root cause notes")
     fix_notes: Optional[str] = Field(None, description="Fix / workaround notes")
     category: Optional[str] = Field(None, description="Category")
@@ -615,9 +614,7 @@ def bulk_update_problems(
     number_to_sys_id: Dict[str, str] = {}
     if numbers_to_resolve:
         try:
-            number_to_sys_id = _resolve_problem_numbers(
-                config, auth_manager, numbers_to_resolve
-            )
+            number_to_sys_id = _resolve_problem_numbers(config, auth_manager, numbers_to_resolve)
         except requests.RequestException as e:
             logger.error("Failed to resolve problem numbers: %s", e)
             return {

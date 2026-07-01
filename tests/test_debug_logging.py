@@ -31,6 +31,7 @@ def _mock_response(status_code: int, json_body=None, text="") -> MagicMock:
 # _redact_headers
 # ---------------------------------------------------------------------------
 
+
 class TestRedactHeaders(unittest.TestCase):
     def test_none_returns_empty_dict(self):
         self.assertEqual(_redact_headers(None), {})
@@ -89,6 +90,7 @@ class TestRedactHeaders(unittest.TestCase):
 # _truncate_body
 # ---------------------------------------------------------------------------
 
+
 class TestTruncateBody(unittest.TestCase):
     def test_none_returns_empty_string(self):
         self.assertEqual(_truncate_body(None), "")
@@ -129,6 +131,7 @@ class TestTruncateBody(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # Debug logging integration in _make_request
 # ---------------------------------------------------------------------------
+
 
 class TestMakeRequestDebugLogging(unittest.TestCase):
     """When logger is at DEBUG level, _make_request emits request/response logs."""
@@ -199,6 +202,7 @@ class TestMakeRequestDebugLogging(unittest.TestCase):
         log_text = "\n".join(cm.output)
         # elapsed appears as digits followed by 's'
         import re
+
         self.assertTrue(re.search(r"\d+\.\d+s", log_text))
 
     @patch("requests.get")
@@ -218,6 +222,7 @@ class TestMakeRequestDebugLogging(unittest.TestCase):
         # assertLogs would fail if no logs at WARNING+; we just verify no DEBUG
         # lines are emitted by checking the effective level guard
         import servicenow_mcp.utils.helpers as h
+
         orig_level = h.logger.level
         try:
             h.logger.setLevel(logging.WARNING)
@@ -233,9 +238,10 @@ class TestMakeRequestDebugLogging(unittest.TestCase):
         resp_200 = _mock_response(200, json_body={"result": "ok"})
         mock_post.side_effect = [resp_500, resp_200]
 
-        with patch("time.sleep"), self.assertLogs(
-            "servicenow_mcp.utils.helpers", level=logging.DEBUG
-        ) as cm:
+        with (
+            patch("time.sleep"),
+            self.assertLogs("servicenow_mcp.utils.helpers", level=logging.DEBUG) as cm,
+        ):
             _make_request("POST", "https://snow.example.com/api", max_retries=1, backoff_factor=0)
 
         # Two outgoing request lines expected

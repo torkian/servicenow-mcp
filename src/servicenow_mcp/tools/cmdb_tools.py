@@ -114,8 +114,7 @@ class CreateCIParams(BaseModel):
     ci_class: Optional[str] = Field(
         None,
         description=(
-            "CI class table to create the record in (e.g. cmdb_ci_server). "
-            "Defaults to cmdb_ci."
+            "CI class table to create the record in (e.g. cmdb_ci_server). Defaults to cmdb_ci."
         ),
     )
     short_description: Optional[str] = Field(None, description="Brief description of the CI")
@@ -133,8 +132,7 @@ class CreateCIParams(BaseModel):
     install_status: Optional[str] = Field(
         None,
         description=(
-            "Install status: 1=Installed, 2=On order, 3=In maintenance, "
-            "6=In stock, 7=Retired"
+            "Install status: 1=Installed, 2=On order, 3=In maintenance, 6=In stock, 7=Retired"
         ),
     )
     ip_address: Optional[str] = Field(None, description="IP address of the CI")
@@ -152,8 +150,7 @@ class ListCMDBClassesParams(BaseModel):
     ci_class: Optional[str] = Field(
         None,
         description=(
-            "Base CI class table to query (e.g. cmdb_ci_server). "
-            "Defaults to cmdb_ci (base class)."
+            "Base CI class table to query (e.g. cmdb_ci_server). Defaults to cmdb_ci (base class)."
         ),
     )
     query: Optional[str] = Field(
@@ -176,9 +173,7 @@ class GetCIByNameParams(BaseModel):
     )
     ci_class: Optional[str] = Field(
         None,
-        description=(
-            "CI class table to query (e.g. cmdb_ci_server). Defaults to cmdb_ci."
-        ),
+        description=("CI class table to query (e.g. cmdb_ci_server). Defaults to cmdb_ci."),
     )
     limit: Optional[int] = Field(10, description="Maximum number of records to return (default 10)")
     offset: Optional[int] = Field(0, description="Pagination offset")
@@ -559,7 +554,10 @@ def get_ci_by_name(
         return _paginated_list_response(cis, validated.limit, validated.offset, "cis")
     except requests.exceptions.RequestException as e:
         logger.error(f"Error searching CIs by name: {e}")
-        return {"success": False, "message": f"Error searching CIs by name: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error searching CIs by name: {_format_http_error(e)}",
+        }
 
 
 class ListCMDBCIOutagesParams(BaseModel):
@@ -974,7 +972,10 @@ def delete_ci_outage(
         if response.status_code == 404:
             return {"success": False, "message": f"CI outage not found: {validated.sys_id}"}
         if response.status_code == 204:
-            return {"success": True, "message": f"CI outage {validated.sys_id} deleted successfully"}
+            return {
+                "success": True,
+                "message": f"CI outage {validated.sys_id} deleted successfully",
+            }
         response.raise_for_status()
         return {"success": True, "message": f"CI outage {validated.sys_id} deleted successfully"}
     except requests.exceptions.RequestException as e:

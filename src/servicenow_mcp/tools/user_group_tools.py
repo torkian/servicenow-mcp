@@ -54,6 +54,7 @@ GROUP_MEMBER_FIELDS = [
 # Parameter models
 # ---------------------------------------------------------------------------
 
+
 class ListUserGroupsParams(BaseModel):
     """Parameters for listing user groups."""
 
@@ -101,6 +102,7 @@ class ListGroupMembersParams(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _format_user_group(record: Dict) -> Dict:
     """Normalise reference fields from a raw sys_user_group API record."""
@@ -206,6 +208,7 @@ def _resolve_user_sys_id(
 # Tool implementations
 # ---------------------------------------------------------------------------
 
+
 def list_user_groups(
     auth_manager: AuthManager,
     server_config: ServerConfig,
@@ -293,7 +296,10 @@ def get_user_group(
             return {"success": True, "group": _format_user_group(record)}
         except requests.exceptions.RequestException as e:
             logger.error(f"Error retrieving user group: {e}")
-            return {"success": False, "message": f"Error retrieving user group: {_format_http_error(e)}"}
+            return {
+                "success": False,
+                "message": f"Error retrieving user group: {_format_http_error(e)}",
+            }
     else:
         url = f"{instance_url}{USER_GROUP_TABLE}"
         try:
@@ -301,7 +307,11 @@ def get_user_group(
                 "GET",
                 url,
                 headers=headers,
-                params={**base_params, "sysparm_query": f"name={validated.group_id}", "sysparm_limit": 1},
+                params={
+                    **base_params,
+                    "sysparm_query": f"name={validated.group_id}",
+                    "sysparm_limit": 1,
+                },
             )
             response.raise_for_status()
             records = response.json().get("result", [])
@@ -310,7 +320,10 @@ def get_user_group(
             return {"success": True, "group": _format_user_group(records[0])}
         except requests.exceptions.RequestException as e:
             logger.error(f"Error retrieving user group: {e}")
-            return {"success": False, "message": f"Error retrieving user group: {_format_http_error(e)}"}
+            return {
+                "success": False,
+                "message": f"Error retrieving user group: {_format_http_error(e)}",
+            }
 
 
 def add_user_to_group(
@@ -395,14 +408,20 @@ def remove_user_from_group(
     try:
         response = _make_request("DELETE", url, headers=headers)
         if response.status_code == 404:
-            return {"success": False, "message": f"Group member record not found: {validated.member_sys_id}"}
+            return {
+                "success": False,
+                "message": f"Group member record not found: {validated.member_sys_id}",
+            }
         if response.status_code in (200, 204):
             return {"success": True, "message": "User removed from group successfully"}
         response.raise_for_status()
         return {"success": True, "message": "User removed from group successfully"}
     except requests.exceptions.RequestException as e:
         logger.error(f"Error removing user from group: {e}")
-        return {"success": False, "message": f"Error removing user from group: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error removing user from group: {_format_http_error(e)}",
+        }
 
 
 def list_group_members(
@@ -414,7 +433,9 @@ def list_group_members(
 
     Accepts a group sys_id or exact group name and returns paginated grmember records.
     """
-    result = _unwrap_and_validate_params(params, ListGroupMembersParams, required_fields=["group_id"])
+    result = _unwrap_and_validate_params(
+        params, ListGroupMembersParams, required_fields=["group_id"]
+    )
     if not result["success"]:
         return result
     validated = result["params"]
@@ -447,4 +468,7 @@ def list_group_members(
         return _paginated_list_response(members, validated.limit, validated.offset, "members")
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing group members: {e}")
-        return {"success": False, "message": f"Error listing group members: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error listing group members: {_format_http_error(e)}",
+        }

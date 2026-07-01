@@ -30,7 +30,9 @@ DAY_FIELDS = ["monday", "tuesday", "wednesday", "thursday", "friday", "saturday"
 class ListTimeCardsParams(BaseModel):
     """Parameters for listing time cards."""
 
-    task_number: Optional[str] = Field(None, description="Filter by SCTASK number (e.g. SCTASK0525799)")
+    task_number: Optional[str] = Field(
+        None, description="Filter by SCTASK number (e.g. SCTASK0525799)"
+    )
     task_sys_id: Optional[str] = Field(None, description="Filter by task sys_id")
     user: Optional[str] = Field(None, description="Filter by username or sys_id")
     week_start: Optional[str] = Field(None, description="Filter by week start date (YYYY-MM-DD)")
@@ -81,11 +83,16 @@ class UpdateTimeCardParams(BaseModel):
 def _resolve_task_sys_id(instance_url: str, headers: Dict, task_number: str) -> Optional[str]:
     """Resolve a SCTASK number to its sys_id."""
     url = f"{instance_url}/api/now/table/sc_task"
-    resp = _make_request("GET", url, headers=headers, params={
-        "sysparm_query": f"number={task_number}",
-        "sysparm_limit": 1,
-        "sysparm_fields": "sys_id",
-    })
+    resp = _make_request(
+        "GET",
+        url,
+        headers=headers,
+        params={
+            "sysparm_query": f"number={task_number}",
+            "sysparm_limit": 1,
+            "sysparm_fields": "sys_id",
+        },
+    )
     resp.raise_for_status()
     records = resp.json().get("result", [])
     return records[0]["sys_id"] if records else None
@@ -178,7 +185,9 @@ def create_time_card(
     params: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Create a new time card entry for a task."""
-    result = _unwrap_and_validate_params(params, CreateTimeCardParams, required_fields=["task_number", "week_start"])
+    result = _unwrap_and_validate_params(
+        params, CreateTimeCardParams, required_fields=["task_number", "week_start"]
+    )
     if not result["success"]:
         return result
     validated = result["params"]
@@ -234,7 +243,9 @@ def update_time_card(
     params: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Update an existing time card entry."""
-    result = _unwrap_and_validate_params(params, UpdateTimeCardParams, required_fields=["time_card_sys_id"])
+    result = _unwrap_and_validate_params(
+        params, UpdateTimeCardParams, required_fields=["time_card_sys_id"]
+    )
     if not result["success"]:
         return result
     validated = result["params"]

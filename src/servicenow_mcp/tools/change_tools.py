@@ -29,7 +29,9 @@ class CreateChangeRequestParams(BaseModel):
     """Parameters for creating a change request."""
 
     short_description: str = Field(..., description="Short description of the change request")
-    description: Optional[str] = Field(None, description="Detailed description of the change request")
+    description: Optional[str] = Field(
+        None, description="Detailed description of the change request"
+    )
     type: str = Field(..., description="Type of change (normal, standard, emergency)")
     risk: Optional[str] = Field(None, description="Risk level of the change")
     impact: Optional[str] = Field(None, description="Impact of the change")
@@ -49,8 +51,12 @@ class UpdateChangeRequestParams(BaseModel):
     """Parameters for updating a change request."""
 
     change_id: str = Field(..., description="Change request ID or sys_id")
-    short_description: Optional[str] = Field(None, description="Short description of the change request")
-    description: Optional[str] = Field(None, description="Detailed description of the change request")
+    short_description: Optional[str] = Field(
+        None, description="Short description of the change request"
+    )
+    description: Optional[str] = Field(
+        None, description="Detailed description of the change request"
+    )
     state: Optional[str] = Field(None, description="State of the change request")
     risk: Optional[str] = Field(None, description="Risk level of the change")
     impact: Optional[str] = Field(None, description="Impact of the change")
@@ -75,7 +81,9 @@ class ListChangeRequestsParams(BaseModel):
     type: Optional[str] = Field(None, description="Filter by type (normal, standard, emergency)")
     category: Optional[str] = Field(None, description="Filter by category")
     assignment_group: Optional[str] = Field(None, description="Filter by assignment group")
-    timeframe: Optional[str] = Field(None, description="Filter by timeframe (upcoming, in-progress, completed)")
+    timeframe: Optional[str] = Field(
+        None, description="Filter by timeframe (upcoming, in-progress, completed)"
+    )
     query: Optional[str] = Field(None, description="Additional query string")
 
 
@@ -92,8 +100,12 @@ class AddChangeTaskParams(BaseModel):
     short_description: str = Field(..., description="Short description of the task")
     description: Optional[str] = Field(None, description="Detailed description of the task")
     assigned_to: Optional[str] = Field(None, description="User assigned to the task")
-    planned_start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
-    planned_end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
+    planned_start_date: Optional[str] = Field(
+        None, description="Planned start date (YYYY-MM-DD HH:MM:SS)"
+    )
+    planned_end_date: Optional[str] = Field(
+        None, description="Planned end date (YYYY-MM-DD HH:MM:SS)"
+    )
 
     @field_validator("planned_start_date", "planned_end_date", mode="before")
     @classmethod
@@ -142,22 +154,20 @@ def create_change_request(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        CreateChangeRequestParams, 
-        required_fields=["short_description", "type"]
+        params, CreateChangeRequestParams, required_fields=["short_description", "type"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "short_description": validated_params.short_description,
         "type": validated_params.type,
     }
-    
+
     # Add optional fields if provided
     if validated_params.description:
         data["description"] = validated_params.description
@@ -175,7 +185,7 @@ def create_change_request(
         data["start_date"] = validated_params.start_date
     if validated_params.end_date:
         data["end_date"] = validated_params.end_date
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -183,7 +193,7 @@ def create_change_request(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -191,19 +201,19 @@ def create_change_request(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/change_request"
-    
+
     try:
         response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Change request created successfully",
@@ -235,19 +245,17 @@ def update_change_request(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        UpdateChangeRequestParams, 
-        required_fields=["change_id"]
+        params, UpdateChangeRequestParams, required_fields=["change_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {}
-    
+
     # Add fields if provided
     if validated_params.short_description:
         data["short_description"] = validated_params.short_description
@@ -269,7 +277,7 @@ def update_change_request(
         data["end_date"] = validated_params.end_date
     if validated_params.work_notes:
         data["work_notes"] = validated_params.work_notes
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -277,7 +285,7 @@ def update_change_request(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -285,19 +293,19 @@ def update_change_request(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/change_request/{validated_params.change_id}"
-    
+
     try:
         response = _make_request("PUT", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Change request updated successfully",
@@ -328,19 +336,16 @@ def list_change_requests(
         A list of change requests.
     """
     # Unwrap and validate parameters
-    result = _unwrap_and_validate_params(
-        params, 
-        ListChangeRequestsParams
-    )
-    
+    result = _unwrap_and_validate_params(params, ListChangeRequestsParams)
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Build the query
     query_parts = []
-    
+
     if validated_params.state:
         query_parts.append(f"state={validated_params.state}")
     if validated_params.type:
@@ -349,7 +354,7 @@ def list_change_requests(
         query_parts.append(f"category={validated_params.category}")
     if validated_params.assignment_group:
         query_parts.append(f"assignment_group={validated_params.assignment_group}")
-    
+
     # Handle timeframe filtering
     if validated_params.timeframe:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -359,14 +364,14 @@ def list_change_requests(
             query_parts.append(f"start_date<{now}^end_date>{now}")
         elif validated_params.timeframe == "completed":
             query_parts.append(f"end_date<{now}")
-    
+
     # Add any additional query string
     if validated_params.query:
         query_parts.append(validated_params.query)
-    
+
     # Combine query parts
     query = "^".join(query_parts) if query_parts else ""
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -374,7 +379,7 @@ def list_change_requests(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -382,27 +387,27 @@ def list_change_requests(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/change_request"
-    
+
     params = {
         "sysparm_limit": validated_params.limit,
         "sysparm_offset": validated_params.offset,
         "sysparm_query": query,
         "sysparm_display_value": "true",
     }
-    
+
     try:
         response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         # Handle the case where result["result"] is a list
         change_requests = result.get("result", [])
         count = len(change_requests)
-        
+
         return {
             "success": True,
             "change_requests": change_requests,
@@ -435,16 +440,14 @@ def get_change_request_details(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        GetChangeRequestDetailsParams,
-        required_fields=["change_id"]
+        params, GetChangeRequestDetailsParams, required_fields=["change_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -452,7 +455,7 @@ def get_change_request_details(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -460,32 +463,32 @@ def get_change_request_details(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/change_request/{validated_params.change_id}"
-    
+
     params = {
         "sysparm_display_value": "true",
     }
-    
+
     try:
         response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         # Get tasks associated with this change request
         tasks_url = f"{instance_url}/api/now/table/change_task"
         tasks_params = {
             "sysparm_query": f"change_request={validated_params.change_id}",
             "sysparm_display_value": "true",
         }
-        
+
         tasks_response = _make_request("GET", tasks_url, headers=headers, params=tasks_params)
         tasks_response.raise_for_status()
-        
+
         tasks_result = tasks_response.json()
-        
+
         return {
             "success": True,
             "change_request": result["result"],
@@ -517,22 +520,20 @@ def add_change_task(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        AddChangeTaskParams,
-        required_fields=["change_id", "short_description"]
+        params, AddChangeTaskParams, required_fields=["change_id", "short_description"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "change_request": validated_params.change_id,
         "short_description": validated_params.short_description,
     }
-    
+
     # Add optional fields if provided
     if validated_params.description:
         data["description"] = validated_params.description
@@ -542,7 +543,7 @@ def add_change_task(
         data["planned_start_date"] = validated_params.planned_start_date
     if validated_params.planned_end_date:
         data["planned_end_date"] = validated_params.planned_end_date
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -550,7 +551,7 @@ def add_change_task(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -558,19 +559,19 @@ def add_change_task(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/change_task"
-    
+
     try:
         response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Change task added successfully",
@@ -602,25 +603,23 @@ def submit_change_for_approval(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        SubmitChangeForApprovalParams,
-        required_fields=["change_id"]
+        params, SubmitChangeForApprovalParams, required_fields=["change_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "state": "assess",  # Set state to "assess" to submit for approval
     }
-    
+
     # Add approval comments if provided
     if validated_params.approval_comments:
         data["work_notes"] = validated_params.approval_comments
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -628,7 +627,7 @@ def submit_change_for_approval(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -636,17 +635,17 @@ def submit_change_for_approval(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/change_request/{validated_params.change_id}"
-    
+
     try:
         response = _make_request("PATCH", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         # Now, create an approval request
         approval_url = f"{instance_url}/api/now/table/sysapproval_approver"
         approval_data = {
@@ -654,12 +653,12 @@ def submit_change_for_approval(
             "source_table": "change_request",
             "state": "requested",
         }
-        
+
         approval_response = _make_request("POST", approval_url, json=approval_data, headers=headers)
         approval_response.raise_for_status()
-        
+
         approval_result = approval_response.json()
-        
+
         return {
             "success": True,
             "message": "Change request submitted for approval successfully",
@@ -690,17 +689,13 @@ def approve_change(
         The result of the approval.
     """
     # Unwrap and validate parameters
-    result = _unwrap_and_validate_params(
-        params, 
-        ApproveChangeParams,
-        required_fields=["change_id"]
-    )
-    
+    result = _unwrap_and_validate_params(params, ApproveChangeParams, required_fields=["change_id"])
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -708,7 +703,7 @@ def approve_change(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -716,53 +711,57 @@ def approve_change(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # First, find the approval record
     approval_query_url = f"{instance_url}/api/now/table/sysapproval_approver"
-    
+
     query_params = {
         "sysparm_query": f"document_id={validated_params.change_id}",
         "sysparm_limit": 1,
     }
-    
+
     try:
-        approval_response = _make_request("GET", approval_query_url, headers=headers, params=query_params)
+        approval_response = _make_request(
+            "GET", approval_query_url, headers=headers, params=query_params
+        )
         approval_response.raise_for_status()
-        
+
         approval_result = approval_response.json()
-        
+
         if not approval_result.get("result") or len(approval_result["result"]) == 0:
             return {
                 "success": False,
                 "message": "No approval record found for this change request",
             }
-        
+
         approval_id = approval_result["result"][0]["sys_id"]
-        
+
         # Now, update the approval record to approved
         approval_update_url = f"{instance_url}/api/now/table/sysapproval_approver/{approval_id}"
         headers["Content-Type"] = "application/json"
-        
+
         approval_data = {
             "state": "approved",
         }
-        
+
         if validated_params.approval_comments:
             approval_data["comments"] = validated_params.approval_comments
-        
-        approval_update_response = _make_request("PATCH", approval_update_url, json=approval_data, headers=headers)
+
+        approval_update_response = _make_request(
+            "PATCH", approval_update_url, json=approval_data, headers=headers
+        )
         approval_update_response.raise_for_status()
-        
+
         # Finally, update the change request state to "implement"
         change_url = f"{instance_url}/api/now/table/change_request/{validated_params.change_id}"
-        
+
         change_data = {
             "state": "implement",  # This may vary depending on ServiceNow configuration
         }
-        
+
         change_response = _make_request("PATCH", change_url, json=change_data, headers=headers)
         change_response.raise_for_status()
-        
+
         return {
             "success": True,
             "message": "Change request approved successfully",
@@ -784,7 +783,10 @@ class ListChangeTasksParams(BaseModel):
     )
     limit: int = Field(10, description="Maximum number of tasks to return")
     offset: int = Field(0, description="Pagination offset")
-    state: Optional[str] = Field(None, description="Filter by task state (e.g. -5=Pending, 1=Open, 2=Work In Progress, 3=Closed Complete)")
+    state: Optional[str] = Field(
+        None,
+        description="Filter by task state (e.g. -5=Pending, 1=Open, 2=Work In Progress, 3=Closed Complete)",
+    )
 
 
 class CreateChangeTaskParams(BaseModel):
@@ -797,10 +799,18 @@ class CreateChangeTaskParams(BaseModel):
     short_description: str = Field(..., description="Short description of the task")
     description: Optional[str] = Field(None, description="Detailed description of the task")
     assigned_to: Optional[str] = Field(None, description="Username or sys_id of the assignee")
-    assignment_group: Optional[str] = Field(None, description="Name or sys_id of the assignment group")
-    state: Optional[str] = Field(None, description="Initial state. Defaults to Open (-5=Pending, 1=Open, 2=Work In Progress)")
-    planned_start_date: Optional[str] = Field(None, description="Planned start date (YYYY-MM-DD HH:MM:SS)")
-    planned_end_date: Optional[str] = Field(None, description="Planned end date (YYYY-MM-DD HH:MM:SS)")
+    assignment_group: Optional[str] = Field(
+        None, description="Name or sys_id of the assignment group"
+    )
+    state: Optional[str] = Field(
+        None, description="Initial state. Defaults to Open (-5=Pending, 1=Open, 2=Work In Progress)"
+    )
+    planned_start_date: Optional[str] = Field(
+        None, description="Planned start date (YYYY-MM-DD HH:MM:SS)"
+    )
+    planned_end_date: Optional[str] = Field(
+        None, description="Planned end date (YYYY-MM-DD HH:MM:SS)"
+    )
     work_notes: Optional[str] = Field(None, description="Initial work notes")
 
     @field_validator("planned_start_date", "planned_end_date", mode="before")
@@ -824,7 +834,11 @@ def _resolve_change_request_sys_id(
             "GET",
             url,
             headers=headers,
-            params={"sysparm_query": f"number={change_request_id}", "sysparm_limit": 1, "sysparm_fields": "sys_id"},
+            params={
+                "sysparm_query": f"number={change_request_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
         )
         resp.raise_for_status()
         results = resp.json().get("result", [])
@@ -857,9 +871,14 @@ def list_change_tasks(
     if not headers:
         return {"success": False, "message": "Cannot find get_headers method"}
 
-    change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_request_id)
+    change_sys_id = _resolve_change_request_sys_id(
+        instance_url, headers, validated.change_request_id
+    )
     if not change_sys_id:
-        return {"success": False, "message": f"Change request not found: {validated.change_request_id}"}
+        return {
+            "success": False,
+            "message": f"Change request not found: {validated.change_request_id}",
+        }
 
     query_parts = [f"change_request={change_sys_id}"]
     if validated.state:
@@ -912,9 +931,14 @@ def create_change_task(
         return {"success": False, "message": "Cannot find get_headers method"}
     headers["Content-Type"] = "application/json"
 
-    change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_request_id)
+    change_sys_id = _resolve_change_request_sys_id(
+        instance_url, headers, validated.change_request_id
+    )
     if not change_sys_id:
-        return {"success": False, "message": f"Change request not found: {validated.change_request_id}"}
+        return {
+            "success": False,
+            "message": f"Change request not found: {validated.change_request_id}",
+        }
 
     body: Dict[str, Any] = {
         "change_request": change_sys_id,
@@ -981,9 +1005,7 @@ class ReopenChangeRequestParams(BaseModel):
         "-5",
         description="Target state to reopen to: '-5' = New (default), '-4' = Assess",
     )
-    work_notes: Optional[str] = Field(
-        None, description="Work notes to add when reopening"
-    )
+    work_notes: Optional[str] = Field(None, description="Work notes to add when reopening")
 
 
 def cancel_change_request(
@@ -1033,7 +1055,10 @@ def cancel_change_request(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error cancelling change request: {e}")
-        return {"success": False, "message": f"Error cancelling change request: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error cancelling change request: {_format_http_error(e)}",
+        }
 
 
 def reopen_change_request(
@@ -1084,7 +1109,10 @@ def reopen_change_request(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error reopening change request: {e}")
-        return {"success": False, "message": f"Error reopening change request: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error reopening change request: {_format_http_error(e)}",
+        }
 
 
 def reject_change(
@@ -1105,16 +1133,14 @@ def reject_change(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        RejectChangeParams,
-        required_fields=["change_id", "rejection_reason"]
+        params, RejectChangeParams, required_fields=["change_id", "rejection_reason"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -1122,7 +1148,7 @@ def reject_change(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -1130,52 +1156,56 @@ def reject_change(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # First, find the approval record
     approval_query_url = f"{instance_url}/api/now/table/sysapproval_approver"
-    
+
     query_params = {
         "sysparm_query": f"document_id={validated_params.change_id}",
         "sysparm_limit": 1,
     }
-    
+
     try:
-        approval_response = _make_request("GET", approval_query_url, headers=headers, params=query_params)
+        approval_response = _make_request(
+            "GET", approval_query_url, headers=headers, params=query_params
+        )
         approval_response.raise_for_status()
-        
+
         approval_result = approval_response.json()
-        
+
         if not approval_result.get("result") or len(approval_result["result"]) == 0:
             return {
                 "success": False,
                 "message": "No approval record found for this change request",
             }
-        
+
         approval_id = approval_result["result"][0]["sys_id"]
-        
+
         # Now, update the approval record to rejected
         approval_update_url = f"{instance_url}/api/now/table/sysapproval_approver/{approval_id}"
         headers["Content-Type"] = "application/json"
-        
+
         approval_data = {
             "state": "rejected",
             "comments": validated_params.rejection_reason,
         }
-        
-        approval_update_response = _make_request("PATCH", approval_update_url, json=approval_data, headers=headers)
+
+        approval_update_response = _make_request(
+            "PATCH", approval_update_url, json=approval_data, headers=headers
+        )
         approval_update_response.raise_for_status()
-        
+
         # Finally, update the change request state to "canceled"
         change_url = f"{instance_url}/api/now/table/change_request/{validated_params.change_id}"
-        
+
         change_data = {
             "state": "canceled",  # This may vary depending on ServiceNow configuration
             "work_notes": f"Change request rejected: {validated_params.rejection_reason}",
         }
-        
+
         change_response = _make_request("PATCH", change_url, json=change_data, headers=headers)
         change_response.raise_for_status()
-        
+
         return {
             "success": True,
             "message": "Change request rejected successfully",
@@ -1185,4 +1215,4 @@ def reject_change(
         return {
             "success": False,
             "message": f"Error rejecting change: {_format_http_error(e)}",
-        } 
+        }

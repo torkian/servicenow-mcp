@@ -63,6 +63,7 @@ def _make_response(status_code=200, json_body=None):
 # _format_request_item
 # ---------------------------------------------------------------------------
 
+
 class TestFormatRequestItem(unittest.TestCase):
     def test_all_fields_mapped(self):
         result = _format_request_item(FAKE_ITEM)
@@ -114,8 +115,8 @@ class TestFormatRequestItem(unittest.TestCase):
 # list_request_items
 # ---------------------------------------------------------------------------
 
-class TestListRequestItems(unittest.TestCase):
 
+class TestListRequestItems(unittest.TestCase):
     def test_missing_request_id_returns_failure(self):
         result = list_request_items(_make_auth_manager(), _make_config(), {})
         self.assertFalse(result["success"])
@@ -123,9 +124,7 @@ class TestListRequestItems(unittest.TestCase):
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_basic_list_by_sys_id(self, mock_req):
         # The sys_id passthrough means only one HTTP call: the list itself
-        mock_req.return_value = _make_response(
-            json_body={"result": [FAKE_ITEM]}
-        )
+        mock_req.return_value = _make_response(json_body={"result": [FAKE_ITEM]})
         result = list_request_items(
             _make_auth_manager(),
             _make_config(),

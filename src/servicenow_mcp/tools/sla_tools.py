@@ -363,9 +363,7 @@ class GetSLABreachParams(BaseModel):
 class ListSLABreachesParams(BaseModel):
     """Parameters for listing SLA breach records from task_sla."""
 
-    limit: Optional[int] = Field(
-        20, description="Maximum number of records to return (default 20)"
-    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
     offset: Optional[int] = Field(0, description="Pagination offset")
     has_breached: Optional[bool] = Field(
         None,
@@ -374,8 +372,7 @@ class ListSLABreachesParams(BaseModel):
     stage: Optional[str] = Field(
         None,
         description=(
-            "Filter by SLA stage. Common values: 'in_progress', 'breached', "
-            "'paused', 'completed'"
+            "Filter by SLA stage. Common values: 'in_progress', 'breached', 'paused', 'completed'"
         ),
     )
     table_name: Optional[str] = Field(
@@ -389,8 +386,7 @@ class ListSLABreachesParams(BaseModel):
     sla_sys_id: Optional[str] = Field(
         None,
         description=(
-            "Filter by a specific SLA definition sys_id (contract_sla.sys_id; "
-            "32-char hex)"
+            "Filter by a specific SLA definition sys_id (contract_sla.sys_id; 32-char hex)"
         ),
     )
 
@@ -429,9 +425,7 @@ def list_sla_breaches(
 
     filters = []
     if validated.has_breached is not None:
-        filters.append(
-            f"has_breached={'true' if validated.has_breached else 'false'}"
-        )
+        filters.append(f"has_breached={'true' if validated.has_breached else 'false'}")
     if validated.stage:
         filters.append(f"stage={validated.stage}")
     if validated.table_name:
@@ -453,12 +447,8 @@ def list_sla_breaches(
     try:
         response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
-        breaches = [
-            _format_task_sla(r) for r in response.json().get("result", [])
-        ]
-        return _paginated_list_response(
-            breaches, validated.limit, validated.offset, "sla_breaches"
-        )
+        breaches = [_format_task_sla(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(breaches, validated.limit, validated.offset, "sla_breaches")
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing SLA breaches: {e}")
         return {

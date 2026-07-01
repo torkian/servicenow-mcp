@@ -11,7 +11,6 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestCloseIncidentTask(unittest.TestCase):
-
     def setUp(self):
         auth_config = AuthConfig(
             type=AuthType.BASIC,
@@ -39,9 +38,7 @@ class TestCloseIncidentTask(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_task_tools.requests.patch")
     def test_close_by_task_number(self, mock_patch, mock_get):
         """Close a task using its TASK number; lookup resolves to sys_id."""
-        lookup_resp = self._patch_resp(
-            json_body={"result": [{"sys_id": "task_sys_id_001"}]}
-        )
+        lookup_resp = self._patch_resp(json_body={"result": [{"sys_id": "task_sys_id_001"}]})
         mock_get.return_value = lookup_resp
 
         patch_resp = self._patch_resp(
@@ -93,9 +90,7 @@ class TestCloseIncidentTask(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_task_tools.requests.patch")
     def test_close_with_work_notes(self, mock_patch, mock_get):
         """work_notes are forwarded in the PATCH body."""
-        lookup_resp = self._patch_resp(
-            json_body={"result": [{"sys_id": "task_sys_id_003"}]}
-        )
+        lookup_resp = self._patch_resp(json_body={"result": [{"sys_id": "task_sys_id_003"}]})
         mock_get.return_value = lookup_resp
 
         patch_resp = self._patch_resp(
@@ -117,9 +112,7 @@ class TestCloseIncidentTask(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_task_tools.requests.patch")
     def test_close_with_all_optional_fields(self, mock_patch, mock_get):
         """Both close_notes and work_notes are forwarded."""
-        lookup_resp = self._patch_resp(
-            json_body={"result": [{"sys_id": "task_sys_id_004"}]}
-        )
+        lookup_resp = self._patch_resp(json_body={"result": [{"sys_id": "task_sys_id_004"}]})
         mock_get.return_value = lookup_resp
 
         patch_resp = self._patch_resp(
@@ -147,9 +140,7 @@ class TestCloseIncidentTask(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_task_tools.requests.patch")
     def test_close_minimal_params(self, mock_patch, mock_get):
         """Closing with only task_id sends just state=3 in the body."""
-        lookup_resp = self._patch_resp(
-            json_body={"result": [{"sys_id": "task_sys_id_005"}]}
-        )
+        lookup_resp = self._patch_resp(json_body={"result": [{"sys_id": "task_sys_id_005"}]})
         mock_get.return_value = lookup_resp
 
         patch_resp = self._patch_resp(
@@ -172,9 +163,7 @@ class TestCloseIncidentTask(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_task_tools.requests.patch")
     def test_close_unwraps_nested_params(self, mock_patch, mock_get):
         """Params wrapped in {"params": {...}} are properly unwrapped."""
-        lookup_resp = self._patch_resp(
-            json_body={"result": [{"sys_id": "task_sys_id_006"}]}
-        )
+        lookup_resp = self._patch_resp(json_body={"result": [{"sys_id": "task_sys_id_006"}]})
         mock_get.return_value = lookup_resp
 
         patch_resp = self._patch_resp(
@@ -219,9 +208,7 @@ class TestCloseIncidentTask(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_task_tools.requests.patch")
     def test_close_patch_returns_404(self, mock_patch, mock_get):
         """404 from PATCH returns a not-found error."""
-        lookup_resp = self._patch_resp(
-            json_body={"result": [{"sys_id": "task_sys_id_007"}]}
-        )
+        lookup_resp = self._patch_resp(json_body={"result": [{"sys_id": "task_sys_id_007"}]})
         mock_get.return_value = lookup_resp
 
         patch_resp = self._patch_resp(status_code=404, json_body={})
@@ -240,9 +227,7 @@ class TestCloseIncidentTask(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_task_tools.requests.patch")
     def test_close_http_error(self, mock_patch, mock_get):
         """Network error during PATCH returns success=False."""
-        lookup_resp = self._patch_resp(
-            json_body={"result": [{"sys_id": "task_sys_id_008"}]}
-        )
+        lookup_resp = self._patch_resp(json_body={"result": [{"sys_id": "task_sys_id_008"}]})
         mock_get.return_value = lookup_resp
 
         mock_patch.side_effect = req.exceptions.RequestException("503 Unavailable")

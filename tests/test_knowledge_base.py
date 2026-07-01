@@ -40,10 +40,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
         """Set up test fixtures."""
         auth_config = AuthConfig(
             type=AuthType.BASIC,
-            basic=BasicAuthConfig(
-                username="test_user",
-                password="test_password"
-            )
+            basic=BasicAuthConfig(username="test_user", password="test_password"),
         )
         self.server_config = ServerConfig(
             instance_url="https://test.service-now.com",
@@ -79,7 +76,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
             title="Test Knowledge Base",
             description="Test Description",
             owner="admin",
-            managers="it_managers"
+            managers="it_managers",
         )
         result = create_knowledge_base(self.server_config, self.auth_manager, params)
 
@@ -121,7 +118,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
             title="Test Category",
             description="Test Category Description",
             knowledge_base="kb001",
-            active=True
+            active=True,
         )
         result = create_category(self.server_config, self.auth_manager, params)
 
@@ -168,7 +165,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
             knowledge_base="kb001",
             category="cat001",
             keywords="test,article,knowledge",
-            article_type="text"
+            article_type="text",
         )
         result = create_article(self.server_config, self.auth_manager, params)
 
@@ -213,7 +210,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
             title="Updated Article",
             text="This is an updated article content",
             category="cat002",
-            keywords="updated,article,knowledge"
+            keywords="updated,article,knowledge",
         )
         result = update_article(self.server_config, self.auth_manager, params)
 
@@ -248,10 +245,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
         mock_patch.return_value = mock_response
 
         # Call the method
-        params = PublishArticleParams(
-            article_id="art001",
-            workflow_state="published"
-        )
+        params = PublishArticleParams(article_id="art001", workflow_state="published")
         result = publish_article(self.server_config, self.auth_manager, params)
 
         # Verify the result
@@ -291,7 +285,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
                     "workflow_state": {"display_value": "Draft"},
                     "sys_created_on": "2023-01-03 00:00:00",
                     "sys_updated_on": "2023-01-04 00:00:00",
-                }
+                },
             ]
         }
         mock_response.status_code = 200
@@ -304,7 +298,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
             knowledge_base="kb001",
             category="cat001",
             workflow_state="published",
-            query="network"
+            query="network",
         )
         result = list_articles(self.server_config, self.auth_manager, params)
 
@@ -325,7 +319,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
         self.assertEqual(10, kwargs["params"]["sysparm_limit"])
         self.assertEqual(0, kwargs["params"]["sysparm_offset"])
         self.assertEqual("all", kwargs["params"]["sysparm_display_value"])
-        
+
         # Verify the query syntax contains the correct pattern
         self.assertIn("sysparm_query", kwargs["params"])
         query = kwargs["params"]["sysparm_query"]
@@ -350,7 +344,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
                 "author": {"display_value": "admin"},
                 "keywords": "test,article,knowledge",
                 "article_type": "text",
-                "view_count": "42"
+                "view_count": "42",
             }
         }
         mock_response.status_code = 200
@@ -437,19 +431,14 @@ class TestKnowledgeBaseTools(unittest.TestCase):
                     "active": "true",
                     "sys_created_on": "2023-01-03 00:00:00",
                     "sys_updated_on": "2023-01-04 00:00:00",
-                }
+                },
             ]
         }
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
         # Call the method
-        params = ListKnowledgeBasesParams(
-            limit=10,
-            offset=0,
-            active=True,
-            query="IT"
-        )
+        params = ListKnowledgeBasesParams(limit=10, offset=0, active=True, query="IT")
         result = list_knowledge_bases(self.server_config, self.auth_manager, params)
 
         # Verify the result
@@ -457,7 +446,9 @@ class TestKnowledgeBaseTools(unittest.TestCase):
         self.assertEqual(2, len(result["knowledge_bases"]))
         self.assertEqual("kb001", result["knowledge_bases"][0]["id"])
         self.assertEqual("IT Knowledge Base", result["knowledge_bases"][0]["title"])
-        self.assertEqual("Knowledge base for IT resources", result["knowledge_bases"][0]["description"])
+        self.assertEqual(
+            "Knowledge base for IT resources", result["knowledge_bases"][0]["description"]
+        )
         self.assertEqual("admin", result["knowledge_bases"][0]["owner"])
         self.assertEqual("it_managers", result["knowledge_bases"][0]["managers"])
         self.assertTrue(result["knowledge_bases"][0]["active"])
@@ -470,7 +461,9 @@ class TestKnowledgeBaseTools(unittest.TestCase):
         self.assertEqual(10, kwargs["params"]["sysparm_limit"])
         self.assertEqual(0, kwargs["params"]["sysparm_offset"])
         self.assertEqual("true", kwargs["params"]["sysparm_display_value"])
-        self.assertEqual("active=true^titleLIKEIT^ORdescriptionLIKEIT", kwargs["params"]["sysparm_query"])
+        self.assertEqual(
+            "active=true^titleLIKEIT^ORdescriptionLIKEIT", kwargs["params"]["sysparm_query"]
+        )
 
     @patch("servicenow_mcp.tools.knowledge_base.requests.get")
     def test_list_categories(self, mock_get):
@@ -498,18 +491,14 @@ class TestKnowledgeBaseTools(unittest.TestCase):
                     "active": "true",
                     "sys_created_on": "2023-01-03 00:00:00",
                     "sys_updated_on": "2023-01-04 00:00:00",
-                }
+                },
             ]
         }
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
         # Call the method
-        params = ListCategoriesParams(
-            knowledge_base="kb001",
-            active=True,
-            query="Network"
-        )
+        params = ListCategoriesParams(knowledge_base="kb001", active=True, query="Network")
         result = list_categories(self.server_config, self.auth_manager, params)
 
         # Verify the result
@@ -517,7 +506,9 @@ class TestKnowledgeBaseTools(unittest.TestCase):
         self.assertEqual(2, len(result["categories"]))
         self.assertEqual("cat001", result["categories"][0]["id"])
         self.assertEqual("Network Troubleshooting", result["categories"][0]["title"])
-        self.assertEqual("Articles for network troubleshooting", result["categories"][0]["description"])
+        self.assertEqual(
+            "Articles for network troubleshooting", result["categories"][0]["description"]
+        )
         self.assertEqual("IT Knowledge Base", result["categories"][0]["knowledge_base"])
         self.assertEqual("", result["categories"][0]["parent_category"])
         self.assertTrue(result["categories"][0]["active"])
@@ -530,7 +521,7 @@ class TestKnowledgeBaseTools(unittest.TestCase):
         self.assertEqual(10, kwargs["params"]["sysparm_limit"])
         self.assertEqual(0, kwargs["params"]["sysparm_offset"])
         self.assertEqual("all", kwargs["params"]["sysparm_display_value"])
-        
+
         # Verify the query syntax contains the correct pattern
         self.assertIn("sysparm_query", kwargs["params"])
         query = kwargs["params"]["sysparm_query"]
@@ -556,7 +547,7 @@ class TestKnowledgeBaseParams(unittest.TestCase):
             owner="admin",
             managers="it_managers",
             publish_workflow="Custom Workflow",
-            retire_workflow="Custom Retire Workflow"
+            retire_workflow="Custom Retire Workflow",
         )
         self.assertEqual("Test Knowledge Base", params.title)
         self.assertEqual("Test Description", params.description)
@@ -568,10 +559,7 @@ class TestKnowledgeBaseParams(unittest.TestCase):
     def test_create_category_params(self):
         """Test CreateCategoryParams validation."""
         # Required parameters
-        params = CreateCategoryParams(
-            title="Test Category",
-            knowledge_base="kb001"
-        )
+        params = CreateCategoryParams(title="Test Category", knowledge_base="kb001")
         self.assertEqual("Test Category", params.title)
         self.assertEqual("kb001", params.knowledge_base)
         self.assertTrue(params.active)
@@ -582,7 +570,7 @@ class TestKnowledgeBaseParams(unittest.TestCase):
             description="Test Description",
             knowledge_base="kb001",
             parent_category="parent001",
-            active=False
+            active=False,
         )
         self.assertEqual("Test Category", params.title)
         self.assertEqual("Test Description", params.description)
@@ -598,7 +586,7 @@ class TestKnowledgeBaseParams(unittest.TestCase):
             text="Test content",
             short_description="Test short description",
             knowledge_base="kb001",
-            category="cat001"
+            category="cat001",
         )
         self.assertEqual("Test Article", params.title)
         self.assertEqual("Test content", params.text)
@@ -615,7 +603,7 @@ class TestKnowledgeBaseParams(unittest.TestCase):
             knowledge_base="kb001",
             category="cat001",
             keywords="test,article",
-            article_type="html"
+            article_type="html",
         )
         self.assertEqual("Test Article", params.title)
         self.assertEqual("Test content", params.text)
@@ -665,21 +653,23 @@ class TestListArticlesByCategory(unittest.TestCase):
 
         mock_req.side_effect = [
             self._make_category_response(sys_id="cat001", label="How-To"),
-            self._make_articles_response([
-                {
-                    "sys_id": "art001",
-                    "short_description": {"display_value": "Reset password"},
-                    "kb_knowledge_base": {"display_value": "IT KB"},
-                    "kb_category": {"display_value": "How-To"},
-                    "workflow_state": {"display_value": "published"},
-                    "author": {"display_value": "admin"},
-                    "keywords": {"display_value": "password,reset"},
-                    "view_count": {"display_value": "42"},
-                    "article_type": {"display_value": "html"},
-                    "sys_created_on": "2024-01-01 00:00:00",
-                    "sys_updated_on": "2024-06-01 00:00:00",
-                }
-            ]),
+            self._make_articles_response(
+                [
+                    {
+                        "sys_id": "art001",
+                        "short_description": {"display_value": "Reset password"},
+                        "kb_knowledge_base": {"display_value": "IT KB"},
+                        "kb_category": {"display_value": "How-To"},
+                        "workflow_state": {"display_value": "published"},
+                        "author": {"display_value": "admin"},
+                        "keywords": {"display_value": "password,reset"},
+                        "view_count": {"display_value": "42"},
+                        "article_type": {"display_value": "html"},
+                        "sys_created_on": "2024-01-01 00:00:00",
+                        "sys_updated_on": "2024-06-01 00:00:00",
+                    }
+                ]
+            ),
         ]
 
         params = ListArticlesByCategoryParams(category="How-To")
@@ -740,22 +730,24 @@ class TestListArticlesByCategory(unittest.TestCase):
 
         mock_req.side_effect = [
             self._make_category_response(),
-            self._make_articles_response([
-                {
-                    "sys_id": "art002",
-                    "short_description": {"display_value": "VPN Setup"},
-                    "kb_knowledge_base": {"display_value": "IT KB"},
-                    "kb_category": {"display_value": "How-To"},
-                    "workflow_state": {"display_value": "published"},
-                    "author": {"display_value": "admin"},
-                    "keywords": {"display_value": "vpn"},
-                    "view_count": {"display_value": "10"},
-                    "article_type": {"display_value": "html"},
-                    "text": {"display_value": "<p>Steps to set up VPN</p>"},
-                    "sys_created_on": "2024-01-01 00:00:00",
-                    "sys_updated_on": "2024-06-01 00:00:00",
-                }
-            ]),
+            self._make_articles_response(
+                [
+                    {
+                        "sys_id": "art002",
+                        "short_description": {"display_value": "VPN Setup"},
+                        "kb_knowledge_base": {"display_value": "IT KB"},
+                        "kb_category": {"display_value": "How-To"},
+                        "workflow_state": {"display_value": "published"},
+                        "author": {"display_value": "admin"},
+                        "keywords": {"display_value": "vpn"},
+                        "view_count": {"display_value": "10"},
+                        "article_type": {"display_value": "html"},
+                        "text": {"display_value": "<p>Steps to set up VPN</p>"},
+                        "sys_created_on": "2024-01-01 00:00:00",
+                        "sys_updated_on": "2024-06-01 00:00:00",
+                    }
+                ]
+            ),
         ]
 
         params = ListArticlesByCategoryParams(category="How-To", include_body=True)

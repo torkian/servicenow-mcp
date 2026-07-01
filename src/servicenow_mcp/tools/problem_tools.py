@@ -58,12 +58,20 @@ class ListProblemsParams(BaseModel):
 
     limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
     offset: Optional[int] = Field(0, description="Pagination offset")
-    state: Optional[str] = Field(None, description="Filter by problem state value (e.g. '1' for Open)")
+    state: Optional[str] = Field(
+        None, description="Filter by problem state value (e.g. '1' for Open)"
+    )
     assigned_to: Optional[str] = Field(None, description="Filter by assigned user name or sys_id")
-    assignment_group: Optional[str] = Field(None, description="Filter by assignment group name or sys_id")
+    assignment_group: Optional[str] = Field(
+        None, description="Filter by assignment group name or sys_id"
+    )
     category: Optional[str] = Field(None, description="Filter by category")
-    known_error: Optional[bool] = Field(None, description="If True, return only known-error problems")
-    query: Optional[str] = Field(None, description="Free-text search on short_description and description")
+    known_error: Optional[bool] = Field(
+        None, description="If True, return only known-error problems"
+    )
+    query: Optional[str] = Field(
+        None, description="Free-text search on short_description and description"
+    )
 
 
 class GetProblemParams(BaseModel):
@@ -82,11 +90,17 @@ class CreateProblemParams(BaseModel):
     description: Optional[str] = Field(None, description="Detailed description of the problem")
     category: Optional[str] = Field(None, description="Category of the problem")
     subcategory: Optional[str] = Field(None, description="Subcategory of the problem")
-    priority: Optional[str] = Field(None, description="Priority (1=Critical, 2=High, 3=Moderate, 4=Low)")
+    priority: Optional[str] = Field(
+        None, description="Priority (1=Critical, 2=High, 3=Moderate, 4=Low)"
+    )
     impact: Optional[str] = Field(None, description="Impact (1=High, 2=Medium, 3=Low)")
     urgency: Optional[str] = Field(None, description="Urgency (1=High, 2=Medium, 3=Low)")
-    assigned_to: Optional[str] = Field(None, description="User name or sys_id to assign the problem to")
-    assignment_group: Optional[str] = Field(None, description="Group name or sys_id for the assignment")
+    assigned_to: Optional[str] = Field(
+        None, description="User name or sys_id to assign the problem to"
+    )
+    assignment_group: Optional[str] = Field(
+        None, description="Group name or sys_id for the assignment"
+    )
     workaround: Optional[str] = Field(None, description="Workaround description")
     known_error: Optional[bool] = Field(None, description="Mark as a known error")
 
@@ -107,7 +121,9 @@ class UpdateProblemParams(BaseModel):
     impact: Optional[str] = Field(None, description="Updated impact")
     urgency: Optional[str] = Field(None, description="Updated urgency")
     assigned_to: Optional[str] = Field(None, description="Updated assignee user name or sys_id")
-    assignment_group: Optional[str] = Field(None, description="Updated assignment group name or sys_id")
+    assignment_group: Optional[str] = Field(
+        None, description="Updated assignment group name or sys_id"
+    )
     workaround: Optional[str] = Field(None, description="Updated workaround description")
     known_error: Optional[bool] = Field(None, description="Update known-error flag")
     cause_notes: Optional[str] = Field(None, description="Root-cause analysis notes")
@@ -123,10 +139,14 @@ class CloseProblemParams(BaseModel):
         ...,
         description="Problem number (e.g. PRB0001234) or sys_id (32-char hex)",
     )
-    close_notes: Optional[str] = Field(None, description="Closure notes explaining how the problem was resolved")
+    close_notes: Optional[str] = Field(
+        None, description="Closure notes explaining how the problem was resolved"
+    )
     fix_notes: Optional[str] = Field(None, description="Description of the fix that was applied")
     cause_notes: Optional[str] = Field(None, description="Root-cause analysis notes")
-    work_notes: Optional[str] = Field(None, description="Additional work notes to append on closure")
+    work_notes: Optional[str] = Field(
+        None, description="Additional work notes to append on closure"
+    )
 
 
 def _format_problem(record: Dict) -> Dict:
@@ -230,9 +250,7 @@ def list_problems(
     if validated.known_error is not None:
         filters.append(f"known_error={'true' if validated.known_error else 'false'}")
     if validated.query:
-        filters.append(
-            f"short_descriptionLIKE{validated.query}^ORdescriptionLIKE{validated.query}"
-        )
+        filters.append(f"short_descriptionLIKE{validated.query}^ORdescriptionLIKE{validated.query}")
 
     query_params = _build_sysparm_params(
         validated.limit,
@@ -281,11 +299,15 @@ def get_problem(
         return {"success": False, "message": "Cannot find get_headers method"}
 
     # Decide between direct sys_id fetch and number lookup
-    if len(validated.problem_id) == 32 and all(c in "0123456789abcdef" for c in validated.problem_id):
+    if len(validated.problem_id) == 32 and all(
+        c in "0123456789abcdef" for c in validated.problem_id
+    ):
         url = f"{instance_url}{PROBLEM_TABLE}/{validated.problem_id}"
         try:
             response = _make_request(
-                "GET", url, headers=headers,
+                "GET",
+                url,
+                headers=headers,
                 params={"sysparm_display_value": "true", "sysparm_exclude_reference_link": "true"},
             )
             if response.status_code == 404:
@@ -297,12 +319,17 @@ def get_problem(
             return {"success": True, "problem": _format_problem(record)}
         except requests.exceptions.RequestException as e:
             logger.error(f"Error retrieving problem: {e}")
-            return {"success": False, "message": f"Error retrieving problem: {_format_http_error(e)}"}
+            return {
+                "success": False,
+                "message": f"Error retrieving problem: {_format_http_error(e)}",
+            }
     else:
         url = f"{instance_url}{PROBLEM_TABLE}"
         try:
             response = _make_request(
-                "GET", url, headers=headers,
+                "GET",
+                url,
+                headers=headers,
                 params={
                     "sysparm_query": f"number={validated.problem_id}",
                     "sysparm_limit": 1,
@@ -317,7 +344,10 @@ def get_problem(
             return {"success": True, "problem": _format_problem(records[0])}
         except requests.exceptions.RequestException as e:
             logger.error(f"Error retrieving problem: {e}")
-            return {"success": False, "message": f"Error retrieving problem: {_format_http_error(e)}"}
+            return {
+                "success": False,
+                "message": f"Error retrieving problem: {_format_http_error(e)}",
+            }
 
 
 def create_problem(
@@ -491,9 +521,7 @@ def close_problem(
     Returns:
         Dictionary with ``success``, ``sys_id``, ``number``, and ``problem`` keys.
     """
-    result = _unwrap_and_validate_params(
-        params, CloseProblemParams, required_fields=["problem_id"]
-    )
+    result = _unwrap_and_validate_params(params, CloseProblemParams, required_fields=["problem_id"])
     if not result["success"]:
         return result
     validated = result["params"]

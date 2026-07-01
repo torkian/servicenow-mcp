@@ -95,11 +95,30 @@ class TestFormatAsset(unittest.TestCase):
     def test_missing_fields_return_none(self):
         result = _format_asset({})
         for key in (
-            "sys_id", "asset_tag", "display_name", "serial_number", "model",
-            "model_category", "assigned_to", "assigned", "install_status", "substatus",
-            "cost", "cost_currency", "purchase_date", "warranty_expiration", "lease_id",
-            "vendor", "acquisition_method", "owned_by", "managed_by", "location",
-            "company", "department", "created_on", "updated_on",
+            "sys_id",
+            "asset_tag",
+            "display_name",
+            "serial_number",
+            "model",
+            "model_category",
+            "assigned_to",
+            "assigned",
+            "install_status",
+            "substatus",
+            "cost",
+            "cost_currency",
+            "purchase_date",
+            "warranty_expiration",
+            "lease_id",
+            "vendor",
+            "acquisition_method",
+            "owned_by",
+            "managed_by",
+            "location",
+            "company",
+            "department",
+            "created_on",
+            "updated_on",
         ):
             self.assertIsNone(result[key])
 
@@ -140,9 +159,7 @@ class TestListAssets(unittest.TestCase):
         mock_response.json.return_value = {"result": [FAKE_ASSET]}
         mock_get.return_value = mock_response
 
-        result = list_assets(
-            self.auth_manager, self.config, {"asset_tag": "P1000123"}
-        )
+        result = list_assets(self.auth_manager, self.config, {"asset_tag": "P1000123"})
         self.assertTrue(result["success"])
         call_kwargs = mock_get.call_args
         params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
@@ -155,9 +172,7 @@ class TestListAssets(unittest.TestCase):
         mock_response.json.return_value = {"result": [FAKE_ASSET]}
         mock_get.return_value = mock_response
 
-        result = list_assets(
-            self.auth_manager, self.config, {"display_name": "Dell"}
-        )
+        result = list_assets(self.auth_manager, self.config, {"display_name": "Dell"})
         self.assertTrue(result["success"])
         call_kwargs = mock_get.call_args
         params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
@@ -170,9 +185,7 @@ class TestListAssets(unittest.TestCase):
         mock_response.json.return_value = {"result": [FAKE_ASSET]}
         mock_get.return_value = mock_response
 
-        result = list_assets(
-            self.auth_manager, self.config, {"install_status": "1"}
-        )
+        result = list_assets(self.auth_manager, self.config, {"install_status": "1"})
         self.assertTrue(result["success"])
         call_kwargs = mock_get.call_args
         params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
@@ -185,9 +198,7 @@ class TestListAssets(unittest.TestCase):
         mock_response.json.return_value = {"result": [FAKE_ASSET]}
         mock_get.return_value = mock_response
 
-        result = list_assets(
-            self.auth_manager, self.config, {"assigned_to": "John"}
-        )
+        result = list_assets(self.auth_manager, self.config, {"assigned_to": "John"})
         self.assertTrue(result["success"])
         call_kwargs = mock_get.call_args
         params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
@@ -200,9 +211,7 @@ class TestListAssets(unittest.TestCase):
         mock_response.json.return_value = {"result": [FAKE_ASSET]}
         mock_get.return_value = mock_response
 
-        result = list_assets(
-            self.auth_manager, self.config, {"model_category": "Computer"}
-        )
+        result = list_assets(self.auth_manager, self.config, {"model_category": "Computer"})
         self.assertTrue(result["success"])
         call_kwargs = mock_get.call_args
         params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
@@ -215,9 +224,7 @@ class TestListAssets(unittest.TestCase):
         mock_response.json.return_value = {"result": [FAKE_ASSET]}
         mock_get.return_value = mock_response
 
-        result = list_assets(
-            self.auth_manager, self.config, {"query": "company=comp001"}
-        )
+        result = list_assets(self.auth_manager, self.config, {"query": "company=comp001"})
         self.assertTrue(result["success"])
         call_kwargs = mock_get.call_args
         params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
@@ -230,9 +237,7 @@ class TestListAssets(unittest.TestCase):
         mock_response.json.return_value = {"result": [FAKE_ASSET] * 20}
         mock_get.return_value = mock_response
 
-        result = list_assets(
-            self.auth_manager, self.config, {"limit": 20, "offset": 0}
-        )
+        result = list_assets(self.auth_manager, self.config, {"limit": 20, "offset": 0})
         self.assertTrue(result["success"])
         self.assertTrue(result["has_more"])
 
@@ -365,8 +370,7 @@ class TestUpdateAsset(unittest.TestCase):
         mock_patch.return_value = mock_response
 
         result = update_asset(
-            self.auth_manager, self.config,
-            {"sys_id": "asset001", "install_status": "3"}
+            self.auth_manager, self.config, {"sys_id": "asset001", "install_status": "3"}
         )
         self.assertTrue(result["success"])
         self.assertEqual(result["asset"]["install_status"], "3")
@@ -379,8 +383,7 @@ class TestUpdateAsset(unittest.TestCase):
         mock_patch.return_value = mock_response
 
         result = update_asset(
-            self.auth_manager, self.config,
-            {"sys_id": "badid", "display_name": "New Name"}
+            self.auth_manager, self.config, {"sys_id": "badid", "display_name": "New Name"}
         )
         self.assertFalse(result["success"])
         self.assertIn("badid", result["message"])
@@ -398,8 +401,7 @@ class TestUpdateAsset(unittest.TestCase):
     def test_update_http_error(self, mock_patch):
         mock_patch.side_effect = requests.exceptions.ConnectionError("network error")
         result = update_asset(
-            self.auth_manager, self.config,
-            {"sys_id": "asset001", "display_name": "New"}
+            self.auth_manager, self.config, {"sys_id": "asset001", "display_name": "New"}
         )
         self.assertFalse(result["success"])
 
@@ -411,7 +413,8 @@ class TestUpdateAsset(unittest.TestCase):
         mock_patch.return_value = mock_response
 
         result = update_asset(
-            self.auth_manager, self.config,
+            self.auth_manager,
+            self.config,
             {
                 "sys_id": "asset001",
                 "display_name": "Updated",
@@ -432,7 +435,7 @@ class TestUpdateAsset(unittest.TestCase):
                 "location": "loc002",
                 "company": "comp002",
                 "department": "dept002",
-            }
+            },
         )
         self.assertTrue(result["success"])
         call_kwargs = mock_patch.call_args
@@ -514,8 +517,9 @@ class TestCreateAsset(unittest.TestCase):
         mock_post.return_value = mock_response
 
         result = create_asset(
-            self.auth_manager, self.config,
-            {"display_name": "Dell Laptop 001", "asset_tag": "P1000123"}
+            self.auth_manager,
+            self.config,
+            {"display_name": "Dell Laptop 001", "asset_tag": "P1000123"},
         )
         self.assertTrue(result["success"])
         self.assertEqual(result["asset"]["display_name"], "Dell Laptop 001")
@@ -529,14 +533,15 @@ class TestCreateAsset(unittest.TestCase):
         mock_post.return_value = mock_response
 
         result = create_asset(
-            self.auth_manager, self.config,
+            self.auth_manager,
+            self.config,
             {
                 "display_name": "Dell PowerEdge R740",
                 "asset_class": "alm_hardware",
                 "ram": 65536,
                 "cpu_count": 2,
                 "os": "Ubuntu",
-            }
+            },
         )
         self.assertTrue(result["success"])
         call_url = mock_post.call_args[0][0]
@@ -550,7 +555,8 @@ class TestCreateAsset(unittest.TestCase):
         mock_post.return_value = mock_response
 
         create_asset(
-            self.auth_manager, self.config,
+            self.auth_manager,
+            self.config,
             {
                 "display_name": "Server",
                 "asset_class": "alm_hardware",
@@ -567,7 +573,7 @@ class TestCreateAsset(unittest.TestCase):
                 "os_domain": "corp.local",
                 "mac_address": "AA:BB:CC:DD:EE:FF",
                 "ip_address": "192.168.1.10",
-            }
+            },
         )
         body = mock_post.call_args[1].get("json") or mock_post.call_args[0][1]
         self.assertEqual(body["cpu_count"], 4)
@@ -596,9 +602,7 @@ class TestCreateAsset(unittest.TestCase):
     @patch("requests.post")
     def test_create_http_error(self, mock_post):
         mock_post.side_effect = requests.exceptions.ConnectionError("refused")
-        result = create_asset(
-            self.auth_manager, self.config, {"display_name": "Asset X"}
-        )
+        result = create_asset(self.auth_manager, self.config, {"display_name": "Asset X"})
         self.assertFalse(result["success"])
         self.assertIn("Error creating asset", result["message"])
 
@@ -628,7 +632,8 @@ class TestCreateAsset(unittest.TestCase):
         mock_post.return_value = mock_response
 
         result = create_asset(
-            self.auth_manager, self.config,
+            self.auth_manager,
+            self.config,
             {
                 "display_name": "Test Asset",
                 "asset_tag": "TAG-001",
@@ -650,7 +655,7 @@ class TestCreateAsset(unittest.TestCase):
                 "location": "loc001",
                 "company": "comp001",
                 "department": "dept001",
-            }
+            },
         )
         self.assertTrue(result["success"])
         body = mock_post.call_args[1].get("json") or mock_post.call_args[0][1]
@@ -700,11 +705,13 @@ class TestParamModels(unittest.TestCase):
 
     def test_update_asset_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             UpdateAssetParams()
 
     def test_create_asset_requires_display_name(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             CreateAssetParams()
 
@@ -807,6 +814,7 @@ class TestDeleteAsset(unittest.TestCase):
 
     def test_delete_asset_params_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             DeleteAssetParams()
 
@@ -820,9 +828,7 @@ class TestDeleteAsset(unittest.TestCase):
         mock_resp.status_code = 204
         mock_req.return_value = mock_resp
 
-        result = delete_asset(
-            self.auth_manager, self.config, {"params": {"sys_id": "asset999"}}
-        )
+        result = delete_asset(self.auth_manager, self.config, {"params": {"sys_id": "asset999"}})
 
         self.assertTrue(result["success"])
         self.assertIn("asset999", result["message"])

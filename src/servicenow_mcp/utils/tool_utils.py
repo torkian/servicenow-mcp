@@ -715,12 +715,12 @@ def get_tool_definitions(
             "List incidents from ServiceNow",
             "json",  # Tool returns list/dict, needs JSON dump
         ),
-        "get_incident_by_number":(
+        "get_incident_by_number": (
             get_incident_by_number_tool,
             GetIncidentByNumberParams,
             str,
             "Incident details from ServiceNow",
-            "json_dict"
+            "json_dict",
         ),
         # Incident Task Tools
         "create_incident_task": (

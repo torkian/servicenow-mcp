@@ -31,13 +31,22 @@ class CreateProjectParams(BaseModel):
     short_description: str = Field(..., description="Project name of the project")
     description: Optional[str] = Field(None, description="Detailed description of the project")
     status: Optional[str] = Field(None, description="Status of the project (green, yellow, red)")
-    state: Optional[str] = Field(None, description="State of project (-5 is Pending,1 is Open, 2 is Work in progress, 3 is Closed Complete, 4 is Closed Incomplete, 5 is Closed Skipped)")
+    state: Optional[str] = Field(
+        None,
+        description="State of project (-5 is Pending,1 is Open, 2 is Work in progress, 3 is Closed Complete, 4 is Closed Incomplete, 5 is Closed Skipped)",
+    )
     project_manager: Optional[str] = Field(None, description="Project manager for the project")
-    percentage_complete: Optional[int] = Field(None, description="Percentage complete for the project")
+    percentage_complete: Optional[int] = Field(
+        None, description="Percentage complete for the project"
+    )
     assignment_group: Optional[str] = Field(None, description="Group assigned to the project")
     assigned_to: Optional[str] = Field(None, description="User assigned to the project")
-    start_date: Optional[str] = Field(None, description="Start date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
-    end_date: Optional[str] = Field(None, description="End date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+    start_date: Optional[str] = Field(
+        None, description="Start date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)"
+    )
+    end_date: Optional[str] = Field(
+        None, description="End date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)"
+    )
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
@@ -52,13 +61,22 @@ class UpdateProjectParams(BaseModel):
     short_description: Optional[str] = Field(None, description="Project name of the project")
     description: Optional[str] = Field(None, description="Detailed description of the project")
     status: Optional[str] = Field(None, description="Status of the project (green, yellow, red)")
-    state: Optional[str] = Field(None, description="State of project (-5 is Pending,1 is Open, 2 is Work in progress, 3 is Closed Complete, 4 is Closed Incomplete, 5 is Closed Skipped)")
+    state: Optional[str] = Field(
+        None,
+        description="State of project (-5 is Pending,1 is Open, 2 is Work in progress, 3 is Closed Complete, 4 is Closed Incomplete, 5 is Closed Skipped)",
+    )
     project_manager: Optional[str] = Field(None, description="Project manager for the project")
-    percentage_complete: Optional[int] = Field(None, description="Percentage complete for the project")
+    percentage_complete: Optional[int] = Field(
+        None, description="Percentage complete for the project"
+    )
     assignment_group: Optional[str] = Field(None, description="Group assigned to the project")
     assigned_to: Optional[str] = Field(None, description="User assigned to the project")
-    start_date: Optional[str] = Field(None, description="Start date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
-    end_date: Optional[str] = Field(None, description="End date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)")
+    start_date: Optional[str] = Field(
+        None, description="Start date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)"
+    )
+    end_date: Optional[str] = Field(
+        None, description="End date for the project (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS)"
+    )
 
     @field_validator("start_date", "end_date", mode="before")
     @classmethod
@@ -73,7 +91,9 @@ class ListProjectsParams(BaseModel):
     offset: Optional[int] = Field(0, description="Offset to start from")
     state: Optional[str] = Field(None, description="Filter by state")
     assignment_group: Optional[str] = Field(None, description="Filter by assignment group")
-    timeframe: Optional[str] = Field(None, description="Filter by timeframe (upcoming, in-progress, completed)")
+    timeframe: Optional[str] = Field(
+        None, description="Filter by timeframe (upcoming, in-progress, completed)"
+    )
     query: Optional[str] = Field(None, description="Additional query string")
 
 
@@ -96,16 +116,14 @@ def create_project(
 
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        CreateProjectParams, 
-        required_fields=["short_description"]
+        params, CreateProjectParams, required_fields=["short_description"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "short_description": validated_params.short_description,
@@ -130,7 +148,7 @@ def create_project(
         data["start_date"] = validated_params.start_date
     if validated_params.end_date:
         data["end_date"] = validated_params.end_date
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, config)
     if not instance_url:
@@ -138,7 +156,7 @@ def create_project(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, config)
     if not headers:
@@ -146,19 +164,19 @@ def create_project(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/pm_project"
-    
+
     try:
         response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Project created successfully",
@@ -170,6 +188,7 @@ def create_project(
             "success": False,
             "message": f"Error creating project: {_format_http_error(e)}",
         }
+
 
 def update_project(
     config: ServerConfig,  # Changed from auth_manager
@@ -189,16 +208,14 @@ def update_project(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        UpdateProjectParams,
-        required_fields=["project_id"]
+        params, UpdateProjectParams, required_fields=["project_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {}
 
@@ -231,7 +248,7 @@ def update_project(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, config)
     if not headers:
@@ -239,19 +256,19 @@ def update_project(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/pm_project/{validated_params.project_id}"
-    
+
     try:
         response = _make_request("PUT", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Project updated successfully",
@@ -263,6 +280,7 @@ def update_project(
             "success": False,
             "message": f"Error updating project: {_format_http_error(e)}",
         }
+
 
 def list_projects(
     config: ServerConfig,  # Changed from auth_manager
@@ -281,24 +299,21 @@ def list_projects(
         A list of projects.
     """
     # Unwrap and validate parameters
-    result = _unwrap_and_validate_params(
-        params, 
-        ListProjectsParams
-    )
-    
+    result = _unwrap_and_validate_params(params, ListProjectsParams)
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Build the query
     query_parts = []
-    
+
     if validated_params.state:
         query_parts.append(f"state={validated_params.state}")
     if validated_params.assignment_group:
         query_parts.append(f"assignment_group={validated_params.assignment_group}")
-    
+
     # Handle timeframe filtering
     if validated_params.timeframe:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -308,14 +323,14 @@ def list_projects(
             query_parts.append(f"start_date<{now}^end_date>{now}")
         elif validated_params.timeframe == "completed":
             query_parts.append(f"end_date<{now}")
-    
+
     # Add any additional query string
     if validated_params.query:
         query_parts.append(validated_params.query)
-    
+
     # Combine query parts
     query = "^".join(query_parts) if query_parts else ""
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, config)
     if not instance_url:
@@ -323,7 +338,7 @@ def list_projects(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, config)
     if not headers:
@@ -331,27 +346,27 @@ def list_projects(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/pm_project"
-    
+
     params = {
         "sysparm_limit": validated_params.limit,
         "sysparm_offset": validated_params.offset,
         "sysparm_query": query,
         "sysparm_display_value": "true",
     }
-    
+
     try:
         response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         # Handle the case where result["result"] is a list
         projects = result.get("result", [])
         count = len(projects)
-        
+
         return {
             "success": True,
             "projects": projects,

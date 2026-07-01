@@ -1,6 +1,5 @@
 """Tests for the pagination helper functions in servicenow_mcp.utils.helpers."""
 
-
 from servicenow_mcp.utils.helpers import (
     _build_sysparm_params,
     _join_query_parts,

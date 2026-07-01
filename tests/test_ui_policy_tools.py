@@ -102,7 +102,9 @@ class TestCreateUIPolicy(unittest.TestCase):
 
         sent_data = mock_post.call_args.kwargs["json"]
         self.assertEqual(sent_data["conditions"], "risk=3^state=2")
-        self.assertEqual(sent_data["short_description"], "Make notes mandatory on high-risk changes")
+        self.assertEqual(
+            sent_data["short_description"], "Make notes mandatory on high-risk changes"
+        )
         self.assertEqual(sent_data["on_load"], "false")
         self.assertEqual(sent_data["reverse_if_false"], "false")
         self.assertEqual(sent_data["run_scripts"], "true")

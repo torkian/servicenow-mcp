@@ -31,6 +31,7 @@ MEMBER_SYS_ID = "d" * 32
 # Fixtures
 # ---------------------------------------------------------------------------
 
+
 @pytest.fixture
 def auth_manager():
     am = MagicMock()
@@ -75,6 +76,7 @@ def _mock_response(data, status_code=200):
 # _format_group_role
 # ---------------------------------------------------------------------------
 
+
 class TestFormatGroupRole:
     def test_dict_reference_fields(self):
         out = _format_group_role(RAW_GROUP_ROLE)
@@ -96,12 +98,20 @@ class TestFormatGroupRole:
 
     def test_all_expected_keys(self):
         out = _format_group_role(RAW_GROUP_ROLE)
-        assert set(out.keys()) == {"sys_id", "role_name", "role_sys_id", "group_name", "group_sys_id", "created_on"}
+        assert set(out.keys()) == {
+            "sys_id",
+            "role_name",
+            "role_sys_id",
+            "group_name",
+            "group_sys_id",
+            "created_on",
+        }
 
 
 # ---------------------------------------------------------------------------
 # _format_user_role
 # ---------------------------------------------------------------------------
+
 
 class TestFormatUserRole:
     def test_dict_reference_fields(self):
@@ -126,14 +136,21 @@ class TestFormatUserRole:
     def test_all_expected_keys(self):
         out = _format_user_role(RAW_USER_ROLE)
         assert set(out.keys()) == {
-            "sys_id", "role_name", "role_sys_id", "user", "user_sys_id",
-            "inherited", "granted_by", "created_on",
+            "sys_id",
+            "role_name",
+            "role_sys_id",
+            "user",
+            "user_sys_id",
+            "inherited",
+            "granted_by",
+            "created_on",
         }
 
 
 # ---------------------------------------------------------------------------
 # _resolve_group_sys_id
 # ---------------------------------------------------------------------------
+
 
 class TestResolveGroupSysId:
     def test_already_sys_id(self):
@@ -164,6 +181,7 @@ class TestResolveGroupSysId:
 # _resolve_user_sys_id
 # ---------------------------------------------------------------------------
 
+
 class TestResolveUserSysId:
     def test_already_sys_id(self):
         result = _resolve_user_sys_id(USER_SYS_ID, "https://test.service-now.com", {})
@@ -192,6 +210,7 @@ class TestResolveUserSysId:
 # ---------------------------------------------------------------------------
 # _resolve_role_sys_id
 # ---------------------------------------------------------------------------
+
 
 class TestResolveRoleSysId:
     def test_already_sys_id(self):
@@ -222,6 +241,7 @@ class TestResolveRoleSysId:
 # ---------------------------------------------------------------------------
 # get_group_roles
 # ---------------------------------------------------------------------------
+
 
 class TestGetGroupRoles:
     @patch("servicenow_mcp.tools.role_tools._make_request")
@@ -297,6 +317,7 @@ class TestGetGroupRoles:
 # assign_role_to_group
 # ---------------------------------------------------------------------------
 
+
 class TestAssignRoleToGroup:
     @patch("servicenow_mcp.tools.role_tools._make_request")
     def test_success_by_sys_ids(self, mock_req, auth_manager, server_config):
@@ -362,6 +383,7 @@ class TestAssignRoleToGroup:
 # remove_role_from_group
 # ---------------------------------------------------------------------------
 
+
 class TestRemoveRoleFromGroup:
     @patch("servicenow_mcp.tools.role_tools._make_request")
     def test_success_204(self, mock_req, auth_manager, server_config):
@@ -408,6 +430,7 @@ class TestRemoveRoleFromGroup:
 # list_user_roles
 # ---------------------------------------------------------------------------
 
+
 class TestListUserRoles:
     @patch("servicenow_mcp.tools.role_tools._make_request")
     def test_success_by_sys_id(self, mock_req, auth_manager, server_config):
@@ -430,7 +453,8 @@ class TestListUserRoles:
     def test_filter_inherited_true(self, mock_req, auth_manager, server_config):
         mock_req.return_value = _mock_response({"result": []})
         result = list_user_roles(
-            auth_manager, server_config,
+            auth_manager,
+            server_config,
             {"user_id": USER_SYS_ID, "include_inherited": True},
         )
         assert result["success"]
@@ -441,7 +465,8 @@ class TestListUserRoles:
     def test_filter_inherited_false(self, mock_req, auth_manager, server_config):
         mock_req.return_value = _mock_response({"result": []})
         result = list_user_roles(
-            auth_manager, server_config,
+            auth_manager,
+            server_config,
             {"user_id": USER_SYS_ID, "include_inherited": False},
         )
         assert result["success"]

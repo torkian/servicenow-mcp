@@ -16,11 +16,12 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestStoryTools(unittest.TestCase):
-
     def setUp(self):
         self.config = ServerConfig(
             instance_url="https://dev12345.service-now.com",
-            auth=AuthConfig(type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")),
+            auth=AuthConfig(
+                type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")
+            ),
         )
         self.auth = MagicMock(spec=AuthManager)
         self.auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
@@ -29,17 +30,28 @@ class TestStoryTools(unittest.TestCase):
     def test_create_story(self, mock_post):
         mock_post.return_value = MagicMock(
             raise_for_status=MagicMock(),
-            json=MagicMock(return_value={"result": {"sys_id": "s1", "number": "STY001", "short_description": "Test"}}),
+            json=MagicMock(
+                return_value={
+                    "result": {"sys_id": "s1", "number": "STY001", "short_description": "Test"}
+                }
+            ),
         )
-        result = create_story(self.auth, self.config, {"short_description": "Test", "acceptance_criteria": "Done when tested"})
+        result = create_story(
+            self.auth,
+            self.config,
+            {"short_description": "Test", "acceptance_criteria": "Done when tested"},
+        )
         self.assertTrue(result["success"])
         self.assertEqual(result["story"]["sys_id"], "s1")
 
     @patch("servicenow_mcp.tools.story_tools.requests.post")
     def test_create_story_error(self, mock_post):
         from requests.exceptions import RequestException
+
         mock_post.side_effect = RequestException("fail")
-        result = create_story(self.auth, self.config, {"short_description": "Test", "acceptance_criteria": "AC"})
+        result = create_story(
+            self.auth, self.config, {"short_description": "Test", "acceptance_criteria": "AC"}
+        )
         self.assertFalse(result["success"])
 
     def test_create_story_missing_params(self):
@@ -58,6 +70,7 @@ class TestStoryTools(unittest.TestCase):
     @patch("servicenow_mcp.tools.story_tools.requests.put")
     def test_update_story_error(self, mock_put):
         from requests.exceptions import RequestException
+
         mock_put.side_effect = RequestException("fail")
         result = update_story(self.auth, self.config, {"story_id": "s1", "state": "2"})
         self.assertFalse(result["success"])
@@ -86,6 +99,7 @@ class TestStoryTools(unittest.TestCase):
     @patch("servicenow_mcp.tools.story_tools.requests.get")
     def test_list_stories_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         result = list_stories(self.auth, self.config, {"limit": 10})
         self.assertFalse(result["success"])
@@ -107,7 +121,9 @@ class TestStoryTools(unittest.TestCase):
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": {"sys_id": "d1"}}),
         )
-        result = create_story_dependency(self.auth, self.config, {"dependent_story": "s1", "prerequisite_story": "s2"})
+        result = create_story_dependency(
+            self.auth, self.config, {"dependent_story": "s1", "prerequisite_story": "s2"}
+        )
         self.assertTrue(result["success"])
 
     @patch("servicenow_mcp.tools.story_tools.requests.delete")
@@ -119,6 +135,7 @@ class TestStoryTools(unittest.TestCase):
     @patch("servicenow_mcp.tools.story_tools.requests.delete")
     def test_delete_story_dependency_error(self, mock_delete):
         from requests.exceptions import RequestException
+
         mock_delete.side_effect = RequestException("fail")
         result = delete_story_dependency(self.auth, self.config, {"dependency_id": "d1"})
         self.assertFalse(result["success"])

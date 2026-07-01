@@ -70,6 +70,7 @@ def _make_response(status_code=200, json_body=None):
 # _format_request
 # ---------------------------------------------------------------------------
 
+
 class TestFormatRequest(unittest.TestCase):
     def test_all_fields_mapped(self):
         result = _format_request(FAKE_REQUEST)
@@ -110,6 +111,7 @@ class TestFormatRequest(unittest.TestCase):
 # _resolve_request_sys_id
 # ---------------------------------------------------------------------------
 
+
 class TestResolveRequestSysId(unittest.TestCase):
     def test_passes_through_sys_id(self):
         result = _resolve_request_sys_id(FAKE_SYS_ID, "https://example.com", {})
@@ -118,9 +120,7 @@ class TestResolveRequestSysId(unittest.TestCase):
 
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_resolves_number(self, mock_req):
-        mock_req.return_value = _make_response(
-            json_body={"result": [{"sys_id": FAKE_SYS_ID}]}
-        )
+        mock_req.return_value = _make_response(json_body={"result": [{"sys_id": FAKE_SYS_ID}]})
         result = _resolve_request_sys_id(FAKE_NUMBER, "https://example.com", {})
         self.assertTrue(result["success"])
         self.assertEqual(result["sys_id"], FAKE_SYS_ID)
@@ -142,6 +142,7 @@ class TestResolveRequestSysId(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # list_requests
 # ---------------------------------------------------------------------------
+
 
 class TestListRequests(unittest.TestCase):
     @patch("servicenow_mcp.tools.request_tools._make_request")
@@ -179,9 +180,7 @@ class TestListRequests(unittest.TestCase):
     def test_pagination_metadata(self, mock_req):
         items = [FAKE_REQUEST] * 5
         mock_req.return_value = _make_response(json_body={"result": items})
-        result = list_requests(
-            _make_auth_manager(), _make_config(), {"limit": 5, "offset": 0}
-        )
+        result = list_requests(_make_auth_manager(), _make_config(), {"limit": 5, "offset": 0})
         self.assertIn("has_more", result)
         self.assertIn("next_offset", result)
 
@@ -197,33 +196,26 @@ class TestListRequests(unittest.TestCase):
 # get_request
 # ---------------------------------------------------------------------------
 
+
 class TestGetRequest(unittest.TestCase):
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_get_by_sys_id(self, mock_req):
         mock_req.return_value = _make_response(json_body={"result": FAKE_REQUEST})
-        result = get_request(
-            _make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID}
-        )
+        result = get_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
         self.assertTrue(result["success"])
         self.assertEqual(result["request"]["number"], FAKE_NUMBER)
 
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_get_by_number(self, mock_req):
-        mock_req.return_value = _make_response(
-            json_body={"result": [FAKE_REQUEST]}
-        )
-        result = get_request(
-            _make_auth_manager(), _make_config(), {"request_id": FAKE_NUMBER}
-        )
+        mock_req.return_value = _make_response(json_body={"result": [FAKE_REQUEST]})
+        result = get_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_NUMBER})
         self.assertTrue(result["success"])
         self.assertEqual(result["request"]["sys_id"], FAKE_SYS_ID)
 
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_get_by_number_not_found(self, mock_req):
         mock_req.return_value = _make_response(json_body={"result": []})
-        result = get_request(
-            _make_auth_manager(), _make_config(), {"request_id": FAKE_NUMBER}
-        )
+        result = get_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_NUMBER})
         self.assertFalse(result["success"])
         self.assertIn("not found", result["message"])
 
@@ -231,18 +223,14 @@ class TestGetRequest(unittest.TestCase):
     def test_get_by_sys_id_404(self, mock_req):
         resp = _make_response(status_code=404, json_body={})
         mock_req.return_value = resp
-        result = get_request(
-            _make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID}
-        )
+        result = get_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
         self.assertFalse(result["success"])
         self.assertIn("not found", result["message"])
 
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_get_by_sys_id_empty_result(self, mock_req):
         mock_req.return_value = _make_response(json_body={"result": {}})
-        result = get_request(
-            _make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID}
-        )
+        result = get_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
         self.assertFalse(result["success"])
 
     def test_missing_request_id_returns_failure(self):
@@ -252,9 +240,7 @@ class TestGetRequest(unittest.TestCase):
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_http_error_returns_failure(self, mock_req):
         mock_req.side_effect = requests.exceptions.HTTPError("500")
-        result = get_request(
-            _make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID}
-        )
+        result = get_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
         self.assertFalse(result["success"])
 
 
@@ -262,12 +248,11 @@ class TestGetRequest(unittest.TestCase):
 # create_request
 # ---------------------------------------------------------------------------
 
+
 class TestCreateRequest(unittest.TestCase):
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_minimal_create(self, mock_req):
-        mock_req.return_value = _make_response(
-            json_body={"result": FAKE_REQUEST}
-        )
+        mock_req.return_value = _make_response(json_body={"result": FAKE_REQUEST})
         result = create_request(
             _make_auth_manager(),
             _make_config(),
@@ -279,9 +264,7 @@ class TestCreateRequest(unittest.TestCase):
 
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_all_optional_fields_sent(self, mock_req):
-        mock_req.return_value = _make_response(
-            json_body={"result": FAKE_REQUEST}
-        )
+        mock_req.return_value = _make_response(json_body={"result": FAKE_REQUEST})
         result = create_request(
             _make_auth_manager(),
             _make_config(),
@@ -325,12 +308,11 @@ class TestCreateRequest(unittest.TestCase):
 # update_request
 # ---------------------------------------------------------------------------
 
+
 class TestUpdateRequest(unittest.TestCase):
     @patch("servicenow_mcp.tools.request_tools._make_request")
     def test_update_by_sys_id(self, mock_req):
-        mock_req.return_value = _make_response(
-            json_body={"result": FAKE_REQUEST}
-        )
+        mock_req.return_value = _make_response(json_body={"result": FAKE_REQUEST})
         result = update_request(
             _make_auth_manager(),
             _make_config(),

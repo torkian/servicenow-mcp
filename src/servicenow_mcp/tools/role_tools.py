@@ -40,6 +40,7 @@ USER_ROLE_FIELDS = ["sys_id", "user", "role", "inherited", "granted_by", "sys_cr
 # Parameter models
 # ---------------------------------------------------------------------------
 
+
 class GetGroupRolesParams(BaseModel):
     """Parameters for listing roles assigned to a group."""
 
@@ -55,7 +56,9 @@ class AssignRoleToGroupParams(BaseModel):
     """Parameters for assigning a role to a group."""
 
     group_id: str = Field(..., description="Group sys_id (32-char hex) or exact group name")
-    role_id: str = Field(..., description="Role sys_id (32-char hex) or exact role name (e.g. 'itil')")
+    role_id: str = Field(
+        ..., description="Role sys_id (32-char hex) or exact role name (e.g. 'itil')"
+    )
 
 
 class RemoveRoleFromGroupParams(BaseModel):
@@ -82,6 +85,7 @@ class ListUserRolesParams(BaseModel):
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
+
 
 def _format_group_role(record: Dict) -> Dict:
     """Normalise reference fields from a raw sys_group_has_role API record."""
@@ -223,6 +227,7 @@ def _resolve_role_sys_id(role_id: str, instance_url: str, headers: Dict) -> Dict
 # Tool implementations
 # ---------------------------------------------------------------------------
 
+
 def get_group_roles(
     auth_manager: AuthManager,
     server_config: ServerConfig,
@@ -321,7 +326,10 @@ def assign_role_to_group(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error assigning role to group: {e}")
-        return {"success": False, "message": f"Error assigning role to group: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error assigning role to group: {_format_http_error(e)}",
+        }
 
 
 def remove_role_from_group(
@@ -361,7 +369,10 @@ def remove_role_from_group(
         return {"success": True, "message": "Role removed from group successfully"}
     except requests.exceptions.RequestException as e:
         logger.error(f"Error removing role from group: {e}")
-        return {"success": False, "message": f"Error removing role from group: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error removing role from group: {_format_http_error(e)}",
+        }
 
 
 def list_user_roles(

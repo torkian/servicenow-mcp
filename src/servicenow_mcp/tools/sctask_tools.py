@@ -60,7 +60,9 @@ class ListSCTasksParams(BaseModel):
     limit: Optional[int] = Field(10, description="Maximum number of records to return")
     offset: Optional[int] = Field(0, description="Offset to start from")
     state: Optional[str] = Field(None, description="Filter by state")
-    assigned_to: Optional[str] = Field(None, description="Filter by assigned user (username or sys_id)")
+    assigned_to: Optional[str] = Field(
+        None, description="Filter by assigned user (username or sys_id)"
+    )
     assignment_group: Optional[str] = Field(None, description="Filter by assignment group")
     query: Optional[str] = Field(None, description="Additional ServiceNow query string")
 
@@ -152,7 +154,9 @@ def list_sctasks(
     if validated.state:
         query_parts.append(f"state={validated.state}")
     if validated.assigned_to:
-        query_parts.append(f"assigned_to.user_name={validated.assigned_to}^ORASSIGNEDTOassigned_to={validated.assigned_to}")
+        query_parts.append(
+            f"assigned_to.user_name={validated.assigned_to}^ORASSIGNEDTOassigned_to={validated.assigned_to}"
+        )
     if validated.assignment_group:
         query_parts.append(f"assignment_group={validated.assignment_group}")
     if validated.query:
@@ -189,7 +193,9 @@ def update_sctask(
     params: Dict[str, Any],
 ) -> Dict[str, Any]:
     """Update a Service Catalog Task."""
-    result = _unwrap_and_validate_params(params, UpdateSCTaskParams, required_fields=["task_number"])
+    result = _unwrap_and_validate_params(
+        params, UpdateSCTaskParams, required_fields=["task_number"]
+    )
     if not result["success"]:
         return result
 
@@ -221,7 +227,10 @@ def update_sctask(
                 return {"success": False, "message": f"SCTASK not found: {task_id}"}
             task_id = records[0]["sys_id"]
         except requests.exceptions.RequestException as e:
-            return {"success": False, "message": f"Error resolving SCTASK number: {_format_http_error(e)}"}
+            return {
+                "success": False,
+                "message": f"Error resolving SCTASK number: {_format_http_error(e)}",
+            }
 
     data: Dict[str, Any] = {}
     if validated.state is not None:
@@ -240,7 +249,9 @@ def update_sctask(
         # Read current time_worked and add to it instead of replacing
         try:
             lookup_url = f"{instance_url}/api/now/table/sc_task/{task_id}"
-            lookup_resp = _make_request("GET", lookup_url, headers=headers, params={"sysparm_fields": "time_worked"})
+            lookup_resp = _make_request(
+                "GET", lookup_url, headers=headers, params={"sysparm_fields": "time_worked"}
+            )
             lookup_resp.raise_for_status()
             current_raw = lookup_resp.json().get("result", {}).get("time_worked", "")
             # Parse current value (format: "1970-01-01 HH:MM:SS")

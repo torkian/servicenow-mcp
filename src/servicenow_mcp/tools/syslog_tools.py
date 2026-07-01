@@ -50,8 +50,12 @@ class ListSyslogEntriesParams(BaseModel):
         None,
         description="Filter by log level: debug, info, warning, error",
     )
-    source: Optional[str] = Field(None, description="Filter by log source (application or module name)")
-    message_contains: Optional[str] = Field(None, description="Filter entries whose message contains this text")
+    source: Optional[str] = Field(
+        None, description="Filter by log source (application or module name)"
+    )
+    message_contains: Optional[str] = Field(
+        None, description="Filter entries whose message contains this text"
+    )
     created_after: Optional[str] = Field(
         None,
         description="Return entries created after this datetime (format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD)",
@@ -148,11 +152,17 @@ def list_syslog_entries(
         response.raise_for_status()
         entries = [_format_syslog_entry(r) for r in response.json().get("result", [])]
         return _paginated_list_response(
-            entries, validated.limit, validated.offset, "entries",
+            entries,
+            validated.limit,
+            validated.offset,
+            "entries",
         )
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing syslog entries: {e}")
-        return {"success": False, "message": f"Error listing syslog entries: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error listing syslog entries: {_format_http_error(e)}",
+        }
 
 
 def get_syslog_entry(
@@ -202,4 +212,7 @@ def get_syslog_entry(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error retrieving syslog entry: {e}")
-        return {"success": False, "message": f"Error retrieving syslog entry: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error retrieving syslog entry: {_format_http_error(e)}",
+        }

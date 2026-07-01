@@ -60,15 +60,14 @@ def _make_response(status_code, json_data):
     resp.json.return_value = json_data
     resp.raise_for_status = MagicMock()
     if status_code >= 400:
-        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
-            response=resp
-        )
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
     return resp
 
 
 # ---------------------------------------------------------------------------
 # _format_sla
 # ---------------------------------------------------------------------------
+
 
 class TestFormatSLA(unittest.TestCase):
     def test_formats_all_fields(self):
@@ -206,6 +205,7 @@ class TestListSLABreachDefinitions(unittest.TestCase):
 # list_slas
 # ---------------------------------------------------------------------------
 
+
 class TestListSLAs(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_success_returns_slas(self, mock_req):
@@ -304,6 +304,7 @@ class TestListSLAs(unittest.TestCase):
 # ---------------------------------------------------------------------------
 # get_sla
 # ---------------------------------------------------------------------------
+
 
 class TestGetSLA(unittest.TestCase):
     def test_missing_sla_id_returns_failure(self):
@@ -504,9 +505,7 @@ class TestListSLABreaches(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_task_sys_id_filter(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_sla_breaches(
-            _make_auth_manager(), _make_config(), {"task_sys_id": FAKE_TASK_SYS_ID}
-        )
+        list_sla_breaches(_make_auth_manager(), _make_config(), {"task_sys_id": FAKE_TASK_SYS_ID})
         _, kwargs = mock_req.call_args
         query = kwargs.get("params", {}).get("sysparm_query", "")
         self.assertIn(f"task={FAKE_TASK_SYS_ID}", query)
@@ -514,9 +513,7 @@ class TestListSLABreaches(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_sla_sys_id_filter(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_sla_breaches(
-            _make_auth_manager(), _make_config(), {"sla_sys_id": FAKE_SLA_DEF_SYS_ID}
-        )
+        list_sla_breaches(_make_auth_manager(), _make_config(), {"sla_sys_id": FAKE_SLA_DEF_SYS_ID})
         _, kwargs = mock_req.call_args
         query = kwargs.get("params", {}).get("sysparm_query", "")
         self.assertIn(f"sla={FAKE_SLA_DEF_SYS_ID}", query)
@@ -524,9 +521,7 @@ class TestListSLABreaches(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_pagination_params_forwarded(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_sla_breaches(
-            _make_auth_manager(), _make_config(), {"limit": 5, "offset": 15}
-        )
+        list_sla_breaches(_make_auth_manager(), _make_config(), {"limit": 5, "offset": 15})
         _, kwargs = mock_req.call_args
         params = kwargs.get("params", {})
         self.assertEqual(params.get("sysparm_limit"), 5)
@@ -580,9 +575,7 @@ class TestListSLABreaches(unittest.TestCase):
     def test_has_more_pagination_flag(self, mock_req):
         items = [FAKE_TASK_SLA] * 3
         mock_req.return_value = _make_response(200, {"result": items})
-        result = list_sla_breaches(
-            _make_auth_manager(), _make_config(), {"limit": 3, "offset": 0}
-        )
+        result = list_sla_breaches(_make_auth_manager(), _make_config(), {"limit": 3, "offset": 0})
         self.assertIn("has_more", result)
 
 
@@ -657,9 +650,7 @@ class TestGetSLABreach(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_uses_direct_sys_id_url(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
-        get_sla_breach(
-            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID}
-        )
+        get_sla_breach(_make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID})
         args, _ = mock_req.call_args
         url = args[1]
         self.assertTrue(url.endswith(f"/{FAKE_BREACH_SYS_ID}"))
@@ -668,9 +659,7 @@ class TestGetSLABreach(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_display_value_requested(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
-        get_sla_breach(
-            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID}
-        )
+        get_sla_breach(_make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID})
         _, kwargs = mock_req.call_args
         params = kwargs.get("params", {})
         self.assertEqual(params.get("sysparm_display_value"), "true")
@@ -679,9 +668,7 @@ class TestGetSLABreach(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_fields_param_includes_task_sla_fields(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
-        get_sla_breach(
-            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID}
-        )
+        get_sla_breach(_make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID})
         _, kwargs = mock_req.call_args
         fields = kwargs.get("params", {}).get("sysparm_fields", "")
         self.assertIn("has_breached", fields)
@@ -691,9 +678,7 @@ class TestGetSLABreach(unittest.TestCase):
     @patch("servicenow_mcp.tools.sla_tools._make_request")
     def test_uses_get_method(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
-        get_sla_breach(
-            _make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID}
-        )
+        get_sla_breach(_make_auth_manager(), _make_config(), {"task_sla_id": FAKE_BREACH_SYS_ID})
         args, _ = mock_req.call_args
         self.assertEqual(args[0], "GET")
 

@@ -154,9 +154,7 @@ def list_notifications(
     try:
         response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
-        notifications = [
-            _format_notification(r) for r in response.json().get("result", [])
-        ]
+        notifications = [_format_notification(r) for r in response.json().get("result", [])]
         return _paginated_list_response(
             notifications, validated.limit, validated.offset, "notifications"
         )

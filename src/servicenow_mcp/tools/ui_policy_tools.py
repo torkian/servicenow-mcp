@@ -38,8 +38,7 @@ class CreateUIPolicyParams(BaseModel):
     reverse_if_false: bool = Field(
         True,
         description=(
-            "When true, reverses the policy's field actions when the condition "
-            "evaluates to false"
+            "When true, reverses the policy's field actions when the condition evaluates to false"
         ),
     )
     conditions: Optional[str] = Field(
@@ -115,7 +114,8 @@ def create_ui_policy(
         data["catalog_item"] = params.catalog_item_id
 
     try:
-        response = _make_request("POST", 
+        response = _make_request(
+            "POST",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -191,9 +191,7 @@ class UIPolicyActionResponse(BaseModel):
 
     success: bool = Field(..., description="Whether the operation was successful")
     message: str = Field(..., description="Message describing the result")
-    action_id: Optional[str] = Field(
-        None, description="The sys_id of the created UI policy action"
-    )
+    action_id: Optional[str] = Field(None, description="The sys_id of the created UI policy action")
     details: Optional[Dict[str, Any]] = Field(
         None, description="Additional details returned by ServiceNow"
     )
@@ -231,7 +229,8 @@ def create_ui_policy_action(
     }
 
     try:
-        response = _make_request("POST", 
+        response = _make_request(
+            "POST",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -243,9 +242,7 @@ def create_ui_policy_action(
 
         return UIPolicyActionResponse(
             success=True,
-            message=(
-                f"UI policy action for field '{params.field_name}' created successfully"
-            ),
+            message=(f"UI policy action for field '{params.field_name}' created successfully"),
             action_id=result.get("sys_id"),
             details=result,
         )

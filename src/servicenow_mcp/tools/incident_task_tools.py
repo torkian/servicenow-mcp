@@ -33,7 +33,9 @@ class CreateIncidentTaskParams(BaseModel):
     short_description: str = Field(..., description="Short description of the task")
     description: Optional[str] = Field(None, description="Detailed description of the task")
     assigned_to: Optional[str] = Field(None, description="Username or sys_id of the assignee")
-    assignment_group: Optional[str] = Field(None, description="Name or sys_id of the assignment group")
+    assignment_group: Optional[str] = Field(
+        None, description="Name or sys_id of the assignment group"
+    )
     priority: Optional[str] = Field(
         None,
         description="Priority (1=Critical, 2=High, 3=Moderate, 4=Low, 5=Planning)",
@@ -101,7 +103,11 @@ def _resolve_incident_sys_id(
             "GET",
             url,
             headers=headers,
-            params={"sysparm_query": f"number={incident_id}", "sysparm_limit": 1, "sysparm_fields": "sys_id"},
+            params={
+                "sysparm_query": f"number={incident_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
         )
         resp.raise_for_status()
         results = resp.json().get("result", [])
@@ -177,7 +183,10 @@ def create_incident_task(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error creating incident task: {e}")
-        return {"success": False, "message": f"Error creating incident task: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error creating incident task: {_format_http_error(e)}",
+        }
 
 
 def list_incident_tasks(
@@ -231,7 +240,10 @@ def list_incident_tasks(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing incident tasks: {e}")
-        return {"success": False, "message": f"Error listing incident tasks: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error listing incident tasks: {_format_http_error(e)}",
+        }
 
 
 def list_incident_comments(
@@ -300,13 +312,18 @@ def list_incident_comments(
             "comments": comments,
             "count": len(comments),
             "has_more": len(comments) == validated.limit,
-            "next_offset": validated.offset + len(comments) if len(comments) == validated.limit else None,
+            "next_offset": validated.offset + len(comments)
+            if len(comments) == validated.limit
+            else None,
             "incident_id": incident_sys_id,
             "message": f"Found {len(comments)} journal entries",
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing incident comments: {e}")
-        return {"success": False, "message": f"Error listing incident comments: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error listing incident comments: {_format_http_error(e)}",
+        }
 
 
 def _resolve_task_sys_id(
@@ -324,7 +341,11 @@ def _resolve_task_sys_id(
             "GET",
             url,
             headers=headers,
-            params={"sysparm_query": f"number={task_id}", "sysparm_limit": 1, "sysparm_fields": "sys_id"},
+            params={
+                "sysparm_query": f"number={task_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
         )
         resp.raise_for_status()
         results = resp.json().get("result", [])
@@ -391,4 +412,7 @@ def close_incident_task(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error closing incident task: {e}")
-        return {"success": False, "message": f"Error closing incident task: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error closing incident task: {_format_http_error(e)}",
+        }

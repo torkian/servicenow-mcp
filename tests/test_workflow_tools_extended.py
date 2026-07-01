@@ -71,6 +71,7 @@ class TestWorkflowHelpers(unittest.TestCase):
 
     def test_unwrap_params_pydantic(self):
         from servicenow_mcp.tools.workflow_tools import CreateWorkflowParams
+
         p = CreateWorkflowParams(name="Test WF", table="incident")
         result = _unwrap_params(p, CreateWorkflowParams)
         self.assertIsInstance(result, dict)
@@ -78,11 +79,12 @@ class TestWorkflowHelpers(unittest.TestCase):
 
 
 class TestWorkflowToolsExtended(unittest.TestCase):
-
     def setUp(self):
         self.config = ServerConfig(
             instance_url="https://dev12345.service-now.com",
-            auth=AuthConfig(type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")),
+            auth=AuthConfig(
+                type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")
+            ),
         )
         self.auth = MagicMock(spec=AuthManager)
         self.auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
@@ -95,10 +97,16 @@ class TestWorkflowToolsExtended(unittest.TestCase):
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": {"sys_id": "act1", "name": "Approval"}}),
         )
-        result = add_workflow_activity(self.auth, self.config, {
-            "workflow_version_id": "wfv1", "name": "Approval",
-            "activity_type": "approval", "description": "Needs approval",
-        })
+        result = add_workflow_activity(
+            self.auth,
+            self.config,
+            {
+                "workflow_version_id": "wfv1",
+                "name": "Approval",
+                "activity_type": "approval",
+                "description": "Needs approval",
+            },
+        )
         self.assertIn("activity", result)
         self.assertEqual(result["activity"]["sys_id"], "act1")
 
@@ -108,10 +116,15 @@ class TestWorkflowToolsExtended(unittest.TestCase):
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": {"sys_id": "act2"}}),
         )
-        result = add_workflow_activity(self.auth, self.config, {
-            "workflow_version_id": "wfv1", "name": "Notify",
-            "attributes": {"notify_type": "email"},
-        })
+        result = add_workflow_activity(
+            self.auth,
+            self.config,
+            {
+                "workflow_version_id": "wfv1",
+                "name": "Notify",
+                "attributes": {"notify_type": "email"},
+            },
+        )
         self.assertIn("activity", result)
 
     def test_add_workflow_activity_missing_version(self):
@@ -125,9 +138,14 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.post")
     def test_add_workflow_activity_error(self, mock_post):
         mock_post.side_effect = Exception("unexpected")
-        result = add_workflow_activity(self.auth, self.config, {
-            "workflow_version_id": "wfv1", "name": "Test",
-        })
+        result = add_workflow_activity(
+            self.auth,
+            self.config,
+            {
+                "workflow_version_id": "wfv1",
+                "name": "Test",
+            },
+        )
         self.assertIn("error", result)
 
     # --- update_workflow_activity ---
@@ -138,9 +156,15 @@ class TestWorkflowToolsExtended(unittest.TestCase):
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": {"sys_id": "act1", "name": "Updated"}}),
         )
-        result = update_workflow_activity(self.auth, self.config, {
-            "activity_id": "act1", "name": "Updated", "description": "New desc",
-        })
+        result = update_workflow_activity(
+            self.auth,
+            self.config,
+            {
+                "activity_id": "act1",
+                "name": "Updated",
+                "description": "New desc",
+            },
+        )
         # Success path returns activity data or message
         self.assertIsInstance(result, dict)
 
@@ -151,7 +175,9 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.put")
     def test_update_workflow_activity_error(self, mock_put):
         mock_put.side_effect = Exception("fail")
-        result = update_workflow_activity(self.auth, self.config, {"activity_id": "a1", "name": "T"})
+        result = update_workflow_activity(
+            self.auth, self.config, {"activity_id": "a1", "name": "T"}
+        )
         self.assertIn("error", result)
 
     # --- delete_workflow_activity ---
@@ -180,9 +206,13 @@ class TestWorkflowToolsExtended(unittest.TestCase):
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": {"sys_id": "act1"}}),
         )
-        result = reorder_workflow_activities(self.auth, self.config, {
-            "activity_ids": ["act1", "act2", "act3"],
-        })
+        result = reorder_workflow_activities(
+            self.auth,
+            self.config,
+            {
+                "activity_ids": ["act1", "act2", "act3"],
+            },
+        )
         self.assertIsInstance(result, dict)
 
     def test_reorder_missing_ids(self):
@@ -192,9 +222,13 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.put")
     def test_reorder_error(self, mock_put):
         mock_put.side_effect = Exception("fail")
-        result = reorder_workflow_activities(self.auth, self.config, {
-            "activity_ids": ["act1"],
-        })
+        result = reorder_workflow_activities(
+            self.auth,
+            self.config,
+            {
+                "activity_ids": ["act1"],
+            },
+        )
         self.assertIn("error", result)
 
     # --- swapped params paths ---
@@ -212,6 +246,7 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.get")
     def test_get_workflow_details_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         result = get_workflow_details(self.auth, self.config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
@@ -219,6 +254,7 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.get")
     def test_list_workflow_versions_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         result = list_workflow_versions(self.auth, self.config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
@@ -226,6 +262,7 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.get")
     def test_get_workflow_activities_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         result = get_workflow_activities(self.auth, self.config, {"workflow_version_id": "wfv1"})
         self.assertIn("error", result)
@@ -233,6 +270,7 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.post")
     def test_create_workflow_error(self, mock_post):
         from requests.exceptions import RequestException
+
         mock_post.side_effect = RequestException("fail")
         result = create_workflow(self.auth, self.config, {"name": "WF", "table": "incident"})
         self.assertIn("error", result)
@@ -240,6 +278,7 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.put")
     def test_update_workflow_error(self, mock_put):
         from requests.exceptions import RequestException
+
         mock_put.side_effect = RequestException("fail")
         result = update_workflow(self.auth, self.config, {"workflow_id": "wf1", "name": "Updated"})
         self.assertIn("error", result)
@@ -247,6 +286,7 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.put")
     def test_activate_workflow_error(self, mock_put):
         from requests.exceptions import RequestException
+
         mock_put.side_effect = RequestException("fail")
         result = activate_workflow(self.auth, self.config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
@@ -254,6 +294,7 @@ class TestWorkflowToolsExtended(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.put")
     def test_deactivate_workflow_error(self, mock_put):
         from requests.exceptions import RequestException
+
         mock_put.side_effect = RequestException("fail")
         result = deactivate_workflow(self.auth, self.config, {"workflow_id": "wf1"})
         self.assertIn("error", result)

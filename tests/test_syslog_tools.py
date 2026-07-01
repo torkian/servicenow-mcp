@@ -55,7 +55,16 @@ class TestFormatSyslogEntry(unittest.TestCase):
 
     def test_missing_fields_return_none(self):
         result = _format_syslog_entry({})
-        for key in ("sys_id", "level", "message", "source", "type", "created_on", "created_by", "sequence"):
+        for key in (
+            "sys_id",
+            "level",
+            "message",
+            "source",
+            "type",
+            "created_on",
+            "created_by",
+            "sequence",
+        ):
             self.assertIsNone(result[key])
 
 
@@ -169,6 +178,7 @@ class TestListSyslogEntries(unittest.TestCase):
     @patch("requests.get")
     def test_list_request_exception(self, mock_get):
         import requests as req
+
         mock_get.side_effect = req.exceptions.ConnectionError("timeout")
 
         result = list_syslog_entries(self.auth_manager, self.config, {})
@@ -254,6 +264,7 @@ class TestGetSyslogEntry(unittest.TestCase):
     @patch("requests.get")
     def test_get_entry_request_exception(self, mock_get):
         import requests as req
+
         mock_get.side_effect = req.exceptions.ConnectionError("timeout")
 
         result = get_syslog_entry(
@@ -293,6 +304,7 @@ class TestSyslogParams(unittest.TestCase):
 
     def test_get_params_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             GetSyslogEntryParams()
 

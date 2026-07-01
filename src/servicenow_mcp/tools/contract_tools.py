@@ -72,9 +72,7 @@ CONTRACT_FIELDS = [
     "sys_updated_on",
 ]
 
-CONTRACT_STATE_VALUES = (
-    "draft, pending_review, active, expired, cancelled"
-)
+CONTRACT_STATE_VALUES = "draft, pending_review, active, expired, cancelled"
 
 
 class ListAssetContractsParams(BaseModel):
@@ -314,9 +312,19 @@ def get_asset_contract(
 
 
 _CONTRACT_WRITE_FIELDS = [
-    "short_description", "vendor", "start_date", "end_date", "value",
-    "currency", "contract_type", "category", "state", "assigned_to",
-    "department", "company", "location",
+    "short_description",
+    "vendor",
+    "start_date",
+    "end_date",
+    "value",
+    "currency",
+    "contract_type",
+    "category",
+    "state",
+    "assigned_to",
+    "department",
+    "company",
+    "location",
 ]
 
 

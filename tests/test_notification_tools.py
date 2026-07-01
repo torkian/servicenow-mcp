@@ -52,15 +52,14 @@ def _make_response(status_code, json_data):
     resp.json.return_value = json_data
     resp.raise_for_status = MagicMock()
     if status_code >= 400:
-        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
-            response=resp
-        )
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
     return resp
 
 
 # ---------------------------------------------------------------------------
 # _format_notification
 # ---------------------------------------------------------------------------
+
 
 class TestFormatNotification(unittest.TestCase):
     def test_formats_all_fields(self):
@@ -93,13 +92,12 @@ class TestFormatNotification(unittest.TestCase):
 # list_notifications
 # ---------------------------------------------------------------------------
 
+
 class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_success_returns_notifications(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": [FAKE_NOTIFICATION]})
-        result = list_notifications(
-            _make_auth_manager(), _make_config(), {}
-        )
+        result = list_notifications(_make_auth_manager(), _make_config(), {})
         self.assertTrue(result["success"])
         self.assertEqual(len(result["notifications"]), 1)
         self.assertEqual(result["notifications"][0]["sys_id"], FAKE_SYS_ID)
@@ -107,9 +105,7 @@ class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_empty_result(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        result = list_notifications(
-            _make_auth_manager(), _make_config(), {}
-        )
+        result = list_notifications(_make_auth_manager(), _make_config(), {})
         self.assertTrue(result["success"])
         self.assertEqual(result["notifications"], [])
         self.assertEqual(result["count"], 0)
@@ -117,9 +113,7 @@ class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_state_filter(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_notifications(
-            _make_auth_manager(), _make_config(), {"state": "failed"}
-        )
+        list_notifications(_make_auth_manager(), _make_config(), {"state": "failed"})
         call_kwargs = mock_req.call_args
         query = call_kwargs[1]["params"].get("sysparm_query", "")
         self.assertIn("state=failed", query)
@@ -127,9 +121,7 @@ class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_type_filter(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_notifications(
-            _make_auth_manager(), _make_config(), {"type": "Incident"}
-        )
+        list_notifications(_make_auth_manager(), _make_config(), {"type": "Incident"})
         call_kwargs = mock_req.call_args
         query = call_kwargs[1]["params"].get("sysparm_query", "")
         self.assertIn("typeLIKEIncident", query)
@@ -147,9 +139,7 @@ class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_source_filter(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_notifications(
-            _make_auth_manager(), _make_config(), {"source": FAKE_SOURCE_SYS_ID}
-        )
+        list_notifications(_make_auth_manager(), _make_config(), {"source": FAKE_SOURCE_SYS_ID})
         call_kwargs = mock_req.call_args
         query = call_kwargs[1]["params"].get("sysparm_query", "")
         self.assertIn(f"source={FAKE_SOURCE_SYS_ID}", query)
@@ -157,9 +147,7 @@ class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_created_after_filter(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_notifications(
-            _make_auth_manager(), _make_config(), {"created_after": "2026-06-01"}
-        )
+        list_notifications(_make_auth_manager(), _make_config(), {"created_after": "2026-06-01"})
         call_kwargs = mock_req.call_args
         query = call_kwargs[1]["params"].get("sysparm_query", "")
         self.assertIn("sys_created_on>=2026-06-01", query)
@@ -167,9 +155,7 @@ class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_created_before_filter(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_notifications(
-            _make_auth_manager(), _make_config(), {"created_before": "2026-06-10"}
-        )
+        list_notifications(_make_auth_manager(), _make_config(), {"created_before": "2026-06-10"})
         call_kwargs = mock_req.call_args
         query = call_kwargs[1]["params"].get("sysparm_query", "")
         self.assertIn("sys_created_on<=2026-06-10", query)
@@ -190,9 +176,7 @@ class TestListNotifications(unittest.TestCase):
     @patch("servicenow_mcp.tools.notification_tools._make_request")
     def test_pagination_params(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": []})
-        list_notifications(
-            _make_auth_manager(), _make_config(), {"limit": 5, "offset": 10}
-        )
+        list_notifications(_make_auth_manager(), _make_config(), {"limit": 5, "offset": 10})
         call_kwargs = mock_req.call_args
         params = call_kwargs[1]["params"]
         self.assertEqual(params["sysparm_limit"], 5)

@@ -177,8 +177,14 @@ class TestCreateChangeTask(unittest.TestCase):
 
     @patch("servicenow_mcp.tools.change_tools._make_request")
     def test_create_minimal(self, mock_req):
-        created = {"sys_id": "t1", "number": "CTASK0001", "short_description": "Fix it", "state": "1",
-                   "assigned_to": None, "assignment_group": None}
+        created = {
+            "sys_id": "t1",
+            "number": "CTASK0001",
+            "short_description": "Fix it",
+            "state": "1",
+            "assigned_to": None,
+            "assignment_group": None,
+        }
         mock_req.return_value = _ok({"result": created})
 
         params = {"change_request_id": FAKE_SYS_ID, "short_description": "Fix it"}
@@ -197,8 +203,18 @@ class TestCreateChangeTask(unittest.TestCase):
     def test_create_with_all_optional_fields(self, mock_req):
         mock_req.side_effect = [
             _ok({"result": [{"sys_id": FAKE_SYS_ID}]}),
-            _ok({"result": {"sys_id": "t2", "number": "CTASK0002", "short_description": "Deploy",
-                            "state": "2", "assigned_to": "user1", "assignment_group": "grp1"}}),
+            _ok(
+                {
+                    "result": {
+                        "sys_id": "t2",
+                        "number": "CTASK0002",
+                        "short_description": "Deploy",
+                        "state": "2",
+                        "assigned_to": "user1",
+                        "assignment_group": "grp1",
+                    }
+                }
+            ),
         ]
 
         params = {
@@ -268,6 +284,7 @@ class TestCreateChangeTask(unittest.TestCase):
 
     def test_create_params_invalid_date(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             CreateChangeTaskParams(
                 change_request_id="CHG0001",
@@ -323,7 +340,9 @@ class TestCancelChangeRequest(unittest.TestCase):
 
         self.assertTrue(result["success"])
         patch_kwargs = mock_req.call_args[1]
-        self.assertIn(FAKE_SYS_ID, patch_kwargs["url"] if "url" in patch_kwargs else mock_req.call_args[0][1])
+        self.assertIn(
+            FAKE_SYS_ID, patch_kwargs["url"] if "url" in patch_kwargs else mock_req.call_args[0][1]
+        )
 
     @patch("servicenow_mcp.tools.change_tools._make_request")
     def test_cancel_not_found(self, mock_req):

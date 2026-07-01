@@ -302,9 +302,7 @@ class TestGetCIRelationship(unittest.TestCase):
         mock_resp.json.return_value = {"result": FAKE_REL}
         mock_req.return_value = mock_resp
 
-        result = get_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "rel001"}
-        )
+        result = get_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "rel001"})
 
         self.assertTrue(result["success"])
         self.assertEqual(result["relationship"]["sys_id"], "rel001")
@@ -315,9 +313,7 @@ class TestGetCIRelationship(unittest.TestCase):
         mock_resp.status_code = 404
         mock_req.return_value = mock_resp
 
-        result = get_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "nope"}
-        )
+        result = get_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "nope"})
 
         self.assertFalse(result["success"])
         self.assertIn("not found", result["message"])
@@ -329,9 +325,7 @@ class TestGetCIRelationship(unittest.TestCase):
         mock_resp.json.return_value = {"result": {}}
         mock_req.return_value = mock_resp
 
-        result = get_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "rel001"}
-        )
+        result = get_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "rel001"})
 
         self.assertFalse(result["success"])
         self.assertIn("not found", result["message"])
@@ -346,9 +340,7 @@ class TestGetCIRelationship(unittest.TestCase):
 
         mock_req.side_effect = requests.exceptions.Timeout("timed out")
 
-        result = get_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "rel001"}
-        )
+        result = get_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "rel001"})
 
         self.assertFalse(result["success"])
         self.assertIn("Error retrieving CI relationship", result["message"])
@@ -480,9 +472,7 @@ class TestDeleteCIRelationship(unittest.TestCase):
         mock_resp.status_code = 204
         mock_req.return_value = mock_resp
 
-        result = delete_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "rel001"}
-        )
+        result = delete_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "rel001"})
 
         self.assertTrue(result["success"])
         self.assertIn("deleted successfully", result["message"])
@@ -493,9 +483,7 @@ class TestDeleteCIRelationship(unittest.TestCase):
         mock_resp.status_code = 200
         mock_req.return_value = mock_resp
 
-        result = delete_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "rel001"}
-        )
+        result = delete_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "rel001"})
 
         self.assertTrue(result["success"])
 
@@ -505,9 +493,7 @@ class TestDeleteCIRelationship(unittest.TestCase):
         mock_resp.status_code = 404
         mock_req.return_value = mock_resp
 
-        result = delete_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "nope"}
-        )
+        result = delete_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "nope"})
 
         self.assertFalse(result["success"])
         self.assertIn("not found", result["message"])
@@ -522,9 +508,7 @@ class TestDeleteCIRelationship(unittest.TestCase):
 
         mock_req.side_effect = requests.exceptions.ConnectionError("down")
 
-        result = delete_ci_relationship(
-            self.auth_manager, self.server_config, {"sys_id": "rel001"}
-        )
+        result = delete_ci_relationship(self.auth_manager, self.server_config, {"sys_id": "rel001"})
 
         self.assertFalse(result["success"])
         self.assertIn("Error deleting CI relationship", result["message"])

@@ -9,11 +9,12 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestEpicTools(unittest.TestCase):
-
     def setUp(self):
         self.config = ServerConfig(
             instance_url="https://dev12345.service-now.com",
-            auth=AuthConfig(type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")),
+            auth=AuthConfig(
+                type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")
+            ),
         )
         self.auth = MagicMock(spec=AuthManager)
         self.auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
@@ -31,6 +32,7 @@ class TestEpicTools(unittest.TestCase):
     @patch("servicenow_mcp.tools.epic_tools.requests.post")
     def test_create_epic_error(self, mock_post):
         from requests.exceptions import RequestException
+
         mock_post.side_effect = RequestException("fail")
         result = create_epic(self.auth, self.config, {"short_description": "Epic1"})
         self.assertFalse(result["success"])
@@ -54,15 +56,25 @@ class TestEpicTools(unittest.TestCase):
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": {"sys_id": "e1"}}),
         )
-        result = update_epic(self.auth, self.config, {
-            "epic_id": "e1", "short_description": "Updated", "priority": "1",
-            "state": "3", "assignment_group": "Dev", "assigned_to": "admin", "work_notes": "done",
-        })
+        result = update_epic(
+            self.auth,
+            self.config,
+            {
+                "epic_id": "e1",
+                "short_description": "Updated",
+                "priority": "1",
+                "state": "3",
+                "assignment_group": "Dev",
+                "assigned_to": "admin",
+                "work_notes": "done",
+            },
+        )
         self.assertTrue(result["success"])
 
     @patch("servicenow_mcp.tools.epic_tools.requests.put")
     def test_update_epic_error(self, mock_put):
         from requests.exceptions import RequestException
+
         mock_put.side_effect = RequestException("fail")
         result = update_epic(self.auth, self.config, {"epic_id": "e1", "state": "2"})
         self.assertFalse(result["success"])
@@ -91,6 +103,7 @@ class TestEpicTools(unittest.TestCase):
     @patch("servicenow_mcp.tools.epic_tools.requests.get")
     def test_list_epics_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         result = list_epics(self.auth, self.config, {"limit": 10})
         self.assertFalse(result["success"])

@@ -112,9 +112,7 @@ class TestReopenIncidentByNumber(unittest.TestCase):
     @patch("servicenow_mcp.tools.incident_tools._make_request")
     def test_reopen_by_number_resolves_sys_id(self, mock_req):
         lookup_resp = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]})
-        patch_resp = _make_response(
-            200, {"result": {"sys_id": FAKE_SYS_ID, "number": FAKE_NUMBER}}
-        )
+        patch_resp = _make_response(200, {"result": {"sys_id": FAKE_SYS_ID, "number": FAKE_NUMBER}})
         mock_req.side_effect = [lookup_resp, patch_resp]
 
         params = ReopenIncidentParams(incident_id=FAKE_NUMBER)

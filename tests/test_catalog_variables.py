@@ -35,10 +35,7 @@ class TestCatalogVariablesTools(unittest.TestCase):
             timeout=10,
             auth=AuthConfig(
                 type=AuthType.BASIC,
-                basic=BasicAuthConfig(
-                    username="test_user",
-                    password="test_password"
-                )
+                basic=BasicAuthConfig(username="test_user", password="test_password"),
             ),
         )
         self.auth_manager = MagicMock()
@@ -216,9 +213,7 @@ class TestCatalogVariablesTools(unittest.TestCase):
         self.assertEqual(
             call_args[0][0], f"{self.config.instance_url}/api/now/table/item_option_new"
         )
-        self.assertEqual(
-            call_args[1]["params"]["sysparm_query"], "cat_item=item123^ORDERBYorder"
-        )
+        self.assertEqual(call_args[1]["params"]["sysparm_query"], "cat_item=item123^ORDERBYorder")
         self.assertEqual(call_args[1]["params"]["sysparm_display_value"], "true")
         self.assertEqual(call_args[1]["params"]["sysparm_exclude_reference_link"], "false")
 
@@ -364,10 +359,7 @@ class TestDeleteCatalogItemVariable(unittest.TestCase):
             timeout=10,
             auth=AuthConfig(
                 type=AuthType.BASIC,
-                basic=BasicAuthConfig(
-                    username="test_user",
-                    password="test_password"
-                )
+                basic=BasicAuthConfig(username="test_user", password="test_password"),
             ),
         )
         self.auth_manager = MagicMock()

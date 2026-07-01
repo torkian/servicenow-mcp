@@ -21,10 +21,7 @@ class TestScriptIncludeResource(unittest.IsolatedAsyncioTestCase):
         """Set up test fixtures."""
         auth_config = AuthConfig(
             type=AuthType.BASIC,
-            basic=BasicAuthConfig(
-                username="test_user",
-                password="test_password"
-            )
+            basic=BasicAuthConfig(username="test_user", password="test_password"),
         )
         self.server_config = ServerConfig(
             instance_url="https://test.service-now.com",
@@ -39,34 +36,32 @@ class TestScriptIncludeResource(unittest.IsolatedAsyncioTestCase):
         """Test listing script includes."""
         # Mock response
         mock_response = MagicMock()
-        mock_response.text = json.dumps({
-            "result": [
-                {
-                    "sys_id": "123",
-                    "name": "TestScriptInclude",
-                    "script": "var TestScriptInclude = Class.create();\nTestScriptInclude.prototype = {\n    initialize: function() {\n    },\n\n    type: 'TestScriptInclude'\n};",
-                    "description": "Test Script Include",
-                    "api_name": "global.TestScriptInclude",
-                    "client_callable": "true",
-                    "active": "true",
-                    "access": "public",
-                    "sys_created_on": "2023-01-01 00:00:00",
-                    "sys_updated_on": "2023-01-02 00:00:00",
-                    "sys_created_by": {"display_value": "admin"},
-                    "sys_updated_by": {"display_value": "admin"}
-                }
-            ]
-        })
+        mock_response.text = json.dumps(
+            {
+                "result": [
+                    {
+                        "sys_id": "123",
+                        "name": "TestScriptInclude",
+                        "script": "var TestScriptInclude = Class.create();\nTestScriptInclude.prototype = {\n    initialize: function() {\n    },\n\n    type: 'TestScriptInclude'\n};",
+                        "description": "Test Script Include",
+                        "api_name": "global.TestScriptInclude",
+                        "client_callable": "true",
+                        "active": "true",
+                        "access": "public",
+                        "sys_created_on": "2023-01-01 00:00:00",
+                        "sys_updated_on": "2023-01-02 00:00:00",
+                        "sys_created_by": {"display_value": "admin"},
+                        "sys_updated_by": {"display_value": "admin"},
+                    }
+                ]
+            }
+        )
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
         # Call the method
         params = ScriptIncludeListParams(
-            limit=10,
-            offset=0,
-            active=True,
-            client_callable=True,
-            query="Test"
+            limit=10, offset=0, active=True, client_callable=True, query="Test"
         )
         result = await self.script_include_resource.list_script_includes(params)
         result_json = json.loads(result)
@@ -82,33 +77,39 @@ class TestScriptIncludeResource(unittest.IsolatedAsyncioTestCase):
         # Verify the request
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0]
+        )
         self.assertEqual({"Authorization": "Bearer test"}, kwargs["headers"])
         self.assertEqual(10, kwargs["params"]["sysparm_limit"])
         self.assertEqual(0, kwargs["params"]["sysparm_offset"])
-        self.assertEqual("active=true^client_callable=true^nameLIKETest", kwargs["params"]["sysparm_query"])
+        self.assertEqual(
+            "active=true^client_callable=true^nameLIKETest", kwargs["params"]["sysparm_query"]
+        )
 
     @patch("servicenow_mcp.resources.script_includes.requests.get")
     async def test_get_script_include(self, mock_get):
         """Test getting a script include."""
         # Mock response
         mock_response = MagicMock()
-        mock_response.text = json.dumps({
-            "result": {
-                "sys_id": "123",
-                "name": "TestScriptInclude",
-                "script": "var TestScriptInclude = Class.create();\nTestScriptInclude.prototype = {\n    initialize: function() {\n    },\n\n    type: 'TestScriptInclude'\n};",
-                "description": "Test Script Include",
-                "api_name": "global.TestScriptInclude",
-                "client_callable": "true",
-                "active": "true",
-                "access": "public",
-                "sys_created_on": "2023-01-01 00:00:00",
-                "sys_updated_on": "2023-01-02 00:00:00",
-                "sys_created_by": {"display_value": "admin"},
-                "sys_updated_by": {"display_value": "admin"}
+        mock_response.text = json.dumps(
+            {
+                "result": {
+                    "sys_id": "123",
+                    "name": "TestScriptInclude",
+                    "script": "var TestScriptInclude = Class.create();\nTestScriptInclude.prototype = {\n    initialize: function() {\n    },\n\n    type: 'TestScriptInclude'\n};",
+                    "description": "Test Script Include",
+                    "api_name": "global.TestScriptInclude",
+                    "client_callable": "true",
+                    "active": "true",
+                    "access": "public",
+                    "sys_created_on": "2023-01-01 00:00:00",
+                    "sys_updated_on": "2023-01-02 00:00:00",
+                    "sys_created_by": {"display_value": "admin"},
+                    "sys_updated_by": {"display_value": "admin"},
+                }
             }
-        })
+        )
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
@@ -126,7 +127,9 @@ class TestScriptIncludeResource(unittest.IsolatedAsyncioTestCase):
         # Verify the request
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0]
+        )
         self.assertEqual({"Authorization": "Bearer test"}, kwargs["headers"])
         self.assertEqual("name=123", kwargs["params"]["sysparm_query"])
 
@@ -135,22 +138,24 @@ class TestScriptIncludeResource(unittest.IsolatedAsyncioTestCase):
         """Test getting a script include by sys_id."""
         # Mock response
         mock_response = MagicMock()
-        mock_response.text = json.dumps({
-            "result": {
-                "sys_id": "123",
-                "name": "TestScriptInclude",
-                "script": "var TestScriptInclude = Class.create();\nTestScriptInclude.prototype = {\n    initialize: function() {\n    },\n\n    type: 'TestScriptInclude'\n};",
-                "description": "Test Script Include",
-                "api_name": "global.TestScriptInclude",
-                "client_callable": "true",
-                "active": "true",
-                "access": "public",
-                "sys_created_on": "2023-01-01 00:00:00",
-                "sys_updated_on": "2023-01-02 00:00:00",
-                "sys_created_by": {"display_value": "admin"},
-                "sys_updated_by": {"display_value": "admin"}
+        mock_response.text = json.dumps(
+            {
+                "result": {
+                    "sys_id": "123",
+                    "name": "TestScriptInclude",
+                    "script": "var TestScriptInclude = Class.create();\nTestScriptInclude.prototype = {\n    initialize: function() {\n    },\n\n    type: 'TestScriptInclude'\n};",
+                    "description": "Test Script Include",
+                    "api_name": "global.TestScriptInclude",
+                    "client_callable": "true",
+                    "active": "true",
+                    "access": "public",
+                    "sys_created_on": "2023-01-01 00:00:00",
+                    "sys_updated_on": "2023-01-02 00:00:00",
+                    "sys_created_by": {"display_value": "admin"},
+                    "sys_updated_by": {"display_value": "admin"},
+                }
             }
-        })
+        )
         mock_response.status_code = 200
         mock_get.return_value = mock_response
 
@@ -166,7 +171,9 @@ class TestScriptIncludeResource(unittest.IsolatedAsyncioTestCase):
         # Verify the request
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include/123", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include/123", args[0]
+        )
         self.assertEqual({"Authorization": "Bearer test"}, kwargs["headers"])
 
     @patch("servicenow_mcp.resources.script_includes.requests.get")
@@ -205,11 +212,7 @@ class TestScriptIncludeListParams(unittest.TestCase):
     def test_script_include_list_params(self):
         """Test script include list parameters."""
         params = ScriptIncludeListParams(
-            limit=20,
-            offset=10,
-            active=True,
-            client_callable=False,
-            query="Test"
+            limit=20, offset=10, active=True, client_callable=False, query="Test"
         )
         self.assertEqual(20, params.limit)
         self.assertEqual(10, params.offset)
@@ -224,4 +227,4 @@ class TestScriptIncludeListParams(unittest.TestCase):
         self.assertEqual(0, params.offset)
         self.assertIsNone(params.active)
         self.assertIsNone(params.client_callable)
-        self.assertIsNone(params.query) 
+        self.assertIsNone(params.query)

@@ -57,8 +57,8 @@ def _ok_response(data):
 # _unwrap_params
 # ---------------------------------------------------------------------------
 
-class TestUnwrapParams(unittest.TestCase):
 
+class TestUnwrapParams(unittest.TestCase):
     def test_dict_passthrough(self):
         result = _unwrap_params({"a": 1}, ListWorkflowsParams)
         self.assertEqual(result, {"a": 1})
@@ -80,8 +80,8 @@ class TestUnwrapParams(unittest.TestCase):
 # _get_auth_and_config edge cases
 # ---------------------------------------------------------------------------
 
-class TestGetAuthAndConfig(unittest.TestCase):
 
+class TestGetAuthAndConfig(unittest.TestCase):
     def test_correct_order(self):
         auth_manager, server_config = _make_auth_and_config()
         am, sc = _get_auth_and_config(auth_manager, server_config)
@@ -125,8 +125,8 @@ class TestGetAuthAndConfig(unittest.TestCase):
 # list_workflows additional paths
 # ---------------------------------------------------------------------------
 
-class TestListWorkflowsExtra(unittest.TestCase):
 
+class TestListWorkflowsExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
@@ -165,8 +165,8 @@ class TestListWorkflowsExtra(unittest.TestCase):
 # get_workflow_details additional paths
 # ---------------------------------------------------------------------------
 
-class TestGetWorkflowDetailsExtra(unittest.TestCase):
 
+class TestGetWorkflowDetailsExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
@@ -179,9 +179,7 @@ class TestGetWorkflowDetailsExtra(unittest.TestCase):
     def test_generic_exception_returns_error(self, mock_get):
         """Lines 294-296: generic Exception."""
         mock_get.side_effect = Exception("boom")
-        result = get_workflow_details(
-            self.auth_manager, self.server_config, {"workflow_id": "wf1"}
-        )
+        result = get_workflow_details(self.auth_manager, self.server_config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
 
     def test_bad_auth_config_returns_error(self):
@@ -194,8 +192,8 @@ class TestGetWorkflowDetailsExtra(unittest.TestCase):
 # list_workflow_versions additional paths
 # ---------------------------------------------------------------------------
 
-class TestListWorkflowVersionsExtra(unittest.TestCase):
 
+class TestListWorkflowVersionsExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
@@ -215,7 +213,9 @@ class TestListWorkflowVersionsExtra(unittest.TestCase):
 
     def test_bad_auth_config_returns_error(self):
         """Lines 321-323."""
-        result = list_workflow_versions(MagicMock(spec=[]), MagicMock(spec=[]), {"workflow_id": "x"})
+        result = list_workflow_versions(
+            MagicMock(spec=[]), MagicMock(spec=[]), {"workflow_id": "x"}
+        )
         self.assertIn("error", result)
 
 
@@ -223,14 +223,16 @@ class TestListWorkflowVersionsExtra(unittest.TestCase):
 # get_workflow_activities additional paths
 # ---------------------------------------------------------------------------
 
-class TestGetWorkflowActivitiesExtra(unittest.TestCase):
 
+class TestGetWorkflowActivitiesExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
     def test_bad_auth_config_returns_error(self):
         """Lines 381-383."""
-        result = get_workflow_activities(MagicMock(spec=[]), MagicMock(spec=[]), {"workflow_id": "x"})
+        result = get_workflow_activities(
+            MagicMock(spec=[]), MagicMock(spec=[]), {"workflow_id": "x"}
+        )
         self.assertIn("error", result)
 
     @patch("servicenow_mcp.tools.workflow_tools.requests.get")
@@ -254,6 +256,7 @@ class TestGetWorkflowActivitiesExtra(unittest.TestCase):
     @patch("servicenow_mcp.tools.workflow_tools.requests.get")
     def test_request_exception_during_activities_fetch(self, mock_get):
         """Lines 441-443: RequestException during activities fetch."""
+
         def side_effect(*args, **kwargs):
             url = args[0]
             if "wf_workflow_version" in url:
@@ -271,8 +274,8 @@ class TestGetWorkflowActivitiesExtra(unittest.TestCase):
 # create_workflow additional paths
 # ---------------------------------------------------------------------------
 
-class TestCreateWorkflowExtra(unittest.TestCase):
 
+class TestCreateWorkflowExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
@@ -290,9 +293,7 @@ class TestCreateWorkflowExtra(unittest.TestCase):
     def test_generic_exception_returns_error(self, mock_post):
         """Lines 513-515."""
         mock_post.side_effect = Exception("boom")
-        result = create_workflow(
-            self.auth_manager, self.server_config, {"name": "WF"}
-        )
+        result = create_workflow(self.auth_manager, self.server_config, {"name": "WF"})
         self.assertIn("error", result)
 
 
@@ -300,8 +301,8 @@ class TestCreateWorkflowExtra(unittest.TestCase):
 # update_workflow additional paths
 # ---------------------------------------------------------------------------
 
-class TestUpdateWorkflowExtra(unittest.TestCase):
 
+class TestUpdateWorkflowExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
@@ -312,9 +313,7 @@ class TestUpdateWorkflowExtra(unittest.TestCase):
 
     def test_no_update_params_returns_error(self):
         """Line 568: data dict is empty."""
-        result = update_workflow(
-            self.auth_manager, self.server_config, {"workflow_id": "wf1"}
-        )
+        result = update_workflow(self.auth_manager, self.server_config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
 
     @patch("servicenow_mcp.tools.workflow_tools.requests.patch")
@@ -358,8 +357,8 @@ class TestUpdateWorkflowExtra(unittest.TestCase):
 # activate/deactivate_workflow additional paths
 # ---------------------------------------------------------------------------
 
-class TestActivateDeactivateExtra(unittest.TestCase):
 
+class TestActivateDeactivateExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
@@ -377,9 +376,7 @@ class TestActivateDeactivateExtra(unittest.TestCase):
     def test_activate_generic_exception(self, mock_patch):
         """Lines 642-644."""
         mock_patch.side_effect = Exception("boom")
-        result = activate_workflow(
-            self.auth_manager, self.server_config, {"workflow_id": "wf1"}
-        )
+        result = activate_workflow(self.auth_manager, self.server_config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
 
     def test_deactivate_missing_workflow_id(self):
@@ -396,9 +393,7 @@ class TestActivateDeactivateExtra(unittest.TestCase):
     def test_deactivate_generic_exception(self, mock_patch):
         """Lines 698-700."""
         mock_patch.side_effect = Exception("boom")
-        result = deactivate_workflow(
-            self.auth_manager, self.server_config, {"workflow_id": "wf1"}
-        )
+        result = deactivate_workflow(self.auth_manager, self.server_config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
 
 
@@ -406,15 +401,16 @@ class TestActivateDeactivateExtra(unittest.TestCase):
 # add_workflow_activity additional paths
 # ---------------------------------------------------------------------------
 
-class TestAddWorkflowActivityExtra(unittest.TestCase):
 
+class TestAddWorkflowActivityExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
     def test_bad_auth_config_returns_error(self):
         """Lines 725-727."""
         result = add_workflow_activity(
-            MagicMock(spec=[]), MagicMock(spec=[]),
+            MagicMock(spec=[]),
+            MagicMock(spec=[]),
             {"workflow_version_id": "v1", "name": "act", "activity_type": "approval"},
         )
         self.assertIn("error", result)
@@ -422,7 +418,8 @@ class TestAddWorkflowActivityExtra(unittest.TestCase):
     def test_missing_workflow_version_id(self):
         """Line 732: missing workflow_version_id."""
         result = add_workflow_activity(
-            self.auth_manager, self.server_config,
+            self.auth_manager,
+            self.server_config,
             {"name": "act", "activity_type": "approval"},
         )
         self.assertIn("error", result)
@@ -430,7 +427,8 @@ class TestAddWorkflowActivityExtra(unittest.TestCase):
     def test_missing_activity_name(self):
         """Line 736: missing activity name."""
         result = add_workflow_activity(
-            self.auth_manager, self.server_config,
+            self.auth_manager,
+            self.server_config,
             {"workflow_version_id": "v1", "activity_type": "approval"},
         )
         self.assertIn("error", result)
@@ -440,7 +438,8 @@ class TestAddWorkflowActivityExtra(unittest.TestCase):
         """Lines 768-769."""
         mock_post.side_effect = Exception("boom")
         result = add_workflow_activity(
-            self.auth_manager, self.server_config,
+            self.auth_manager,
+            self.server_config,
             {"workflow_version_id": "v1", "name": "act", "activity_type": "approval"},
         )
         self.assertIn("error", result)
@@ -450,15 +449,16 @@ class TestAddWorkflowActivityExtra(unittest.TestCase):
 # update_workflow_activity additional paths
 # ---------------------------------------------------------------------------
 
-class TestUpdateWorkflowActivityExtra(unittest.TestCase):
 
+class TestUpdateWorkflowActivityExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
     def test_bad_auth_config_returns_error(self):
         """Lines 797-799."""
         result = update_workflow_activity(
-            MagicMock(spec=[]), MagicMock(spec=[]),
+            MagicMock(spec=[]),
+            MagicMock(spec=[]),
             {"activity_id": "a1", "name": "n"},
         )
         self.assertIn("error", result)
@@ -489,8 +489,8 @@ class TestUpdateWorkflowActivityExtra(unittest.TestCase):
 # delete_workflow_activity additional paths
 # ---------------------------------------------------------------------------
 
-class TestDeleteWorkflowActivityExtra(unittest.TestCase):
 
+class TestDeleteWorkflowActivityExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
@@ -524,15 +524,16 @@ class TestDeleteWorkflowActivityExtra(unittest.TestCase):
 # reorder_workflow_activities additional paths
 # ---------------------------------------------------------------------------
 
-class TestReorderWorkflowActivitiesExtra(unittest.TestCase):
 
+class TestReorderWorkflowActivitiesExtra(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
     def test_bad_auth_config_returns_error(self):
         """Lines 914-916."""
         result = reorder_workflow_activities(
-            MagicMock(spec=[]), MagicMock(spec=[]),
+            MagicMock(spec=[]),
+            MagicMock(spec=[]),
             {"workflow_id": "wf1", "activity_ids": ["a1"]},
         )
         self.assertIn("error", result)
@@ -556,7 +557,8 @@ class TestReorderWorkflowActivitiesExtra(unittest.TestCase):
         """Lines 947-953: per-item RequestException is recorded in results."""
         mock_patch.side_effect = requests_lib.RequestException("item err")
         result = reorder_workflow_activities(
-            self.auth_manager, self.server_config,
+            self.auth_manager,
+            self.server_config,
             {"workflow_id": "wf1", "activity_ids": ["a1", "a2"]},
         )
         self.assertIn("results", result)
@@ -568,7 +570,8 @@ class TestReorderWorkflowActivitiesExtra(unittest.TestCase):
         """Lines 960-962: generic Exception in outer try."""
         mock_patch.side_effect = Exception("outer boom")
         result = reorder_workflow_activities(
-            self.auth_manager, self.server_config,
+            self.auth_manager,
+            self.server_config,
             {"workflow_id": "wf1", "activity_ids": ["a1"]},
         )
         # The per-item exception is caught and recorded as a failure (not outer)
@@ -582,16 +585,14 @@ class TestReorderWorkflowActivitiesExtra(unittest.TestCase):
 # delete_workflow (entirely untested before)
 # ---------------------------------------------------------------------------
 
-class TestDeleteWorkflow(unittest.TestCase):
 
+class TestDeleteWorkflow(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_auth_and_config()
 
     def test_bad_auth_config_returns_error(self):
         """Lines 985-989."""
-        result = delete_workflow(
-            MagicMock(spec=[]), MagicMock(spec=[]), {"workflow_id": "wf1"}
-        )
+        result = delete_workflow(MagicMock(spec=[]), MagicMock(spec=[]), {"workflow_id": "wf1"})
         self.assertIn("error", result)
 
     def test_missing_workflow_id_returns_error(self):
@@ -603,9 +604,7 @@ class TestDeleteWorkflow(unittest.TestCase):
     def test_delete_success(self, mock_delete):
         """Lines 996-1006."""
         mock_delete.return_value = _ok_response({})
-        result = delete_workflow(
-            self.auth_manager, self.server_config, {"workflow_id": "wf1"}
-        )
+        result = delete_workflow(self.auth_manager, self.server_config, {"workflow_id": "wf1"})
         self.assertIn("message", result)
         self.assertIn("wf1", result["message"])
 
@@ -613,18 +612,14 @@ class TestDeleteWorkflow(unittest.TestCase):
     def test_request_exception(self, mock_delete):
         """Lines 1007-1009."""
         mock_delete.side_effect = requests_lib.RequestException("net err")
-        result = delete_workflow(
-            self.auth_manager, self.server_config, {"workflow_id": "wf1"}
-        )
+        result = delete_workflow(self.auth_manager, self.server_config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
 
     @patch("servicenow_mcp.tools.workflow_tools.requests.delete")
     def test_generic_exception(self, mock_delete):
         """Lines 1010-1012."""
         mock_delete.side_effect = Exception("boom")
-        result = delete_workflow(
-            self.auth_manager, self.server_config, {"workflow_id": "wf1"}
-        )
+        result = delete_workflow(self.auth_manager, self.server_config, {"workflow_id": "wf1"})
         self.assertIn("error", result)
 
 

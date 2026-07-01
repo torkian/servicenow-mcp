@@ -21,10 +21,7 @@ class TestChangesetResource(unittest.IsolatedAsyncioTestCase):
         """Set up test fixtures."""
         auth_config = AuthConfig(
             type=AuthType.BASIC,
-            basic=BasicAuthConfig(
-                username="test_user",
-                password="test_password"
-            )
+            basic=BasicAuthConfig(username="test_user", password="test_password"),
         )
         self.server_config = ServerConfig(
             instance_url="https://test.service-now.com",
@@ -39,17 +36,19 @@ class TestChangesetResource(unittest.IsolatedAsyncioTestCase):
         """Test listing changesets."""
         # Mock response
         mock_response = MagicMock()
-        mock_response.text = json.dumps({
-            "result": [
-                {
-                    "sys_id": "123",
-                    "name": "Test Changeset",
-                    "state": "in_progress",
-                    "application": "Test App",
-                    "developer": "test.user",
-                }
-            ]
-        })
+        mock_response.text = json.dumps(
+            {
+                "result": [
+                    {
+                        "sys_id": "123",
+                        "name": "Test Changeset",
+                        "state": "in_progress",
+                        "application": "Test App",
+                        "developer": "test.user",
+                    }
+                ]
+            }
+        )
         mock_response.raise_for_status.return_value = None
         mock_get.return_value = mock_response
 
@@ -207,4 +206,4 @@ class TestChangesetListParams(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

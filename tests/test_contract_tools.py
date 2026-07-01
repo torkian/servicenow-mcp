@@ -78,10 +78,25 @@ class TestFormatContract(unittest.TestCase):
 
     def test_missing_fields_return_none(self):
         result = _format_contract({})
-        for key in ("sys_id", "number", "short_description", "vendor", "state",
-                    "contract_type", "category", "start_date", "end_date",
-                    "value", "currency", "assigned_to", "department", "company",
-                    "location", "created_on", "updated_on"):
+        for key in (
+            "sys_id",
+            "number",
+            "short_description",
+            "vendor",
+            "state",
+            "contract_type",
+            "category",
+            "start_date",
+            "end_date",
+            "value",
+            "currency",
+            "assigned_to",
+            "department",
+            "company",
+            "location",
+            "created_on",
+            "updated_on",
+        ):
             self.assertIsNone(result[key], f"{key} should be None for empty record")
 
     def test_plain_string_ref_fields(self):
@@ -381,9 +396,7 @@ class TestCreateAssetContract(unittest.TestCase):
     @patch("servicenow_mcp.tools.contract_tools._make_request")
     def test_create_posts_to_contract_table(self, mock_req):
         mock_req.return_value = self._mock_response(FAKE_CONTRACT)
-        create_asset_contract(
-            self.auth, self.config, {"short_description": "Test contract"}
-        )
+        create_asset_contract(self.auth, self.config, {"short_description": "Test contract"})
         call_args = mock_req.call_args
         self.assertEqual(call_args[0][0], "POST")
         self.assertIn("alm_contract", call_args[0][1])
@@ -415,9 +428,7 @@ class TestCreateAssetContract(unittest.TestCase):
     @patch("servicenow_mcp.tools.contract_tools._make_request")
     def test_create_omits_none_fields_from_body(self, mock_req):
         mock_req.return_value = self._mock_response(FAKE_CONTRACT)
-        create_asset_contract(
-            self.auth, self.config, {"short_description": "Minimal contract"}
-        )
+        create_asset_contract(self.auth, self.config, {"short_description": "Minimal contract"})
         body = mock_req.call_args[1]["json"]
         self.assertNotIn("vendor", body)
         self.assertNotIn("start_date", body)
@@ -428,18 +439,14 @@ class TestCreateAssetContract(unittest.TestCase):
         mock_req.return_value.raise_for_status.side_effect = requests.exceptions.HTTPError(
             "Bad Request"
         )
-        result = create_asset_contract(
-            self.auth, self.config, {"short_description": "Test"}
-        )
+        result = create_asset_contract(self.auth, self.config, {"short_description": "Test"})
         self.assertFalse(result["success"])
         self.assertIn("Error creating asset contract", result["message"])
 
     @patch("servicenow_mcp.tools.contract_tools._make_request")
     def test_create_connection_error(self, mock_req):
         mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
-        result = create_asset_contract(
-            self.auth, self.config, {"short_description": "Test"}
-        )
+        result = create_asset_contract(self.auth, self.config, {"short_description": "Test"})
         self.assertFalse(result["success"])
         self.assertIn("Error creating asset contract", result["message"])
 
@@ -474,9 +481,7 @@ class TestUpdateAssetContract(unittest.TestCase):
         return resp
 
     def test_missing_sys_id_returns_error(self):
-        result = update_asset_contract(
-            self.auth, self.config, {"short_description": "Updated"}
-        )
+        result = update_asset_contract(self.auth, self.config, {"short_description": "Updated"})
         self.assertFalse(result["success"])
 
     def test_no_update_fields_returns_error(self):
@@ -496,9 +501,7 @@ class TestUpdateAssetContract(unittest.TestCase):
     @patch("servicenow_mcp.tools.contract_tools._make_request")
     def test_update_patches_correct_url(self, mock_req):
         mock_req.return_value = self._mock_response(FAKE_CONTRACT)
-        update_asset_contract(
-            self.auth, self.config, {"sys_id": "con001", "value": "12000"}
-        )
+        update_asset_contract(self.auth, self.config, {"sys_id": "con001", "value": "12000"})
         call_args = mock_req.call_args
         self.assertEqual(call_args[0][0], "PATCH")
         self.assertIn("con001", call_args[0][1])
@@ -553,9 +556,7 @@ class TestUpdateAssetContract(unittest.TestCase):
         auth.instance_url = None
         config = MagicMock(spec=ServerConfig)
         config.instance_url = None
-        result = update_asset_contract(
-            auth, config, {"sys_id": "con001", "state": "active"}
-        )
+        result = update_asset_contract(auth, config, {"sys_id": "con001", "state": "active"})
         self.assertFalse(result["success"])
 
     def test_update_no_headers(self):
@@ -564,9 +565,7 @@ class TestUpdateAssetContract(unittest.TestCase):
         auth.get_headers = MagicMock(return_value=None)
         config = MagicMock(spec=ServerConfig)
         config.instance_url = "https://dev.service-now.com"
-        result = update_asset_contract(
-            auth, config, {"sys_id": "con001", "state": "active"}
-        )
+        result = update_asset_contract(auth, config, {"sys_id": "con001", "state": "active"})
         self.assertFalse(result["success"])
 
 
@@ -793,9 +792,7 @@ class TestExpireAssetContract(unittest.TestCase):
     @patch("servicenow_mcp.tools.contract_tools._make_request")
     def test_expire_with_notes_includes_notes_in_body(self, mock_req):
         mock_req.return_value = self._mock_response(FAKE_CONTRACT)
-        expire_asset_contract(
-            self.auth, self.config, {"sys_id": "con001", "notes": "End of term"}
-        )
+        expire_asset_contract(self.auth, self.config, {"sys_id": "con001", "notes": "End of term"})
         body = mock_req.call_args[1]["json"]
         self.assertEqual(body["notes"], "End of term")
         self.assertEqual(body["state"], "expired")

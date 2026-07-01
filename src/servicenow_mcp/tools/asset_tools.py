@@ -84,7 +84,9 @@ class ListAssetsParams(BaseModel):
     limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
     offset: Optional[int] = Field(0, description="Pagination offset")
     asset_tag: Optional[str] = Field(None, description="Filter by asset tag (exact match)")
-    display_name: Optional[str] = Field(None, description="Filter by display name (substring match)")
+    display_name: Optional[str] = Field(
+        None, description="Filter by display name (substring match)"
+    )
     install_status: Optional[str] = Field(
         None, description=f"Filter by install status: {INSTALL_STATUS_VALUES}"
     )
@@ -180,13 +182,13 @@ class CreateAssetParams(BaseModel):
     )
     cpu_name: Optional[str] = Field(None, description="CPU model name (alm_hardware only)")
     cpu_speed: Optional[int] = Field(None, description="CPU speed in MHz (alm_hardware only)")
-    disk_space: Optional[int] = Field(None, description="Total disk space in GB (alm_hardware only)")
+    disk_space: Optional[int] = Field(
+        None, description="Total disk space in GB (alm_hardware only)"
+    )
     ram: Optional[int] = Field(None, description="RAM in MB (alm_hardware only)")
     os: Optional[str] = Field(None, description="Operating system name (alm_hardware only)")
     os_version: Optional[str] = Field(None, description="OS version string (alm_hardware only)")
-    os_service_pack: Optional[str] = Field(
-        None, description="OS service pack (alm_hardware only)"
-    )
+    os_service_pack: Optional[str] = Field(None, description="OS service pack (alm_hardware only)")
     os_domain: Optional[str] = Field(None, description="OS domain (alm_hardware only)")
     mac_address: Optional[str] = Field(None, description="MAC address (alm_hardware only)")
     ip_address: Optional[str] = Field(None, description="IP address (alm_hardware only)")
@@ -236,10 +238,24 @@ def _format_asset(record: Dict) -> Dict:
 def _build_update_body(validated: UpdateAssetParams) -> Dict:
     """Build a PATCH body from non-None update fields."""
     fields: List[str] = [
-        "display_name", "asset_tag", "serial_number", "install_status",
-        "substatus", "cost", "cost_currency", "purchase_date", "warranty_expiration",
-        "lease_id", "vendor", "acquisition_method", "assigned_to",
-        "owned_by", "managed_by", "location", "company", "department",
+        "display_name",
+        "asset_tag",
+        "serial_number",
+        "install_status",
+        "substatus",
+        "cost",
+        "cost_currency",
+        "purchase_date",
+        "warranty_expiration",
+        "lease_id",
+        "vendor",
+        "acquisition_method",
+        "assigned_to",
+        "owned_by",
+        "managed_by",
+        "location",
+        "company",
+        "department",
     ]
     return {f: getattr(validated, f) for f in fields if getattr(validated, f) is not None}
 
@@ -322,7 +338,9 @@ def create_asset(
     Returns:
         Dictionary with ``success``, ``sys_id``, and ``asset`` keys.
     """
-    result = _unwrap_and_validate_params(params, CreateAssetParams, required_fields=["display_name"])
+    result = _unwrap_and_validate_params(
+        params, CreateAssetParams, required_fields=["display_name"]
+    )
     if not result["success"]:
         return result
     validated = result["params"]

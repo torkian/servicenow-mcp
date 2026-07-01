@@ -12,7 +12,6 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestIncidentTaskTools(unittest.TestCase):
-
     def setUp(self):
         auth_config = AuthConfig(
             type=AuthType.BASIC,
@@ -125,9 +124,7 @@ class TestIncidentTaskTools(unittest.TestCase):
 
     def test_create_incident_task_missing_short_description(self):
         """Missing short_description alone should fail validation."""
-        result = create_incident_task(
-            self.auth_manager, self.config, {"incident_id": "INC0010001"}
-        )
+        result = create_incident_task(self.auth_manager, self.config, {"incident_id": "INC0010001"})
         self.assertFalse(result["success"])
         self.assertIn("short_description", result["message"])
 
@@ -183,6 +180,7 @@ class TestIncidentTaskTools(unittest.TestCase):
         mock_get.return_value = lookup_resp
 
         import requests as req
+
         mock_post.side_effect = req.exceptions.RequestException("500 Server Error")
 
         result = create_incident_task(
@@ -325,6 +323,7 @@ class TestIncidentTaskTools(unittest.TestCase):
         inc_sys_id = "f" * 32
 
         import requests as req
+
         mock_get.side_effect = req.exceptions.RequestException("503 Service Unavailable")
 
         result = list_incident_tasks(

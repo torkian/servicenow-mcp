@@ -47,10 +47,14 @@ ATTACHMENT_FIELDS = [
 class ListAttachmentsParams(BaseModel):
     """Parameters for listing attachments for a record."""
 
-    table_name: str = Field(..., description="ServiceNow table name (e.g. 'incident', 'change_request')")
+    table_name: str = Field(
+        ..., description="ServiceNow table name (e.g. 'incident', 'change_request')"
+    )
     table_sys_id: str = Field(..., description="sys_id of the record whose attachments to list")
     file_name: Optional[str] = Field(None, description="Filter by file name (substring match)")
-    content_type: Optional[str] = Field(None, description="Filter by MIME type (e.g. 'application/pdf')")
+    content_type: Optional[str] = Field(
+        None, description="Filter by MIME type (e.g. 'application/pdf')"
+    )
     limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
     offset: Optional[int] = Field(0, description="Pagination offset")
 
@@ -70,7 +74,9 @@ class DeleteAttachmentParams(BaseModel):
 class UploadAttachmentParams(BaseModel):
     """Parameters for uploading a file attachment to a ServiceNow record."""
 
-    table_name: str = Field(..., description="ServiceNow table name (e.g. 'incident', 'change_request')")
+    table_name: str = Field(
+        ..., description="ServiceNow table name (e.g. 'incident', 'change_request')"
+    )
     table_sys_id: str = Field(..., description="sys_id of the record to attach the file to")
     file_name: str = Field(..., description="File name including extension (e.g. 'report.pdf')")
     file_content_base64: str = Field(..., description="Base64-encoded file content")
@@ -159,7 +165,9 @@ def list_attachments(
         response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         attachments = [_format_attachment(r) for r in response.json().get("result", [])]
-        return _paginated_list_response(attachments, validated.limit, validated.offset, "attachments")
+        return _paginated_list_response(
+            attachments, validated.limit, validated.offset, "attachments"
+        )
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing attachments: {e}")
         return {"success": False, "message": f"Error listing attachments: {_format_http_error(e)}"}
@@ -204,7 +212,10 @@ def get_attachment(
         return {"success": True, "attachment": _format_attachment(record)}
     except requests.exceptions.RequestException as e:
         logger.error(f"Error retrieving attachment: {e}")
-        return {"success": False, "message": f"Error retrieving attachment: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error retrieving attachment: {_format_http_error(e)}",
+        }
 
 
 def delete_attachment(
@@ -240,7 +251,10 @@ def delete_attachment(
         if response.status_code == 404:
             return {"success": False, "message": f"Attachment not found: {validated.sys_id}"}
         if response.status_code == 204:
-            return {"success": True, "message": f"Attachment {validated.sys_id} deleted successfully"}
+            return {
+                "success": True,
+                "message": f"Attachment {validated.sys_id} deleted successfully",
+            }
         response.raise_for_status()
         return {"success": True, "message": f"Attachment {validated.sys_id} deleted successfully"}
     except requests.exceptions.RequestException as e:
@@ -287,7 +301,10 @@ def upload_attachment(
     if not headers:
         return {"success": False, "message": "Cannot find get_headers method"}
 
-    upload_headers = {**headers, "Content-Type": validated.content_type or "application/octet-stream"}
+    upload_headers = {
+        **headers,
+        "Content-Type": validated.content_type or "application/octet-stream",
+    }
 
     query_params: Dict[str, Any] = {
         "table_name": validated.table_name,
@@ -299,7 +316,9 @@ def upload_attachment(
 
     url = f"{instance_url}{ATTACHMENT_API}/file"
     try:
-        response = _make_request("POST", url, headers=upload_headers, params=query_params, data=file_bytes)
+        response = _make_request(
+            "POST", url, headers=upload_headers, params=query_params, data=file_bytes
+        )
         response.raise_for_status()
         record = response.json().get("result", {})
         return {"success": True, "attachment": _format_attachment(record)}
@@ -327,7 +346,9 @@ def download_attachment(
         Dictionary with ``success``, ``sys_id``, ``content_type``, and
         ``content_base64`` keys on success.
     """
-    result = _unwrap_and_validate_params(params, DownloadAttachmentParams, required_fields=["sys_id"])
+    result = _unwrap_and_validate_params(
+        params, DownloadAttachmentParams, required_fields=["sys_id"]
+    )
     if not result["success"]:
         return result
     validated = result["params"]
@@ -355,4 +376,7 @@ def download_attachment(
         }
     except requests.exceptions.RequestException as e:
         logger.error(f"Error downloading attachment: {e}")
-        return {"success": False, "message": f"Error downloading attachment: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error downloading attachment: {_format_http_error(e)}",
+        }

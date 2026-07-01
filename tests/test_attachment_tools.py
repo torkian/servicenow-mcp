@@ -72,9 +72,18 @@ class TestFormatAttachment(unittest.TestCase):
 
     def test_empty_record_returns_nones(self):
         result = _format_attachment({})
-        for key in ("sys_id", "file_name", "content_type", "size_bytes",
-                    "table_name", "table_sys_id", "created_on", "created_by",
-                    "updated_on", "download_link"):
+        for key in (
+            "sys_id",
+            "file_name",
+            "content_type",
+            "size_bytes",
+            "table_name",
+            "table_sys_id",
+            "created_on",
+            "created_by",
+            "updated_on",
+            "download_link",
+        ):
             self.assertIsNone(result[key], f"{key} should be None for empty record")
 
 

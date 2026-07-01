@@ -9,11 +9,12 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestProjectTools(unittest.TestCase):
-
     def setUp(self):
         self.config = ServerConfig(
             instance_url="https://dev12345.service-now.com",
-            auth=AuthConfig(type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")),
+            auth=AuthConfig(
+                type=AuthType.BASIC, basic=BasicAuthConfig(username="test", password="test")
+            ),
         )
         self.auth = MagicMock(spec=AuthManager)
         self.auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
@@ -32,6 +33,7 @@ class TestProjectTools(unittest.TestCase):
     @patch("servicenow_mcp.tools.project_tools.requests.post")
     def test_create_project_error(self, mock_post):
         from requests.exceptions import RequestException
+
         mock_post.side_effect = RequestException("fail")
         result = create_project(self.config, self.auth, {"short_description": "Proj1"})
         self.assertFalse(result["success"])
@@ -55,17 +57,28 @@ class TestProjectTools(unittest.TestCase):
             raise_for_status=MagicMock(),
             json=MagicMock(return_value={"result": {"sys_id": "p1"}}),
         )
-        result = update_project(self.config, self.auth, {
-            "project_id": "p1", "short_description": "Updated", "status": "green",
-            "state": "2", "project_manager": "admin", "percentage_complete": "50",
-            "assignment_group": "PMO", "assigned_to": "admin",
-            "start_date": "2025-01-01", "end_date": "2025-12-31",
-        })
+        result = update_project(
+            self.config,
+            self.auth,
+            {
+                "project_id": "p1",
+                "short_description": "Updated",
+                "status": "green",
+                "state": "2",
+                "project_manager": "admin",
+                "percentage_complete": "50",
+                "assignment_group": "PMO",
+                "assigned_to": "admin",
+                "start_date": "2025-01-01",
+                "end_date": "2025-12-31",
+            },
+        )
         self.assertTrue(result["success"])
 
     @patch("servicenow_mcp.tools.project_tools.requests.put")
     def test_update_project_error(self, mock_put):
         from requests.exceptions import RequestException
+
         mock_put.side_effect = RequestException("fail")
         result = update_project(self.config, self.auth, {"project_id": "p1", "state": "2"})
         self.assertFalse(result["success"])
@@ -94,6 +107,7 @@ class TestProjectTools(unittest.TestCase):
     @patch("servicenow_mcp.tools.project_tools.requests.get")
     def test_list_projects_error(self, mock_get):
         from requests.exceptions import RequestException
+
         mock_get.side_effect = RequestException("fail")
         result = list_projects(self.config, self.auth, {"limit": 10})
         self.assertFalse(result["success"])

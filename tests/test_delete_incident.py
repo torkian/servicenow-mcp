@@ -99,7 +99,9 @@ class TestDeleteIncidentByNumber(unittest.TestCase):
 
     @patch("servicenow_mcp.tools.incident_tools._make_request")
     def test_delete_by_number_resolves_then_deletes(self, mock_req):
-        lookup_resp = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID, "number": FAKE_NUMBER}]})
+        lookup_resp = _make_response(
+            200, {"result": [{"sys_id": FAKE_SYS_ID, "number": FAKE_NUMBER}]}
+        )
         delete_resp = _make_response(204)
         mock_req.side_effect = [lookup_resp, delete_resp]
 

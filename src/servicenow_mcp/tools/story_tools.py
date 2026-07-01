@@ -13,7 +13,13 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _make_request, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _make_request,
+    _unwrap_and_validate_params,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -24,28 +30,57 @@ class CreateStoryParams(BaseModel):
     short_description: str = Field(..., description="Short description of the story")
     acceptance_criteria: str = Field(..., description="Acceptance criteria for the story")
     description: Optional[str] = Field(None, description="Detailed description of the story")
-    state: Optional[str] = Field(None, description="State of story (-6 is Draft,-7 is Ready for Testing,-8 is Testing,1 is Ready, 2 is Work in progress, 3 is Complete, 4 is Cancelled)")
+    state: Optional[str] = Field(
+        None,
+        description="State of story (-6 is Draft,-7 is Ready for Testing,-8 is Testing,1 is Ready, 2 is Work in progress, 3 is Complete, 4 is Cancelled)",
+    )
     assignment_group: Optional[str] = Field(None, description="Group assigned to the story")
     story_points: Optional[int] = Field(10, description="Points value for the story")
     assigned_to: Optional[str] = Field(None, description="User assigned to the story")
-    epic: Optional[str] = Field(None, description="Epic that the story belongs to. It requires the System ID of the epic.")
-    project: Optional[str] = Field(None, description="Project that the story belongs to. It requires the System ID of the project.")
-    work_notes: Optional[str] = Field(None, description="Work notes to add to the story. Used for adding notes and comments to a story")
-    
+    epic: Optional[str] = Field(
+        None, description="Epic that the story belongs to. It requires the System ID of the epic."
+    )
+    project: Optional[str] = Field(
+        None,
+        description="Project that the story belongs to. It requires the System ID of the project.",
+    )
+    work_notes: Optional[str] = Field(
+        None,
+        description="Work notes to add to the story. Used for adding notes and comments to a story",
+    )
+
+
 class UpdateStoryParams(BaseModel):
     """Parameters for updating a story."""
 
-    story_id: str = Field(..., description="Story IDNumber or sys_id. You will need to fetch the story to get the sys_id if you only have the story number")
+    story_id: str = Field(
+        ...,
+        description="Story IDNumber or sys_id. You will need to fetch the story to get the sys_id if you only have the story number",
+    )
     short_description: Optional[str] = Field(None, description="Short description of the story")
-    acceptance_criteria: Optional[str] = Field(None, description="Acceptance criteria for the story")
+    acceptance_criteria: Optional[str] = Field(
+        None, description="Acceptance criteria for the story"
+    )
     description: Optional[str] = Field(None, description="Detailed description of the story")
-    state: Optional[str] = Field(None, description="State of story (-6 is Draft,-7 is Ready for Testing,-8 is Testing,1 is Ready, 2 is Work in progress, 3 is Complete, 4 is Cancelled)")
+    state: Optional[str] = Field(
+        None,
+        description="State of story (-6 is Draft,-7 is Ready for Testing,-8 is Testing,1 is Ready, 2 is Work in progress, 3 is Complete, 4 is Cancelled)",
+    )
     assignment_group: Optional[str] = Field(None, description="Group assigned to the story")
     story_points: Optional[int] = Field(None, description="Points value for the story")
     assigned_to: Optional[str] = Field(None, description="User assigned to the story")
-    epic: Optional[str] = Field(None, description="Epic that the story belongs to. It requires the System ID of the epic.")
-    project: Optional[str] = Field(None, description="Project that the story belongs to. It requires the System ID of the project.")
-    work_notes: Optional[str] = Field(None, description="Work notes to add to the story. Used for adding notes and comments to a story")
+    epic: Optional[str] = Field(
+        None, description="Epic that the story belongs to. It requires the System ID of the epic."
+    )
+    project: Optional[str] = Field(
+        None,
+        description="Project that the story belongs to. It requires the System ID of the project.",
+    )
+    work_notes: Optional[str] = Field(
+        None,
+        description="Work notes to add to the story. Used for adding notes and comments to a story",
+    )
+
 
 class ListStoriesParams(BaseModel):
     """Parameters for listing stories."""
@@ -54,8 +89,11 @@ class ListStoriesParams(BaseModel):
     offset: Optional[int] = Field(0, description="Offset to start from")
     state: Optional[str] = Field(None, description="Filter by state")
     assignment_group: Optional[str] = Field(None, description="Filter by assignment group")
-    timeframe: Optional[str] = Field(None, description="Filter by timeframe (upcoming, in-progress, completed)")
+    timeframe: Optional[str] = Field(
+        None, description="Filter by timeframe (upcoming, in-progress, completed)"
+    )
     query: Optional[str] = Field(None, description="Additional query string")
+
 
 class ListStoryDependenciesParams(BaseModel):
     """Parameters for listing story dependencies."""
@@ -63,19 +101,28 @@ class ListStoryDependenciesParams(BaseModel):
     limit: Optional[int] = Field(10, description="Maximum number of records to return")
     offset: Optional[int] = Field(0, description="Offset to start from")
     query: Optional[str] = Field(None, description="Additional query string")
-    dependent_story: Optional[str] = Field(None, description="Sys_id of the dependent story is required")
-    prerequisite_story: Optional[str] = Field(None, description="Sys_id that this story depends on is required")
+    dependent_story: Optional[str] = Field(
+        None, description="Sys_id of the dependent story is required"
+    )
+    prerequisite_story: Optional[str] = Field(
+        None, description="Sys_id that this story depends on is required"
+    )
+
 
 class CreateStoryDependencyParams(BaseModel):
     """Parameters for creating a story dependency."""
 
     dependent_story: str = Field(..., description="Sys_id of the dependent story is required")
-    prerequisite_story: str = Field(..., description="Sys_id that this story depends on is required")
+    prerequisite_story: str = Field(
+        ..., description="Sys_id that this story depends on is required"
+    )
+
 
 class DeleteStoryDependencyParams(BaseModel):
     """Parameters for deleting a story dependency."""
 
     dependency_id: str = Field(..., description="Sys_id of the dependency is required")
+
 
 def create_story(
     auth_manager: AuthManager,
@@ -96,22 +143,20 @@ def create_story(
 
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        CreateStoryParams, 
-        required_fields=["short_description", "acceptance_criteria"]
+        params, CreateStoryParams, required_fields=["short_description", "acceptance_criteria"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "short_description": validated_params.short_description,
         "acceptance_criteria": validated_params.acceptance_criteria,
     }
-       
+
     # Add optional fields if provided
     if validated_params.description:
         data["description"] = validated_params.description
@@ -129,7 +174,7 @@ def create_story(
         data["project"] = validated_params.project
     if validated_params.work_notes:
         data["work_notes"] = validated_params.work_notes
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -137,7 +182,7 @@ def create_story(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -145,19 +190,19 @@ def create_story(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/rm_story"
-    
+
     try:
         response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Story created successfully",
@@ -169,6 +214,7 @@ def create_story(
             "success": False,
             "message": f"Error creating story: {_format_http_error(e)}",
         }
+
 
 def update_story(
     auth_manager: AuthManager,
@@ -187,20 +233,16 @@ def update_story(
         The updated story.
     """
     # Unwrap and validate parameters
-    result = _unwrap_and_validate_params(
-        params, 
-        UpdateStoryParams,
-        required_fields=["story_id"]
-    )
-    
+    result = _unwrap_and_validate_params(params, UpdateStoryParams, required_fields=["story_id"])
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {}
-    
+
     # Add optional fields if provided
     if validated_params.short_description:
         data["short_description"] = validated_params.short_description
@@ -222,7 +264,7 @@ def update_story(
         data["assigned_to"] = validated_params.assigned_to
     if validated_params.work_notes:
         data["work_notes"] = validated_params.work_notes
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -230,7 +272,7 @@ def update_story(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -238,19 +280,19 @@ def update_story(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/rm_story/{validated_params.story_id}"
-    
+
     try:
         response = _make_request("PUT", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Story updated successfully",
@@ -262,6 +304,7 @@ def update_story(
             "success": False,
             "message": f"Error updating story: {_format_http_error(e)}",
         }
+
 
 def list_stories(
     auth_manager: AuthManager,
@@ -280,24 +323,21 @@ def list_stories(
         A list of stories.
     """
     # Unwrap and validate parameters
-    result = _unwrap_and_validate_params(
-        params, 
-        ListStoriesParams
-    )
-    
+    result = _unwrap_and_validate_params(params, ListStoriesParams)
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Build the query
     query_parts = []
-    
+
     if validated_params.state:
         query_parts.append(f"state={validated_params.state}")
     if validated_params.assignment_group:
         query_parts.append(f"assignment_group={validated_params.assignment_group}")
-    
+
     # Handle timeframe filtering
     if validated_params.timeframe:
         now = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
@@ -307,14 +347,14 @@ def list_stories(
             query_parts.append(f"start_date<{now}^end_date>{now}")
         elif validated_params.timeframe == "completed":
             query_parts.append(f"end_date<{now}")
-    
+
     # Add any additional query string
     if validated_params.query:
         query_parts.append(validated_params.query)
-    
+
     # Combine query parts
     query = "^".join(query_parts) if query_parts else ""
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -322,7 +362,7 @@ def list_stories(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -330,27 +370,27 @@ def list_stories(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/rm_story"
-    
+
     params = {
         "sysparm_limit": validated_params.limit,
         "sysparm_offset": validated_params.offset,
         "sysparm_query": query,
         "sysparm_display_value": "true",
     }
-    
+
     try:
         response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         # Handle the case where result["result"] is a list
         stories = result.get("result", [])
         count = len(stories)
-        
+
         return {
             "success": True,
             "stories": stories,
@@ -363,6 +403,7 @@ def list_stories(
             "success": False,
             "message": f"Error listing stories: {_format_http_error(e)}",
         }
+
 
 def list_story_dependencies(
     auth_manager: AuthManager,
@@ -381,31 +422,28 @@ def list_story_dependencies(
         A list of story dependencies.
     """
     # Unwrap and validate parameters
-    result = _unwrap_and_validate_params(
-        params, 
-        ListStoryDependenciesParams
-    )
-    
+    result = _unwrap_and_validate_params(params, ListStoryDependenciesParams)
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Build the query
     query_parts = []
-    
+
     if validated_params.dependent_story:
         query_parts.append(f"dependent_story={validated_params.dependent_story}")
     if validated_params.prerequisite_story:
         query_parts.append(f"prerequisite_story={validated_params.prerequisite_story}")
-    
+
     # Add any additional query string
     if validated_params.query:
         query_parts.append(validated_params.query)
-    
+
     # Combine query parts
     query = "^".join(query_parts) if query_parts else ""
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -413,7 +451,7 @@ def list_story_dependencies(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -421,27 +459,27 @@ def list_story_dependencies(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/m2m_story_dependencies"
-    
+
     params = {
         "sysparm_limit": validated_params.limit,
         "sysparm_offset": validated_params.offset,
         "sysparm_query": query,
         "sysparm_display_value": "true",
     }
-    
+
     try:
         response = _make_request("GET", url, headers=headers, params=params)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         # Handle the case where result["result"] is a list
         story_dependencies = result.get("result", [])
         count = len(story_dependencies)
-        
+
         return {
             "success": True,
             "story_dependencies": story_dependencies,
@@ -454,6 +492,7 @@ def list_story_dependencies(
             "success": False,
             "message": f"Error listing story dependencies: {_format_http_error(e)}",
         }
+
 
 def create_story_dependency(
     auth_manager: AuthManager,
@@ -471,24 +510,24 @@ def create_story_dependency(
     Returns:
         The created story dependency.
     """
-    # Unwrap and validate parameters    
+    # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
+        params,
         CreateStoryDependencyParams,
-        required_fields=["dependent_story", "prerequisite_story"]
+        required_fields=["dependent_story", "prerequisite_story"],
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "dependent_story": validated_params.dependent_story,
         "prerequisite_story": validated_params.prerequisite_story,
     }
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -496,26 +535,26 @@ def create_story_dependency(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
         return {
-            "success": False,   
+            "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/m2m_story_dependencies"
-    
+
     try:
         response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
-        
-        result = response.json()    
+
+        result = response.json()
         return {
             "success": True,
             "message": "Story dependency created successfully",
@@ -527,6 +566,8 @@ def create_story_dependency(
             "success": False,
             "message": f"Error creating story dependency: {_format_http_error(e)}",
         }
+
+
 def delete_story_dependency(
     auth_manager: AuthManager,
     server_config: ServerConfig,
@@ -543,18 +584,16 @@ def delete_story_dependency(
     Returns:
         The deleted story dependency.
     """
-    # Unwrap and validate parameters    
+    # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        DeleteStoryDependencyParams,
-        required_fields=["dependency_id"]
+        params, DeleteStoryDependencyParams, required_fields=["dependency_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -562,22 +601,22 @@ def delete_story_dependency(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
         return {
-            "success": False,   
+            "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/m2m_story_dependencies/{validated_params.dependency_id}"
-    
+
     try:
         response = _make_request("DELETE", url, headers=headers)
         response.raise_for_status()
-        
+
         return {
             "success": True,
             "message": "Story dependency deleted successfully",

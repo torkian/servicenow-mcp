@@ -77,9 +77,20 @@ class TestFormatCIOutage(unittest.TestCase):
 
     def test_missing_fields_return_none(self):
         result = _format_ci_outage({})
-        for key in ("sys_id", "ci_sys_id", "type", "begin", "end", "duration",
-                    "short_description", "cause_ci", "resolved", "resolution_notes",
-                    "created_on", "updated_on"):
+        for key in (
+            "sys_id",
+            "ci_sys_id",
+            "type",
+            "begin",
+            "end",
+            "duration",
+            "short_description",
+            "cause_ci",
+            "resolved",
+            "resolution_notes",
+            "created_on",
+            "updated_on",
+        ):
             self.assertIsNone(result[key])
 
 
@@ -105,6 +116,7 @@ class TestListCMDBCIOutagesParams(unittest.TestCase):
 
     def test_invalid_datetime_raises(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             ListCMDBCIOutagesParams(begin_after="not-a-date")
 
@@ -195,7 +207,8 @@ class TestListCMDBCIOutages(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         list_cmdb_ci_outages(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"begin_after": "2026-01-01 00:00:00"},
         )
         call_kwargs = mock_req.call_args
@@ -210,7 +223,8 @@ class TestListCMDBCIOutages(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         list_cmdb_ci_outages(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"begin_before": "2026-01-31"},
         )
         call_kwargs = mock_req.call_args
@@ -225,7 +239,8 @@ class TestListCMDBCIOutages(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         list_cmdb_ci_outages(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {
                 "ci_sys_id": "ci001",
                 "outage_type": "hardware",
@@ -248,7 +263,8 @@ class TestListCMDBCIOutages(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         list_cmdb_ci_outages(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"query": "short_descriptionLIKEfailure"},
         )
         call_kwargs = mock_req.call_args
@@ -263,7 +279,8 @@ class TestListCMDBCIOutages(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         result = list_cmdb_ci_outages(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"limit": 5, "offset": 10},
         )
         self.assertTrue(result["success"])
@@ -273,6 +290,7 @@ class TestListCMDBCIOutages(unittest.TestCase):
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_http_error_returns_failure(self, mock_req):
         import requests as req_lib
+
         mock_req.side_effect = req_lib.exceptions.ConnectionError("network error")
 
         result = list_cmdb_ci_outages(self.auth, self.config, {})
@@ -314,6 +332,7 @@ class TestListCMDBCIOutages(unittest.TestCase):
 class TestGetCIOutageParams(unittest.TestCase):
     def test_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             GetCIOutageParams()
 
@@ -367,6 +386,7 @@ class TestGetCIOutage(unittest.TestCase):
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_http_error_returns_failure(self, mock_req):
         import requests as req_lib
+
         mock_req.side_effect = req_lib.exceptions.ConnectionError("network error")
 
         result = get_ci_outage(self.auth, self.config, {"sys_id": "out001"})
@@ -429,11 +449,13 @@ class TestGetCIOutage(unittest.TestCase):
 class TestCreateCIOutageParams(unittest.TestCase):
     def test_requires_cmdb_ci(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             CreateCIOutageParams(begin="2026-06-04 08:00:00")
 
     def test_requires_begin(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             CreateCIOutageParams(cmdb_ci="ci001")
 
@@ -472,11 +494,13 @@ class TestCreateCIOutageParams(unittest.TestCase):
 
     def test_invalid_begin_raises(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             CreateCIOutageParams(cmdb_ci="ci001", begin="not-a-date")
 
     def test_invalid_end_raises(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             CreateCIOutageParams(cmdb_ci="ci001", begin="2026-06-04", end="bad-date")
 
@@ -494,7 +518,8 @@ class TestCreateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         result = create_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"cmdb_ci": "ci001", "begin": "2026-06-04 08:00:00"},
         )
         self.assertTrue(result["success"])
@@ -509,7 +534,8 @@ class TestCreateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         result = create_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {
                 "cmdb_ci": "ci001",
                 "begin": "2026-06-04 08:00:00",
@@ -536,7 +562,8 @@ class TestCreateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         create_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"cmdb_ci": "ci001", "begin": "2026-06-04", "resolved": False},
         )
         body = mock_req.call_args[1]["json"]
@@ -550,7 +577,8 @@ class TestCreateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         create_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"cmdb_ci": "ci001", "begin": "2026-06-04 08:00:00"},
         )
         body = mock_req.call_args[1]["json"]
@@ -568,7 +596,8 @@ class TestCreateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         create_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"cmdb_ci": "ci001", "begin": "2026-06-04 08:00:00"},
         )
         method, url = mock_req.call_args[0]
@@ -586,10 +615,12 @@ class TestCreateCIOutage(unittest.TestCase):
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_http_error_returns_failure(self, mock_req):
         import requests as req_lib
+
         mock_req.side_effect = req_lib.exceptions.ConnectionError("network error")
 
         result = create_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"cmdb_ci": "ci001", "begin": "2026-06-04 08:00:00"},
         )
         self.assertFalse(result["success"])
@@ -621,7 +652,8 @@ class TestCreateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         result = create_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"cmdb_ci": "ci001", "begin": "2026-06-04 08:00:00"},
         )
         self.assertEqual(result["outage"]["ci_sys_id"], "ci001")
@@ -631,6 +663,7 @@ class TestCreateCIOutage(unittest.TestCase):
 class TestUpdateCIOutageParams(unittest.TestCase):
     def test_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             UpdateCIOutageParams()
 
@@ -666,11 +699,13 @@ class TestUpdateCIOutageParams(unittest.TestCase):
 
     def test_invalid_begin_raises(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             UpdateCIOutageParams(sys_id="out001", begin="not-a-date")
 
     def test_invalid_end_raises(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             UpdateCIOutageParams(sys_id="out001", end="bad-date")
 
@@ -688,7 +723,8 @@ class TestUpdateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         result = update_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"sys_id": "out001", "resolved": True, "resolution_notes": "Fixed"},
         )
         self.assertTrue(result["success"])
@@ -703,7 +739,8 @@ class TestUpdateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         update_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"sys_id": "out001", "type": "hardware"},
         )
         method, url = mock_req.call_args[0]
@@ -740,7 +777,8 @@ class TestUpdateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         update_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"sys_id": "out001", "resolution_notes": "Fixed"},
         )
         body = mock_req.call_args[1]["json"]
@@ -758,7 +796,8 @@ class TestUpdateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         update_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {
                 "sys_id": "out001",
                 "type": "network",
@@ -795,7 +834,8 @@ class TestUpdateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         result = update_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"sys_id": "nonexistent", "type": "hardware"},
         )
         self.assertFalse(result["success"])
@@ -804,10 +844,12 @@ class TestUpdateCIOutage(unittest.TestCase):
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_http_error_returns_failure(self, mock_req):
         import requests as req_lib
+
         mock_req.side_effect = req_lib.exceptions.ConnectionError("network error")
 
         result = update_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"sys_id": "out001", "type": "hardware"},
         )
         self.assertFalse(result["success"])
@@ -839,7 +881,8 @@ class TestUpdateCIOutage(unittest.TestCase):
         mock_req.return_value = mock_resp
 
         result = update_ci_outage(
-            self.auth, self.config,
+            self.auth,
+            self.config,
             {"sys_id": "out001", "resolved": True},
         )
         self.assertEqual(result["outage"]["ci_sys_id"], "ci001")
@@ -860,6 +903,7 @@ class TestUpdateCIOutage(unittest.TestCase):
 class TestDeleteCIOutageParams(unittest.TestCase):
     def test_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             DeleteCIOutageParams()
 
@@ -933,6 +977,7 @@ class TestDeleteCIOutage(unittest.TestCase):
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_http_error_returns_failure(self, mock_req):
         import requests as req_lib
+
         mock_req.side_effect = req_lib.exceptions.ConnectionError("network error")
 
         result = delete_ci_outage(self.auth, self.config, {"sys_id": "out001"})

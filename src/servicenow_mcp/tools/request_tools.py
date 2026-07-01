@@ -85,14 +85,22 @@ class ListRequestsParams(BaseModel):
             "4=Closed Complete, 5=Closed Incomplete, 6=Cancelled, 7=Closed Skipped"
         ),
     )
-    requested_for: Optional[str] = Field(None, description="Filter by the user the request was made for (user name or sys_id)")
-    assigned_to: Optional[str] = Field(None, description="Filter by assigned user (user name or sys_id)")
-    assignment_group: Optional[str] = Field(None, description="Filter by assignment group name or sys_id")
+    requested_for: Optional[str] = Field(
+        None, description="Filter by the user the request was made for (user name or sys_id)"
+    )
+    assigned_to: Optional[str] = Field(
+        None, description="Filter by assigned user (user name or sys_id)"
+    )
+    assignment_group: Optional[str] = Field(
+        None, description="Filter by assignment group name or sys_id"
+    )
     approval: Optional[str] = Field(
         None,
         description="Filter by approval state: requested, approved, rejected, not_requested",
     )
-    query: Optional[str] = Field(None, description="Free-text search on short_description and description")
+    query: Optional[str] = Field(
+        None, description="Free-text search on short_description and description"
+    )
 
 
 class GetRequestParams(BaseModel):
@@ -109,10 +117,18 @@ class CreateRequestParams(BaseModel):
 
     short_description: str = Field(..., description="Short description of the request")
     description: Optional[str] = Field(None, description="Detailed description of the request")
-    requested_for: Optional[str] = Field(None, description="User name or sys_id the request is for (defaults to the caller)")
-    assignment_group: Optional[str] = Field(None, description="Group name or sys_id to assign the request to")
-    assigned_to: Optional[str] = Field(None, description="User name or sys_id to assign the request to")
-    priority: Optional[str] = Field(None, description="Priority: 1=Critical, 2=High, 3=Moderate, 4=Low")
+    requested_for: Optional[str] = Field(
+        None, description="User name or sys_id the request is for (defaults to the caller)"
+    )
+    assignment_group: Optional[str] = Field(
+        None, description="Group name or sys_id to assign the request to"
+    )
+    assigned_to: Optional[str] = Field(
+        None, description="User name or sys_id to assign the request to"
+    )
+    priority: Optional[str] = Field(
+        None, description="Priority: 1=Critical, 2=High, 3=Moderate, 4=Low"
+    )
     urgency: Optional[str] = Field(None, description="Urgency: 1=High, 2=Medium, 3=Low")
     impact: Optional[str] = Field(None, description="Impact: 1=High, 2=Medium, 3=Low")
     due_date: Optional[str] = Field(None, description="Due date in YYYY-MM-DD format")
@@ -136,7 +152,9 @@ class UpdateRequestParams(BaseModel):
         ),
     )
     assigned_to: Optional[str] = Field(None, description="Updated assignee user name or sys_id")
-    assignment_group: Optional[str] = Field(None, description="Updated assignment group name or sys_id")
+    assignment_group: Optional[str] = Field(
+        None, description="Updated assignment group name or sys_id"
+    )
     priority: Optional[str] = Field(None, description="Updated priority")
     urgency: Optional[str] = Field(None, description="Updated urgency")
     impact: Optional[str] = Field(None, description="Updated impact")
@@ -253,9 +271,7 @@ def list_requests(
     if validated.approval:
         filters.append(f"approval={validated.approval}")
     if validated.query:
-        filters.append(
-            f"short_descriptionLIKE{validated.query}^ORdescriptionLIKE{validated.query}"
-        )
+        filters.append(f"short_descriptionLIKE{validated.query}^ORdescriptionLIKE{validated.query}")
 
     query_params = _build_sysparm_params(
         validated.limit,
@@ -270,7 +286,9 @@ def list_requests(
         response = _make_request("GET", url, headers=headers, params=query_params)
         response.raise_for_status()
         service_requests = [_format_request(r) for r in response.json().get("result", [])]
-        return _paginated_list_response(service_requests, validated.limit, validated.offset, "requests")
+        return _paginated_list_response(
+            service_requests, validated.limit, validated.offset, "requests"
+        )
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing requests: {e}")
         return {"success": False, "message": f"Error listing requests: {_format_http_error(e)}"}
@@ -305,7 +323,9 @@ def get_request(
 
     display_params = {"sysparm_display_value": "true", "sysparm_exclude_reference_link": "true"}
 
-    if len(validated.request_id) == 32 and all(c in "0123456789abcdef" for c in validated.request_id):
+    if len(validated.request_id) == 32 and all(
+        c in "0123456789abcdef" for c in validated.request_id
+    ):
         url = f"{instance_url}{REQUEST_TABLE}/{validated.request_id}"
         try:
             response = _make_request("GET", url, headers=headers, params=display_params)
@@ -318,12 +338,17 @@ def get_request(
             return {"success": True, "request": _format_request(record)}
         except requests.exceptions.RequestException as e:
             logger.error(f"Error retrieving request: {e}")
-            return {"success": False, "message": f"Error retrieving request: {_format_http_error(e)}"}
+            return {
+                "success": False,
+                "message": f"Error retrieving request: {_format_http_error(e)}",
+            }
     else:
         url = f"{instance_url}{REQUEST_TABLE}"
         try:
             response = _make_request(
-                "GET", url, headers=headers,
+                "GET",
+                url,
+                headers=headers,
                 params={
                     "sysparm_query": f"number={validated.request_id}",
                     "sysparm_limit": 1,
@@ -337,7 +362,10 @@ def get_request(
             return {"success": True, "request": _format_request(records[0])}
         except requests.exceptions.RequestException as e:
             logger.error(f"Error retrieving request: {e}")
-            return {"success": False, "message": f"Error retrieving request: {_format_http_error(e)}"}
+            return {
+                "success": False,
+                "message": f"Error retrieving request: {_format_http_error(e)}",
+            }
 
 
 def create_request(
@@ -614,4 +642,7 @@ def list_request_items(
         return _paginated_list_response(items, validated.limit, validated.offset, "items")
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing request items: {e}")
-        return {"success": False, "message": f"Error listing request items: {_format_http_error(e)}"}
+        return {
+            "success": False,
+            "message": f"Error listing request items: {_format_http_error(e)}",
+        }

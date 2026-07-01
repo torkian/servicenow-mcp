@@ -9,7 +9,6 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestSCTaskTools(unittest.TestCase):
-
     def setUp(self):
         self.auth_config = AuthConfig(
             type=AuthType.BASIC,
@@ -53,9 +52,7 @@ class TestSCTaskTools(unittest.TestCase):
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = get_sctask(
-            self.auth_manager, self.config, {"task_number": "SCTASK0525799"}
-        )
+        result = get_sctask(self.auth_manager, self.config, {"task_number": "SCTASK0525799"})
 
         self.assertTrue(result["success"])
         self.assertEqual(result["sctask"]["number"], "SCTASK0525799")
@@ -69,9 +66,7 @@ class TestSCTaskTools(unittest.TestCase):
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 
-        result = get_sctask(
-            self.auth_manager, self.config, {"task_number": "SCTASK9999999"}
-        )
+        result = get_sctask(self.auth_manager, self.config, {"task_number": "SCTASK9999999"})
 
         self.assertFalse(result["success"])
         self.assertIn("not found", result["message"])
@@ -133,9 +128,7 @@ class TestSCTaskTools(unittest.TestCase):
     def test_update_sctask_success(self, mock_get, mock_patch):
         # Mock the lookup to resolve SCTASK number to sys_id
         lookup_response = MagicMock()
-        lookup_response.json.return_value = {
-            "result": [{"sys_id": "abc123"}]
-        }
+        lookup_response.json.return_value = {"result": [{"sys_id": "abc123"}]}
         lookup_response.raise_for_status = MagicMock()
         mock_get.return_value = lookup_response
 
@@ -170,16 +163,12 @@ class TestSCTaskTools(unittest.TestCase):
     def test_update_sctask_time_worked_accumulation(self, mock_get, mock_patch):
         # First call: resolve SCTASK number
         lookup_response = MagicMock()
-        lookup_response.json.return_value = {
-            "result": [{"sys_id": "abc123"}]
-        }
+        lookup_response.json.return_value = {"result": [{"sys_id": "abc123"}]}
         lookup_response.raise_for_status = MagicMock()
 
         # Second call: get current time_worked
         time_response = MagicMock()
-        time_response.json.return_value = {
-            "result": {"time_worked": "1970-01-01 01:30:00"}
-        }
+        time_response.json.return_value = {"result": {"time_worked": "1970-01-01 01:30:00"}}
         time_response.raise_for_status = MagicMock()
 
         mock_get.side_effect = [lookup_response, time_response]
@@ -231,9 +220,7 @@ class TestSCTaskTools(unittest.TestCase):
     def test_get_sctask_unwraps_nested_params(self, mock_get):
         """Test that params wrapped in {"params": {...}} are unwrapped."""
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "result": [{"sys_id": "abc123", "number": "SCTASK0001"}]
-        }
+        mock_response.json.return_value = {"result": [{"sys_id": "abc123", "number": "SCTASK0001"}]}
         mock_response.raise_for_status = MagicMock()
         mock_get.return_value = mock_response
 

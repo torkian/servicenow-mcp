@@ -12,7 +12,13 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _get_headers, _get_instance_url, _make_request, _unwrap_and_validate_params
+from servicenow_mcp.utils.helpers import (
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _make_request,
+    _unwrap_and_validate_params,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -25,7 +31,9 @@ class ListChangesetsParams(BaseModel):
     state: Optional[str] = Field(None, description="Filter by state")
     application: Optional[str] = Field(None, description="Filter by application")
     developer: Optional[str] = Field(None, description="Filter by developer")
-    timeframe: Optional[str] = Field(None, description="Filter by timeframe (recent, last_week, last_month)")
+    timeframe: Optional[str] = Field(
+        None, description="Filter by timeframe (recent, last_week, last_month)"
+    )
     query: Optional[str] = Field(None, description="Additional query string")
 
 
@@ -94,12 +102,12 @@ def list_changesets(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(params, ListChangesetsParams)
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -107,7 +115,7 @@ def list_changesets(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -115,48 +123,54 @@ def list_changesets(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Build query parameters
     query_params = {
         "sysparm_limit": validated_params.limit,
         "sysparm_offset": validated_params.offset,
     }
-    
+
     # Build sysparm_query
     query_parts = []
-    
+
     if validated_params.state:
         query_parts.append(f"state={validated_params.state}")
-    
+
     if validated_params.application:
         query_parts.append(f"application={validated_params.application}")
-    
+
     if validated_params.developer:
         query_parts.append(f"developer={validated_params.developer}")
-    
+
     if validated_params.timeframe:
         if validated_params.timeframe == "recent":
-            query_parts.append("sys_created_onONLast 7 days@javascript:gs.beginningOfLast7Days()@javascript:gs.endOfToday()")
+            query_parts.append(
+                "sys_created_onONLast 7 days@javascript:gs.beginningOfLast7Days()@javascript:gs.endOfToday()"
+            )
         elif validated_params.timeframe == "last_week":
-            query_parts.append("sys_created_onONLast week@javascript:gs.beginningOfLastWeek()@javascript:gs.endOfLastWeek()")
+            query_parts.append(
+                "sys_created_onONLast week@javascript:gs.beginningOfLastWeek()@javascript:gs.endOfLastWeek()"
+            )
         elif validated_params.timeframe == "last_month":
-            query_parts.append("sys_created_onONLast month@javascript:gs.beginningOfLastMonth()@javascript:gs.endOfLastMonth()")
-    
+            query_parts.append(
+                "sys_created_onONLast month@javascript:gs.beginningOfLastMonth()@javascript:gs.endOfLastMonth()"
+            )
+
     if validated_params.query:
         query_parts.append(validated_params.query)
-    
+
     if query_parts:
         query_params["sysparm_query"] = "^".join(query_parts)
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/sys_update_set"
-    
+
     try:
         response = _make_request("GET", url, params=query_params, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "changesets": result.get("result", []),
@@ -188,16 +202,14 @@ def get_changeset_details(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        GetChangesetDetailsParams, 
-        required_fields=["changeset_id"]
+        params, GetChangesetDetailsParams, required_fields=["changeset_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -205,7 +217,7 @@ def get_changeset_details(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -213,31 +225,31 @@ def get_changeset_details(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/sys_update_set/{validated_params.changeset_id}"
-    
+
     try:
         response = _make_request("GET", url, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         # Get the changeset details
         changeset = result.get("result", {})
-        
+
         # Get the changes in this changeset
         changes_url = f"{instance_url}/api/now/table/sys_update_xml"
         changes_params = {
             "sysparm_query": f"update_set={validated_params.changeset_id}",
         }
-        
+
         changes_response = _make_request("GET", changes_url, params=changes_params, headers=headers)
         changes_response.raise_for_status()
-        
+
         changes_result = changes_response.json()
         changes = changes_result.get("result", [])
-        
+
         return {
             "success": True,
             "changeset": changeset,
@@ -270,28 +282,26 @@ def create_changeset(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        CreateChangesetParams, 
-        required_fields=["name", "application"]
+        params, CreateChangesetParams, required_fields=["name", "application"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "name": validated_params.name,
         "application": validated_params.application,
     }
-    
+
     # Add optional fields if provided
     if validated_params.description:
         data["description"] = validated_params.description
     if validated_params.developer:
         data["developer"] = validated_params.developer
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -299,7 +309,7 @@ def create_changeset(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -307,19 +317,19 @@ def create_changeset(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/sys_update_set"
-    
+
     try:
         response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Changeset created successfully",
@@ -351,19 +361,17 @@ def update_changeset(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        UpdateChangesetParams, 
-        required_fields=["changeset_id"]
+        params, UpdateChangesetParams, required_fields=["changeset_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {}
-    
+
     # Add optional fields if provided
     if validated_params.name:
         data["name"] = validated_params.name
@@ -373,14 +381,14 @@ def update_changeset(
         data["state"] = validated_params.state
     if validated_params.developer:
         data["developer"] = validated_params.developer
-    
+
     # If no fields to update, return error
     if not data:
         return {
             "success": False,
             "message": "No fields to update",
         }
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -388,7 +396,7 @@ def update_changeset(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -396,19 +404,19 @@ def update_changeset(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/sys_update_set/{validated_params.changeset_id}"
-    
+
     try:
         response = _make_request("PATCH", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Changeset updated successfully",
@@ -440,25 +448,23 @@ def commit_changeset(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        CommitChangesetParams, 
-        required_fields=["changeset_id"]
+        params, CommitChangesetParams, required_fields=["changeset_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Prepare the request data
     data = {
         "state": "complete",
     }
-    
+
     # Add commit message if provided
     if validated_params.commit_message:
         data["description"] = validated_params.commit_message
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -466,7 +472,7 @@ def commit_changeset(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -474,19 +480,19 @@ def commit_changeset(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/sys_update_set/{validated_params.changeset_id}"
-    
+
     try:
         response = _make_request("PATCH", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Changeset committed successfully",
@@ -518,16 +524,14 @@ def publish_changeset(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        PublishChangesetParams, 
-        required_fields=["changeset_id"]
+        params, PublishChangesetParams, required_fields=["changeset_id"]
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -535,7 +539,7 @@ def publish_changeset(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -543,28 +547,28 @@ def publish_changeset(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Prepare the request data for the publish action
     data = {
         "state": "published",
     }
-    
+
     # Add publish notes if provided
     if validated_params.publish_notes:
         data["description"] = validated_params.publish_notes
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/sys_update_set/{validated_params.changeset_id}"
-    
+
     try:
         response = _make_request("PATCH", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "Changeset published successfully",
@@ -596,16 +600,16 @@ def add_file_to_changeset(
     """
     # Unwrap and validate parameters
     result = _unwrap_and_validate_params(
-        params, 
-        AddFileToChangesetParams, 
-        required_fields=["changeset_id", "file_path", "file_content"]
+        params,
+        AddFileToChangesetParams,
+        required_fields=["changeset_id", "file_path", "file_content"],
     )
-    
+
     if not result["success"]:
         return result
-    
+
     validated_params = result["params"]
-    
+
     # Get the instance URL
     instance_url = _get_instance_url(auth_manager, server_config)
     if not instance_url:
@@ -613,7 +617,7 @@ def add_file_to_changeset(
             "success": False,
             "message": "Cannot find instance_url in either server_config or auth_manager",
         }
-    
+
     # Get the headers
     headers = _get_headers(auth_manager, server_config)
     if not headers:
@@ -621,10 +625,10 @@ def add_file_to_changeset(
             "success": False,
             "message": "Cannot find get_headers method in either auth_manager or server_config",
         }
-    
+
     # Add Content-Type header
     headers["Content-Type"] = "application/json"
-    
+
     # Prepare the request data for adding a file
     data = {
         "update_set": validated_params.changeset_id,
@@ -632,16 +636,16 @@ def add_file_to_changeset(
         "payload": validated_params.file_content,
         "type": "file",
     }
-    
+
     # Make the API request
     url = f"{instance_url}/api/now/table/sys_update_xml"
-    
+
     try:
         response = _make_request("POST", url, json=data, headers=headers)
         response.raise_for_status()
-        
+
         result = response.json()
-        
+
         return {
             "success": True,
             "message": "File added to changeset successfully",
@@ -652,4 +656,4 @@ def add_file_to_changeset(
         return {
             "success": False,
             "message": f"Error adding file to changeset: {_format_http_error(e)}",
-        } 
+        }

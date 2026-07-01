@@ -108,9 +108,7 @@ class TestExecuteScriptInclude(unittest.TestCase):
         mock_get_si.return_value = {"success": True, "script_include": _ACTIVE_SI}
 
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "result": {"output": json.dumps({"count": 42})}
-        }
+        mock_resp.json.return_value = {"result": {"output": json.dumps({"count": 42})}}
         mock_resp.status_code = 200
         mock_post.return_value = mock_resp
 
@@ -132,9 +130,7 @@ class TestExecuteScriptInclude(unittest.TestCase):
         mock_get_si.return_value = {"success": True, "script_include": _ACTIVE_SI}
 
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "result": {"output": '"hello world"'}
-        }
+        mock_resp.json.return_value = {"result": {"output": '"hello world"'}}
         mock_resp.status_code = 200
         mock_post.return_value = mock_resp
 
@@ -154,9 +150,7 @@ class TestExecuteScriptInclude(unittest.TestCase):
         mock_get_si.return_value = {"success": True, "script_include": _ACTIVE_SI}
 
         mock_resp = MagicMock()
-        mock_resp.json.return_value = {
-            "result": {"print_output": ["true"]}
-        }
+        mock_resp.json.return_value = {"result": {"print_output": ["true"]}}
         mock_resp.status_code = 200
         mock_post.return_value = mock_resp
 
@@ -318,9 +312,7 @@ class TestExecuteScriptInclude(unittest.TestCase):
 
         http_err_resp = MagicMock()
         http_err_resp.status_code = 403
-        http_err_resp.json.return_value = {
-            "error": {"message": "Insufficient privileges"}
-        }
+        http_err_resp.json.return_value = {"error": {"message": "Insufficient privileges"}}
         mock_post.side_effect = requests.HTTPError(response=http_err_resp)
 
         params = ExecuteScriptIncludeParams(

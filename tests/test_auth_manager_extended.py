@@ -29,6 +29,7 @@ class TestAuthManagerGetHeaders(unittest.TestCase):
     def test_basic_auth_valid_config_returns_header(self):
         """Lines 54-56: valid basic auth config produces correct Authorization header."""
         import base64
+
         config = AuthConfig(
             type=AuthType.BASIC,
             basic=BasicAuthConfig(username="admin", password="secret"),

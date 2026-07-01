@@ -100,7 +100,9 @@ class TestListCatalogs(unittest.TestCase):
     def test_active_filter_applied(self, mock_req):
         mock_req.return_value = _make_response(200, {"result": [FAKE_CATALOG]})
         list_catalogs(_make_config(), _make_auth(), ListCatalogsParams(active=True))
-        passed_params = mock_req.call_args.kwargs.get("params", mock_req.call_args.args[2] if len(mock_req.call_args.args) > 2 else {})
+        passed_params = mock_req.call_args.kwargs.get(
+            "params", mock_req.call_args.args[2] if len(mock_req.call_args.args) > 2 else {}
+        )
         self.assertIn("active=true", passed_params.get("sysparm_query", ""))
 
     @patch("servicenow_mcp.tools.catalog_tools._make_request")
@@ -196,8 +198,15 @@ class TestGetCatalog(unittest.TestCase):
         mock_req.return_value = _make_response(200, {"result": FAKE_CATALOG})
         result = get_catalog(_make_config(), _make_auth(), GetCatalogParams(catalog_id="cat001"))
         self.assertTrue(result.success)
-        for field in ("sys_id", "title", "description", "active",
-                      "enable_wish_list", "managers", "desktop_image"):
+        for field in (
+            "sys_id",
+            "title",
+            "description",
+            "active",
+            "enable_wish_list",
+            "managers",
+            "desktop_image",
+        ):
             self.assertIn(field, result.data)
 
     @patch("servicenow_mcp.tools.catalog_tools._make_request")

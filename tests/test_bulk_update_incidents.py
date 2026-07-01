@@ -206,9 +206,19 @@ class TestBulkUpdateIncidentsAllSysIds(unittest.TestCase):
         payload = mock_post.call_args[1]["json"]
         body = json.loads(payload["requests"][0]["body"])
         for field in (
-            "short_description", "description", "state", "category", "subcategory",
-            "priority", "impact", "urgency", "assigned_to", "assignment_group",
-            "work_notes", "close_notes", "close_code",
+            "short_description",
+            "description",
+            "state",
+            "category",
+            "subcategory",
+            "priority",
+            "impact",
+            "urgency",
+            "assigned_to",
+            "assignment_group",
+            "work_notes",
+            "close_notes",
+            "close_code",
         ):
             self.assertIn(field, body)
 
@@ -250,9 +260,7 @@ class TestBulkUpdateIncidentsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_incident_number_resolved_before_batch(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "INC0010001", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "INC0010001", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
@@ -306,15 +314,10 @@ class TestBulkUpdateIncidentsNumberResolution(unittest.TestCase):
             [{"number": f"INC000{i}", "sys_id": ids[i]} for i in range(3)]
         )
         mock_post.return_value = _batch_response(
-            [
-                {"id": str(i), "statusCode": 200, "statusText": "OK", "body": "{}"}
-                for i in range(3)
-            ]
+            [{"id": str(i), "statusCode": 200, "statusText": "OK", "body": "{}"} for i in range(3)]
         )
         params = BulkUpdateIncidentsParams(
-            updates=[
-                IncidentUpdate(incident_id=f"INC000{i}", state="2") for i in range(3)
-            ]
+            updates=[IncidentUpdate(incident_id=f"INC000{i}", state="2") for i in range(3)]
         )
         bulk_update_incidents(_config(), _auth(), params)
         self.assertEqual(mock_get.call_count, 1)
@@ -346,9 +349,7 @@ class TestBulkUpdateIncidentsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_mixed_sys_ids_and_numbers(self, mock_get, mock_post):
         """If some are sys_ids and some are numbers, only one GET for numbers."""
-        mock_get.return_value = _get_response(
-            [{"number": "INC0010001", "sys_id": _SYS_ID_B}]
-        )
+        mock_get.return_value = _get_response([{"number": "INC0010001", "sys_id": _SYS_ID_B}])
         mock_post.return_value = _batch_response(
             [
                 {"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"},
@@ -382,9 +383,7 @@ class TestBulkUpdateIncidentsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_result_entries_carry_incident_id(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "INC0010001", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "INC0010001", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )

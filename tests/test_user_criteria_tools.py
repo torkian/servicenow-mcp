@@ -77,9 +77,7 @@ class TestCreateUserCriteria(unittest.TestCase):
         """Create a user criteria scoped to a specific role."""
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
-        mock_response.json.return_value = {
-            "result": {"sys_id": "uc_002", "name": "ITIL Users"}
-        }
+        mock_response.json.return_value = {"result": {"sys_id": "uc_002", "name": "ITIL Users"}}
         mock_post.return_value = mock_response
 
         params = CreateUserCriteriaParams(
@@ -218,9 +216,7 @@ class TestCreateUserCriteria(unittest.TestCase):
         create_user_criteria(self.config, self.auth_manager, params)
 
         call_url = mock_post.call_args.args[0]
-        self.assertEqual(
-            call_url, "https://test.service-now.com/api/now/table/user_criteria"
-        )
+        self.assertEqual(call_url, "https://test.service-now.com/api/now/table/user_criteria")
 
     # ------------------------------------------------------------------
     # Failure paths
@@ -230,9 +226,7 @@ class TestCreateUserCriteria(unittest.TestCase):
     def test_http_error_returns_failure(self, mock_post):
         """HTTP 4xx/5xx should return a failed response, not raise."""
         mock_response = MagicMock()
-        mock_response.raise_for_status.side_effect = requests.HTTPError(
-            "403 Forbidden"
-        )
+        mock_response.raise_for_status.side_effect = requests.HTTPError("403 Forbidden")
         mock_post.return_value = mock_response
 
         params = CreateUserCriteriaParams(name="Forbidden Criteria")
@@ -394,7 +388,11 @@ class TestCreateUserCriteriaCondition(unittest.TestCase):
         mock_response = MagicMock()
         mock_response.raise_for_status = MagicMock()
         mock_response.json.return_value = {
-            "result": {"sys_id": "cond_cat_001", "user_criteria": "uc_001", "sc_category": "cat_001"}
+            "result": {
+                "sys_id": "cond_cat_001",
+                "user_criteria": "uc_001",
+                "sc_category": "cat_001",
+            }
         }
         mock_post.return_value = mock_response
 
@@ -656,9 +654,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
         resp.status_code = status_code
         resp.json.return_value = body
         if status_code >= 400:
-            resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
-                response=resp
-            )
+            resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
         else:
             resp.raise_for_status.return_value = None
         return resp
@@ -675,6 +671,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
 
     def test_format_dict_references(self):
         from servicenow_mcp.tools.user_criteria_tools import _format_criteria_link
+
         result = _format_criteria_link(self.FAKE_RULE)
         self.assertEqual(result["sys_id"], "abc123")
         self.assertEqual(result["catalog_item_id"], "My Item")
@@ -683,6 +680,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
 
     def test_format_scalar_references(self):
         from servicenow_mcp.tools.user_criteria_tools import _format_criteria_link
+
         result = _format_criteria_link(
             {"sys_id": "def456", "sc_cat_item": "item002", "user_criteria": "crit002"}
         )
@@ -691,6 +689,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
 
     def test_format_empty_record(self):
         from servicenow_mcp.tools.user_criteria_tools import _format_criteria_link
+
         result = _format_criteria_link({})
         self.assertIsNone(result["sys_id"])
         self.assertIsNone(result["catalog_item_id"])
@@ -703,6 +702,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_default_visibility_queries_can_see_table(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": [self.FAKE_RULE]})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertTrue(result["success"])
         call_url = mock_req.call_args[0][1]
@@ -713,6 +713,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_cannot_see_queries_no_mtom_table(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(
             self.auth_manager, self.config, {"visibility": "cannot_see"}
         )
@@ -724,6 +725,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_returns_rules_list(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": [self.FAKE_RULE]})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertIn("rules", result)
         self.assertEqual(len(result["rules"]), 1)
@@ -733,6 +735,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_visibility_included_in_response(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(
             self.auth_manager, self.config, {"visibility": "cannot_see"}
         )
@@ -742,6 +745,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_catalog_item_id_filter_applied(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         list_catalog_item_user_criteria(
             self.auth_manager, self.config, {"catalog_item_id": "item001"}
         )
@@ -752,6 +756,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_user_criteria_id_filter_applied(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         list_catalog_item_user_criteria(
             self.auth_manager, self.config, {"user_criteria_id": "crit001"}
         )
@@ -762,6 +767,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_both_filters_combined(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         list_catalog_item_user_criteria(
             self.auth_manager,
             self.config,
@@ -776,6 +782,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_no_filters_no_sysparm_query(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         query = mock_req.call_args[1]["params"].get("sysparm_query", "")
         self.assertEqual(query, "")
@@ -784,9 +791,8 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_pagination_params_sent(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
-        list_catalog_item_user_criteria(
-            self.auth_manager, self.config, {"limit": 5, "offset": 10}
-        )
+
+        list_catalog_item_user_criteria(self.auth_manager, self.config, {"limit": 5, "offset": 10})
         p = mock_req.call_args[1]["params"]
         self.assertEqual(p["sysparm_limit"], 5)
         self.assertEqual(p["sysparm_offset"], 10)
@@ -796,6 +802,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
         rules = [self.FAKE_RULE] * 20
         mock_req.return_value = self._make_response(200, {"result": rules})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(
             self.auth_manager, self.config, {"limit": 20, "offset": 0}
         )
@@ -806,6 +813,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_has_more_false_when_partial_page(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": [self.FAKE_RULE]})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(
             self.auth_manager, self.config, {"limit": 20, "offset": 0}
         )
@@ -815,6 +823,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_empty_result(self, mock_req):
         mock_req.return_value = self._make_response(200, {"result": []})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertTrue(result["success"])
         self.assertEqual(result["count"], 0)
@@ -824,6 +833,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
         rules = [self.FAKE_RULE, self.FAKE_RULE]
         mock_req.return_value = self._make_response(200, {"result": rules})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertEqual(result["count"], 2)
 
@@ -835,6 +845,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_http_500_returns_failure(self, mock_req):
         mock_req.return_value = self._make_response(500, {})
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertFalse(result["success"])
         self.assertIn("Error listing", result["message"])
@@ -843,12 +854,14 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     def test_connection_error_returns_failure(self, mock_req):
         mock_req.side_effect = requests.exceptions.ConnectionError("refused")
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertFalse(result["success"])
         self.assertIn("Error listing", result["message"])
 
     def test_invalid_visibility_returns_failure(self):
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(
             self.auth_manager, self.config, {"visibility": "bad_value"}
         )
@@ -857,6 +870,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_criteria_tools._get_instance_url", return_value=None)
     def test_no_instance_url_returns_failure(self, _mock):
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertFalse(result["success"])
         self.assertIn("instance_url", result["message"])
@@ -864,6 +878,7 @@ class TestListCatalogItemUserCriteria(unittest.TestCase):
     @patch("servicenow_mcp.tools.user_criteria_tools._get_headers", return_value=None)
     def test_no_headers_returns_failure(self, _mock):
         from servicenow_mcp.tools.user_criteria_tools import list_catalog_item_user_criteria
+
         result = list_catalog_item_user_criteria(self.auth_manager, self.config, {})
         self.assertFalse(result["success"])
         self.assertIn("get_headers", result["message"])

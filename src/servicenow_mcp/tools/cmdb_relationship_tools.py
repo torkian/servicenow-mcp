@@ -208,7 +208,9 @@ def get_ci_relationship(
     Returns:
         Dictionary with ``success`` and ``relationship`` keys.
     """
-    result = _unwrap_and_validate_params(params, GetCIRelationshipParams, required_fields=["sys_id"])
+    result = _unwrap_and_validate_params(
+        params, GetCIRelationshipParams, required_fields=["sys_id"]
+    )
     if not result["success"]:
         return result
     validated = result["params"]

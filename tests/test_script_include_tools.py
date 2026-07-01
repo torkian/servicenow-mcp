@@ -32,10 +32,7 @@ class TestScriptIncludeTools(unittest.TestCase):
         """Set up test fixtures."""
         auth_config = AuthConfig(
             type=AuthType.BASIC,
-            basic=BasicAuthConfig(
-                username="test_user",
-                password="test_password"
-            )
+            basic=BasicAuthConfig(username="test_user", password="test_password"),
         )
         self.server_config = ServerConfig(
             instance_url="https://test.service-now.com",
@@ -66,7 +63,7 @@ class TestScriptIncludeTools(unittest.TestCase):
                     "sys_created_on": "2023-01-01 00:00:00",
                     "sys_updated_on": "2023-01-02 00:00:00",
                     "sys_created_by": {"display_value": "admin"},
-                    "sys_updated_by": {"display_value": "admin"}
+                    "sys_updated_by": {"display_value": "admin"},
                 }
             ]
         }
@@ -75,11 +72,7 @@ class TestScriptIncludeTools(unittest.TestCase):
 
         # Call the method
         params = ListScriptIncludesParams(
-            limit=10,
-            offset=0,
-            active=True,
-            client_callable=True,
-            query="Test"
+            limit=10, offset=0, active=True, client_callable=True, query="Test"
         )
         result = list_script_includes(self.server_config, self.auth_manager, params)
 
@@ -94,11 +87,15 @@ class TestScriptIncludeTools(unittest.TestCase):
         # Verify the request
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0]
+        )
         self.assertEqual(self.auth_manager.get_headers(), kwargs["headers"])
         self.assertEqual(10, kwargs["params"]["sysparm_limit"])
         self.assertEqual(0, kwargs["params"]["sysparm_offset"])
-        self.assertEqual("active=true^client_callable=true^nameLIKETest", kwargs["params"]["sysparm_query"])
+        self.assertEqual(
+            "active=true^client_callable=true^nameLIKETest", kwargs["params"]["sysparm_query"]
+        )
 
     @patch("servicenow_mcp.tools.script_include_tools.requests.get")
     def test_get_script_include(self, mock_get):
@@ -118,7 +115,7 @@ class TestScriptIncludeTools(unittest.TestCase):
                 "sys_created_on": "2023-01-01 00:00:00",
                 "sys_updated_on": "2023-01-02 00:00:00",
                 "sys_created_by": {"display_value": "admin"},
-                "sys_updated_by": {"display_value": "admin"}
+                "sys_updated_by": {"display_value": "admin"},
             }
         }
         mock_response.status_code = 200
@@ -138,7 +135,9 @@ class TestScriptIncludeTools(unittest.TestCase):
         # Verify the request
         mock_get.assert_called_once()
         args, kwargs = mock_get.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0]
+        )
         self.assertEqual(self.auth_manager.get_headers(), kwargs["headers"])
         self.assertEqual("name=123", kwargs["params"]["sysparm_query"])
 
@@ -164,7 +163,7 @@ class TestScriptIncludeTools(unittest.TestCase):
             api_name="global.TestScriptInclude",
             client_callable=True,
             active=True,
-            access="public"
+            access="public",
         )
         result = create_script_include(self.server_config, self.auth_manager, params)
 
@@ -176,7 +175,9 @@ class TestScriptIncludeTools(unittest.TestCase):
         # Verify the request
         mock_post.assert_called_once()
         args, kwargs = mock_post.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include", args[0]
+        )
         self.assertEqual(self.auth_manager.get_headers(), kwargs["headers"])
         self.assertEqual("TestScriptInclude", kwargs["json"]["name"])
         self.assertEqual("true", kwargs["json"]["client_callable"])
@@ -200,7 +201,7 @@ class TestScriptIncludeTools(unittest.TestCase):
                 "client_callable": True,
                 "active": True,
                 "access": "public",
-            }
+            },
         }
 
         # Mock patch response
@@ -231,7 +232,9 @@ class TestScriptIncludeTools(unittest.TestCase):
         # Verify the request
         mock_patch.assert_called_once()
         args, kwargs = mock_patch.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include/123", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include/123", args[0]
+        )
         self.assertEqual(self.auth_manager.get_headers(), kwargs["headers"])
         self.assertEqual("Updated Test Script Include", kwargs["json"]["description"])
         self.assertEqual("false", kwargs["json"]["client_callable"])
@@ -247,7 +250,7 @@ class TestScriptIncludeTools(unittest.TestCase):
             "script_include": {
                 "sys_id": "123",
                 "name": "TestScriptInclude",
-            }
+            },
         }
 
         # Mock delete response
@@ -267,7 +270,9 @@ class TestScriptIncludeTools(unittest.TestCase):
         # Verify the request
         mock_delete.assert_called_once()
         args, kwargs = mock_delete.call_args
-        self.assertEqual(f"{self.server_config.instance_url}/api/now/table/sys_script_include/123", args[0])
+        self.assertEqual(
+            f"{self.server_config.instance_url}/api/now/table/sys_script_include/123", args[0]
+        )
         self.assertEqual(self.auth_manager.get_headers(), kwargs["headers"])
 
     @patch("servicenow_mcp.tools.script_include_tools.requests.get")
@@ -322,11 +327,7 @@ class TestScriptIncludeParams(unittest.TestCase):
     def test_list_script_includes_params(self):
         """Test list script includes parameters."""
         params = ListScriptIncludesParams(
-            limit=20,
-            offset=10,
-            active=True,
-            client_callable=False,
-            query="Test"
+            limit=20, offset=10, active=True, client_callable=False, query="Test"
         )
         self.assertEqual(20, params.limit)
         self.assertEqual(10, params.offset)
@@ -348,7 +349,7 @@ class TestScriptIncludeParams(unittest.TestCase):
             api_name="global.TestScriptInclude",
             client_callable=True,
             active=True,
-            access="public"
+            access="public",
         )
         self.assertEqual("TestScriptInclude", params.name)
         self.assertTrue(params.client_callable)
@@ -378,9 +379,9 @@ class TestScriptIncludeParams(unittest.TestCase):
             success=True,
             message="Test message",
             script_include_id="123",
-            script_include_name="TestScriptInclude"
+            script_include_name="TestScriptInclude",
         )
         self.assertTrue(response.success)
         self.assertEqual("Test message", response.message)
         self.assertEqual("123", response.script_include_id)
-        self.assertEqual("TestScriptInclude", response.script_include_name) 
+        self.assertEqual("TestScriptInclude", response.script_include_name)

@@ -9,7 +9,6 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestListIncidentComments(unittest.TestCase):
-
     def setUp(self):
         auth_config = AuthConfig(
             type=AuthType.BASIC,
@@ -29,7 +28,7 @@ class TestListIncidentComments(unittest.TestCase):
                 "element": "comments",
                 "element_id": "inc_sys_id_001",
                 "value": f"Comment text {i}",
-                "sys_created_on": f"2026-06-0{i+1} 10:00:00",
+                "sys_created_on": f"2026-06-0{i + 1} 10:00:00",
                 "sys_created_by": "admin",
             }
             for i in range(count)
@@ -49,9 +48,7 @@ class TestListIncidentComments(unittest.TestCase):
         resp.raise_for_status = MagicMock()
         mock_get.return_value = resp
 
-        result = list_incident_comments(
-            self.auth_manager, self.config, {"incident_id": inc_sys_id}
-        )
+        result = list_incident_comments(self.auth_manager, self.config, {"incident_id": inc_sys_id})
 
         self.assertTrue(result["success"])
         self.assertEqual(result["count"], 3)
@@ -132,9 +129,7 @@ class TestListIncidentComments(unittest.TestCase):
         resp.raise_for_status = MagicMock()
         mock_get.return_value = resp
 
-        list_incident_comments(
-            self.auth_manager, self.config, {"incident_id": inc_sys_id}
-        )
+        list_incident_comments(self.auth_manager, self.config, {"incident_id": inc_sys_id})
 
         query = mock_get.call_args[1]["params"]["sysparm_query"]
         self.assertNotIn("element=", query)
@@ -213,9 +208,7 @@ class TestListIncidentComments(unittest.TestCase):
         resp.raise_for_status = MagicMock()
         mock_get.return_value = resp
 
-        result = list_incident_comments(
-            self.auth_manager, self.config, {"incident_id": inc_sys_id}
-        )
+        result = list_incident_comments(self.auth_manager, self.config, {"incident_id": inc_sys_id})
 
         comment = result["comments"][0]
         self.assertEqual(comment["sys_id"], "je_001")
@@ -234,9 +227,7 @@ class TestListIncidentComments(unittest.TestCase):
         resp.raise_for_status = MagicMock()
         mock_get.return_value = resp
 
-        list_incident_comments(
-            self.auth_manager, self.config, {"incident_id": inc_sys_id}
-        )
+        list_incident_comments(self.auth_manager, self.config, {"incident_id": inc_sys_id})
 
         fields = mock_get.call_args[1]["params"]["sysparm_fields"]
         for expected in ("sys_id", "element", "value", "sys_created_on", "sys_created_by"):
@@ -291,11 +282,10 @@ class TestListIncidentComments(unittest.TestCase):
         inc_sys_id = "4" * 32
 
         import requests as req
+
         mock_get.side_effect = req.exceptions.RequestException("503 Service Unavailable")
 
-        result = list_incident_comments(
-            self.auth_manager, self.config, {"incident_id": inc_sys_id}
-        )
+        result = list_incident_comments(self.auth_manager, self.config, {"incident_id": inc_sys_id})
 
         self.assertFalse(result["success"])
         self.assertIn("Error listing incident comments", result["message"])
@@ -310,9 +300,7 @@ class TestListIncidentComments(unittest.TestCase):
         resp.raise_for_status = MagicMock()
         mock_get.return_value = resp
 
-        result = list_incident_comments(
-            self.auth_manager, self.config, {"incident_id": inc_sys_id}
-        )
+        result = list_incident_comments(self.auth_manager, self.config, {"incident_id": inc_sys_id})
 
         self.assertTrue(result["success"])
         self.assertEqual(result["count"], 0)

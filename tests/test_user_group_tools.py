@@ -79,6 +79,7 @@ def _mock_response(data, status_code=200):
 # _format_user_group
 # ---------------------------------------------------------------------------
 
+
 class TestFormatUserGroup:
     def test_dict_reference_fields(self):
         out = _format_user_group(RAW_GROUP)
@@ -98,13 +99,25 @@ class TestFormatUserGroup:
 
     def test_all_expected_keys(self):
         out = _format_user_group(RAW_GROUP)
-        for key in ("sys_id", "name", "description", "manager", "parent", "type", "email", "active", "created_on", "updated_on"):
+        for key in (
+            "sys_id",
+            "name",
+            "description",
+            "manager",
+            "parent",
+            "type",
+            "email",
+            "active",
+            "created_on",
+            "updated_on",
+        ):
             assert key in out
 
 
 # ---------------------------------------------------------------------------
 # _format_group_member
 # ---------------------------------------------------------------------------
+
 
 class TestFormatGroupMember:
     def test_dict_reference_fields(self):
@@ -128,6 +141,7 @@ class TestFormatGroupMember:
 # ---------------------------------------------------------------------------
 # _resolve_group_sys_id
 # ---------------------------------------------------------------------------
+
 
 class TestResolveGroupSysId:
     def test_passes_through_sys_id(self):
@@ -159,6 +173,7 @@ class TestResolveGroupSysId:
 # _resolve_user_sys_id
 # ---------------------------------------------------------------------------
 
+
 class TestResolveUserSysId:
     def test_passes_through_sys_id(self):
         result = _resolve_user_sys_id(USER_SYS_ID, "https://x", {})
@@ -189,11 +204,14 @@ class TestResolveUserSysId:
 # list_user_groups
 # ---------------------------------------------------------------------------
 
+
 @patch("servicenow_mcp.tools.user_group_tools._make_request")
 @patch("servicenow_mcp.tools.user_group_tools._get_headers")
 @patch("servicenow_mcp.tools.user_group_tools._get_instance_url")
 class TestListUserGroups:
-    def test_success_default_params(self, mock_url, mock_hdrs, mock_req, auth_manager, server_config):
+    def test_success_default_params(
+        self, mock_url, mock_hdrs, mock_req, auth_manager, server_config
+    ):
         mock_url.return_value = "https://test.service-now.com"
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.return_value = _mock_response({"result": [RAW_GROUP]})
@@ -209,7 +227,9 @@ class TestListUserGroups:
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.return_value = _mock_response({"result": []})
 
-        list_user_groups(auth_manager, server_config, {"name": "Net", "active": True, "manager": "Alice"})
+        list_user_groups(
+            auth_manager, server_config, {"name": "Net", "active": True, "manager": "Alice"}
+        )
         call_params = mock_req.call_args[1]["params"]
         assert "nameLIKENet" in call_params.get("sysparm_query", "")
         assert "active=true" in call_params.get("sysparm_query", "")
@@ -267,6 +287,7 @@ class TestListUserGroups:
 # get_user_group
 # ---------------------------------------------------------------------------
 
+
 @patch("servicenow_mcp.tools.user_group_tools._make_request")
 @patch("servicenow_mcp.tools.user_group_tools._get_headers")
 @patch("servicenow_mcp.tools.user_group_tools._get_instance_url")
@@ -290,7 +311,9 @@ class TestGetUserGroup:
         assert result["success"] is False
         assert "not found" in result["message"]
 
-    def test_by_sys_id_empty_result(self, mock_url, mock_hdrs, mock_req, auth_manager, server_config):
+    def test_by_sys_id_empty_result(
+        self, mock_url, mock_hdrs, mock_req, auth_manager, server_config
+    ):
         mock_url.return_value = "https://test.service-now.com"
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.return_value = _mock_response({"result": {}})
@@ -322,7 +345,9 @@ class TestGetUserGroup:
         result = get_user_group(auth_manager, server_config, {})
         assert result["success"] is False
 
-    def test_request_error_by_name(self, mock_url, mock_hdrs, mock_req, auth_manager, server_config):
+    def test_request_error_by_name(
+        self, mock_url, mock_hdrs, mock_req, auth_manager, server_config
+    ):
         mock_url.return_value = "https://test.service-now.com"
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.side_effect = requests.exceptions.Timeout()
@@ -331,7 +356,9 @@ class TestGetUserGroup:
         assert result["success"] is False
         assert "Error retrieving" in result["message"]
 
-    def test_request_error_by_sys_id(self, mock_url, mock_hdrs, mock_req, auth_manager, server_config):
+    def test_request_error_by_sys_id(
+        self, mock_url, mock_hdrs, mock_req, auth_manager, server_config
+    ):
         mock_url.return_value = "https://test.service-now.com"
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.side_effect = requests.exceptions.ConnectionError()
@@ -344,6 +371,7 @@ class TestGetUserGroup:
 # add_user_to_group
 # ---------------------------------------------------------------------------
 
+
 @patch("servicenow_mcp.tools.user_group_tools._make_request")
 @patch("servicenow_mcp.tools.user_group_tools._get_headers")
 @patch("servicenow_mcp.tools.user_group_tools._get_instance_url")
@@ -354,7 +382,8 @@ class TestAddUserToGroup:
         mock_req.return_value = _mock_response({"result": {"sys_id": MEMBER_SYS_ID}})
 
         result = add_user_to_group(
-            auth_manager, server_config,
+            auth_manager,
+            server_config,
             {"group_id": GROUP_SYS_ID, "user_id": USER_SYS_ID},
         )
         assert result["success"] is True
@@ -371,7 +400,8 @@ class TestAddUserToGroup:
         ]
 
         result = add_user_to_group(
-            auth_manager, server_config,
+            auth_manager,
+            server_config,
             {"group_id": "Network Ops", "user_id": "alice"},
         )
         assert result["success"] is True
@@ -382,7 +412,8 @@ class TestAddUserToGroup:
         mock_req.return_value = _mock_response({"result": []})
 
         result = add_user_to_group(
-            auth_manager, server_config,
+            auth_manager,
+            server_config,
             {"group_id": "Bad Group", "user_id": USER_SYS_ID},
         )
         assert result["success"] is False
@@ -398,7 +429,8 @@ class TestAddUserToGroup:
         ]
 
         result = add_user_to_group(
-            auth_manager, server_config,
+            auth_manager,
+            server_config,
             {"group_id": "Network Ops", "user_id": "nobody"},
         )
         assert result["success"] is False
@@ -409,21 +441,40 @@ class TestAddUserToGroup:
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.side_effect = [
             # resolve group
-            type('R', (), {'status_code': 200, 'json': lambda self: {"result": [{"sys_id": GROUP_SYS_ID}]}, 'raise_for_status': lambda self: None})(),
+            type(
+                "R",
+                (),
+                {
+                    "status_code": 200,
+                    "json": lambda self: {"result": [{"sys_id": GROUP_SYS_ID}]},
+                    "raise_for_status": lambda self: None,
+                },
+            )(),
             # resolve user
-            type('R', (), {'status_code': 200, 'json': lambda self: {"result": [{"sys_id": USER_SYS_ID}]}, 'raise_for_status': lambda self: None})(),
+            type(
+                "R",
+                (),
+                {
+                    "status_code": 200,
+                    "json": lambda self: {"result": [{"sys_id": USER_SYS_ID}]},
+                    "raise_for_status": lambda self: None,
+                },
+            )(),
             # POST fails
             requests.exceptions.ConnectionError("down"),
         ]
 
         result = add_user_to_group(
-            auth_manager, server_config,
+            auth_manager,
+            server_config,
             {"group_id": "Network Ops", "user_id": "alice"},
         )
         assert result["success"] is False
         assert "Error adding user to group" in result["message"]
 
-    def test_missing_required_fields(self, mock_url, mock_hdrs, mock_req, auth_manager, server_config):
+    def test_missing_required_fields(
+        self, mock_url, mock_hdrs, mock_req, auth_manager, server_config
+    ):
         mock_url.return_value = "https://test.service-now.com"
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
 
@@ -434,6 +485,7 @@ class TestAddUserToGroup:
 # ---------------------------------------------------------------------------
 # remove_user_from_group
 # ---------------------------------------------------------------------------
+
 
 @patch("servicenow_mcp.tools.user_group_tools._make_request")
 @patch("servicenow_mcp.tools.user_group_tools._get_headers")
@@ -471,7 +523,9 @@ class TestRemoveUserFromGroup:
         assert result["success"] is False
         assert "not found" in result["message"]
 
-    def test_missing_member_sys_id(self, mock_url, mock_hdrs, mock_req, auth_manager, server_config):
+    def test_missing_member_sys_id(
+        self, mock_url, mock_hdrs, mock_req, auth_manager, server_config
+    ):
         mock_url.return_value = "https://test.service-now.com"
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
 
@@ -502,6 +556,7 @@ class TestRemoveUserFromGroup:
 # list_group_members
 # ---------------------------------------------------------------------------
 
+
 @patch("servicenow_mcp.tools.user_group_tools._make_request")
 @patch("servicenow_mcp.tools.user_group_tools._get_headers")
 @patch("servicenow_mcp.tools.user_group_tools._get_instance_url")
@@ -511,9 +566,7 @@ class TestListGroupMembers:
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.return_value = _mock_response({"result": [RAW_MEMBER]})
 
-        result = list_group_members(
-            auth_manager, server_config, {"group_id": GROUP_SYS_ID}
-        )
+        result = list_group_members(auth_manager, server_config, {"group_id": GROUP_SYS_ID})
         assert result["success"] is True
         assert len(result["members"]) == 1
         assert result["members"][0]["user"] == "Bob"
@@ -526,9 +579,7 @@ class TestListGroupMembers:
             _mock_response({"result": [RAW_MEMBER]}),
         ]
 
-        result = list_group_members(
-            auth_manager, server_config, {"group_id": "Network Ops"}
-        )
+        result = list_group_members(auth_manager, server_config, {"group_id": "Network Ops"})
         assert result["success"] is True
         assert len(result["members"]) == 1
 
@@ -537,9 +588,7 @@ class TestListGroupMembers:
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.return_value = _mock_response({"result": []})
 
-        result = list_group_members(
-            auth_manager, server_config, {"group_id": "Unknown Group"}
-        )
+        result = list_group_members(auth_manager, server_config, {"group_id": "Unknown Group"})
         assert result["success"] is False
 
     def test_missing_group_id(self, mock_url, mock_hdrs, mock_req, auth_manager, server_config):
@@ -564,9 +613,7 @@ class TestListGroupMembers:
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.return_value = _mock_response({"result": []})
 
-        result = list_group_members(
-            auth_manager, server_config, {"group_id": GROUP_SYS_ID}
-        )
+        result = list_group_members(auth_manager, server_config, {"group_id": GROUP_SYS_ID})
         assert result["success"] is True
         assert result["members"] == []
         assert result["has_more"] is False
@@ -576,9 +623,7 @@ class TestListGroupMembers:
         mock_hdrs.return_value = {"Authorization": "Bearer test"}
         mock_req.side_effect = requests.exceptions.ConnectionError("down")
 
-        result = list_group_members(
-            auth_manager, server_config, {"group_id": GROUP_SYS_ID}
-        )
+        result = list_group_members(auth_manager, server_config, {"group_id": GROUP_SYS_ID})
         assert result["success"] is False
         assert "Error listing group members" in result["message"]
 
@@ -586,15 +631,14 @@ class TestListGroupMembers:
         mock_url.return_value = "https://test.service-now.com"
         mock_hdrs.return_value = None
 
-        result = list_group_members(
-            auth_manager, server_config, {"group_id": GROUP_SYS_ID}
-        )
+        result = list_group_members(auth_manager, server_config, {"group_id": GROUP_SYS_ID})
         assert result["success"] is False
 
 
 # ---------------------------------------------------------------------------
 # Param model validation
 # ---------------------------------------------------------------------------
+
 
 class TestParamModels:
     def test_list_user_groups_defaults(self):

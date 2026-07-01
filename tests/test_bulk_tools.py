@@ -199,7 +199,9 @@ class TestExecuteBulkOperationsSuccess(unittest.TestCase):
             ]
         )
         params = BulkOperationsParams(
-            requests=[BulkOperationRequest(id="r1", method="GET", url="/api/now/v2/table/incident/abc123")]
+            requests=[
+                BulkOperationRequest(id="r1", method="GET", url="/api/now/v2/table/incident/abc123")
+            ]
         )
         result = execute_bulk_operations(_config(), _auth(), params)
 
@@ -336,7 +338,9 @@ class TestExecuteBulkOperationsPayloadStructure(unittest.TestCase):
         params = BulkOperationsParams(
             requests=[
                 BulkOperationRequest(id="alpha", method="GET", url="/api/now/v2/table/incident"),
-                BulkOperationRequest(id="beta", method="GET", url="/api/now/v2/table/change_request"),
+                BulkOperationRequest(
+                    id="beta", method="GET", url="/api/now/v2/table/change_request"
+                ),
             ]
         )
         execute_bulk_operations(_config(), _auth(), params)

@@ -81,10 +81,25 @@ class TestFormatCI(unittest.TestCase):
 
     def test_missing_fields_return_none(self):
         result = _format_ci({})
-        for key in ("sys_id", "name", "ci_class", "category", "operational_status",
-                    "environment", "short_description", "ip_address", "serial_number",
-                    "asset_tag", "install_status", "managed_by", "owned_by",
-                    "location", "company", "created_on", "updated_on"):
+        for key in (
+            "sys_id",
+            "name",
+            "ci_class",
+            "category",
+            "operational_status",
+            "environment",
+            "short_description",
+            "ip_address",
+            "serial_number",
+            "asset_tag",
+            "install_status",
+            "managed_by",
+            "owned_by",
+            "location",
+            "company",
+            "created_on",
+            "updated_on",
+        ):
             self.assertIsNone(result[key])
 
 
@@ -215,6 +230,7 @@ class TestListCIs(unittest.TestCase):
     @patch("requests.get")
     def test_list_request_exception(self, mock_get):
         import requests as req
+
         mock_get.side_effect = req.exceptions.ConnectionError("timeout")
 
         result = list_cis(self.auth_manager, self.config, {})
@@ -311,6 +327,7 @@ class TestGetCI(unittest.TestCase):
     @patch("requests.get")
     def test_get_ci_request_exception(self, mock_get):
         import requests as req
+
         mock_get.side_effect = req.exceptions.ConnectionError("timeout")
 
         result = get_ci(self.auth_manager, self.config, {"sys_id": "ci001"})
@@ -428,6 +445,7 @@ class TestCreateCI(unittest.TestCase):
     @patch("requests.post")
     def test_create_ci_request_exception(self, mock_post):
         import requests as req
+
         mock_post.side_effect = req.exceptions.ConnectionError("timeout")
 
         result = create_ci(self.auth_manager, self.config, {"name": "server"})
@@ -540,11 +558,10 @@ class TestUpdateCI(unittest.TestCase):
     @patch("requests.patch")
     def test_update_ci_request_exception(self, mock_patch):
         import requests as req
+
         mock_patch.side_effect = req.exceptions.ConnectionError("timeout")
 
-        result = update_ci(
-            self.auth_manager, self.config, {"sys_id": "ci001", "name": "x"}
-        )
+        result = update_ci(self.auth_manager, self.config, {"sys_id": "ci001", "name": "x"})
         self.assertFalse(result["success"])
         self.assertIn("Error updating CI", result["message"])
 
@@ -577,6 +594,7 @@ class TestCMDBParams(unittest.TestCase):
 
     def test_get_params_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             GetCIParams()
 
@@ -587,6 +605,7 @@ class TestCMDBParams(unittest.TestCase):
 
     def test_create_params_requires_name(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             CreateCIParams()
 
@@ -597,6 +616,7 @@ class TestCMDBParams(unittest.TestCase):
 
     def test_update_params_requires_sys_id(self):
         from pydantic import ValidationError
+
         with self.assertRaises(ValidationError):
             UpdateCIParams()
 
@@ -626,11 +646,13 @@ class TestListCMDBClasses(unittest.TestCase):
 
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_returns_sorted_class_names(self, mock_req):
-        mock_req.return_value = self._mock_stats([
-            {"sys_class_name": "cmdb_ci_server", "count": "10"},
-            {"sys_class_name": "cmdb_ci", "count": "5"},
-            {"sys_class_name": "cmdb_ci_computer", "count": "3"},
-        ])
+        mock_req.return_value = self._mock_stats(
+            [
+                {"sys_class_name": "cmdb_ci_server", "count": "10"},
+                {"sys_class_name": "cmdb_ci", "count": "5"},
+                {"sys_class_name": "cmdb_ci_computer", "count": "3"},
+            ]
+        )
         result = self._call()
         self.assertTrue(result["success"])
         names = [c["name"] for c in result["classes"]]
@@ -638,18 +660,22 @@ class TestListCMDBClasses(unittest.TestCase):
 
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_count_included_by_default(self, mock_req):
-        mock_req.return_value = self._mock_stats([
-            {"sys_class_name": "cmdb_ci_server", "count": "42"},
-        ])
+        mock_req.return_value = self._mock_stats(
+            [
+                {"sys_class_name": "cmdb_ci_server", "count": "42"},
+            ]
+        )
         result = self._call()
         self.assertTrue(result["success"])
         self.assertEqual(result["classes"][0]["count"], 42)
 
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_count_excluded_when_false(self, mock_req):
-        mock_req.return_value = self._mock_stats([
-            {"sys_class_name": "cmdb_ci_server", "count": "42"},
-        ])
+        mock_req.return_value = self._mock_stats(
+            [
+                {"sys_class_name": "cmdb_ci_server", "count": "42"},
+            ]
+        )
         result = self._call({"include_count": False})
         self.assertTrue(result["success"])
         self.assertNotIn("count", result["classes"][0])
@@ -657,19 +683,26 @@ class TestListCMDBClasses(unittest.TestCase):
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_dict_format_sys_class_name(self, mock_req):
         """Aggregate API may return sys_class_name as a {value, display_value} dict."""
-        mock_req.return_value = self._mock_stats([
-            {"sys_class_name": {"value": "cmdb_ci_server", "display_value": "Server"}, "count": "7"},
-        ])
+        mock_req.return_value = self._mock_stats(
+            [
+                {
+                    "sys_class_name": {"value": "cmdb_ci_server", "display_value": "Server"},
+                    "count": "7",
+                },
+            ]
+        )
         result = self._call()
         self.assertTrue(result["success"])
         self.assertEqual(result["classes"][0]["name"], "cmdb_ci_server")
 
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_empty_name_entries_skipped(self, mock_req):
-        mock_req.return_value = self._mock_stats([
-            {"sys_class_name": "", "count": "1"},
-            {"sys_class_name": "cmdb_ci_server", "count": "9"},
-        ])
+        mock_req.return_value = self._mock_stats(
+            [
+                {"sys_class_name": "", "count": "1"},
+                {"sys_class_name": "cmdb_ci_server", "count": "9"},
+            ]
+        )
         result = self._call()
         self.assertTrue(result["success"])
         self.assertEqual(result["count"], 1)
@@ -677,10 +710,12 @@ class TestListCMDBClasses(unittest.TestCase):
 
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_top_level_count_matches_classes_length(self, mock_req):
-        mock_req.return_value = self._mock_stats([
-            {"sys_class_name": "cmdb_ci_server", "count": "1"},
-            {"sys_class_name": "cmdb_ci_computer", "count": "2"},
-        ])
+        mock_req.return_value = self._mock_stats(
+            [
+                {"sys_class_name": "cmdb_ci_server", "count": "1"},
+                {"sys_class_name": "cmdb_ci_computer", "count": "2"},
+            ]
+        )
         result = self._call()
         self.assertEqual(result["count"], len(result["classes"]))
 
@@ -723,6 +758,7 @@ class TestListCMDBClasses(unittest.TestCase):
     @patch("servicenow_mcp.tools.cmdb_tools._make_request")
     def test_request_exception_returns_error(self, mock_req):
         import requests as requests_lib
+
         mock_req.side_effect = requests_lib.exceptions.ConnectionError("network down")
         result = self._call()
         self.assertFalse(result["success"])
@@ -869,6 +905,7 @@ class TestGetCIByName(unittest.TestCase):
     @patch("requests.get")
     def test_request_exception_returns_error(self, mock_get):
         import requests as req
+
         mock_get.side_effect = req.exceptions.ConnectionError("timeout")
 
         result = get_ci_by_name(self.auth_manager, self.config, {"name": "web"})

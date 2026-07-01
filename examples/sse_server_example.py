@@ -60,7 +60,9 @@ def build_config() -> ServerConfig:
         username = os.getenv("SERVICENOW_USERNAME", "")
         password = os.getenv("SERVICENOW_PASSWORD", "")
         if not username or not password:
-            print("Error: SERVICENOW_USERNAME and SERVICENOW_PASSWORD are required", file=sys.stderr)
+            print(
+                "Error: SERVICENOW_USERNAME and SERVICENOW_PASSWORD are required", file=sys.stderr
+            )
             sys.exit(1)
         auth = AuthConfig(
             type=AuthType.BASIC,

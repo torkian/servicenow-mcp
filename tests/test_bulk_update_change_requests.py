@@ -70,9 +70,7 @@ class TestBulkUpdateChangeRequestsValidation(unittest.TestCase):
     def test_exactly_100_updates_is_accepted(self):
         params = BulkUpdateChangeRequestsParams.__new__(BulkUpdateChangeRequestsParams)
         updates = [
-            ChangeRequestUpdate(
-                change_id=("0" * 31 + str(i % 10)), short_description=f"u{i}"
-            )
+            ChangeRequestUpdate(change_id=("0" * 31 + str(i % 10)), short_description=f"u{i}")
             for i in range(100)
         ]
         object.__setattr__(params, "updates", updates)
@@ -146,9 +144,7 @@ class TestBulkUpdateChangeRequestsAllSysIds(unittest.TestCase):
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
         params = BulkUpdateChangeRequestsParams(
-            updates=[
-                ChangeRequestUpdate(change_id=_SYS_ID_A, state="1", risk="moderate")
-            ]
+            updates=[ChangeRequestUpdate(change_id=_SYS_ID_A, state="1", risk="moderate")]
         )
         bulk_update_change_requests(_config(), _auth(), params)
 
@@ -188,9 +184,19 @@ class TestBulkUpdateChangeRequestsAllSysIds(unittest.TestCase):
         payload = mock_post.call_args[1]["json"]
         body = json.loads(payload["requests"][0]["body"])
         for field in (
-            "short_description", "description", "state", "type", "category",
-            "risk", "impact", "priority", "assignment_group", "assigned_to",
-            "start_date", "end_date", "work_notes",
+            "short_description",
+            "description",
+            "state",
+            "type",
+            "category",
+            "risk",
+            "impact",
+            "priority",
+            "assignment_group",
+            "assigned_to",
+            "start_date",
+            "end_date",
+            "work_notes",
         ):
             self.assertIn(field, body)
 
@@ -232,9 +238,7 @@ class TestBulkUpdateChangeRequestsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_change_number_resolved_before_batch(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "CHG0010001", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "CHG0010001", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
@@ -251,9 +255,7 @@ class TestBulkUpdateChangeRequestsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_resolution_query_targets_change_request_table(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "CHG0010001", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "CHG0010001", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )
@@ -302,15 +304,10 @@ class TestBulkUpdateChangeRequestsNumberResolution(unittest.TestCase):
             [{"number": f"CHG000{i}", "sys_id": ids[i]} for i in range(3)]
         )
         mock_post.return_value = _batch_response(
-            [
-                {"id": str(i), "statusCode": 200, "statusText": "OK", "body": "{}"}
-                for i in range(3)
-            ]
+            [{"id": str(i), "statusCode": 200, "statusText": "OK", "body": "{}"} for i in range(3)]
         )
         params = BulkUpdateChangeRequestsParams(
-            updates=[
-                ChangeRequestUpdate(change_id=f"CHG000{i}", state="1") for i in range(3)
-            ]
+            updates=[ChangeRequestUpdate(change_id=f"CHG000{i}", state="1") for i in range(3)]
         )
         bulk_update_change_requests(_config(), _auth(), params)
         self.assertEqual(mock_get.call_count, 1)
@@ -341,9 +338,7 @@ class TestBulkUpdateChangeRequestsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_mixed_sys_ids_and_numbers(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "CHG0010001", "sys_id": _SYS_ID_B}]
-        )
+        mock_get.return_value = _get_response([{"number": "CHG0010001", "sys_id": _SYS_ID_B}])
         mock_post.return_value = _batch_response(
             [
                 {"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"},
@@ -377,9 +372,7 @@ class TestBulkUpdateChangeRequestsNumberResolution(unittest.TestCase):
     @patch("servicenow_mcp.tools.bulk_tools.requests.post")
     @patch("servicenow_mcp.tools.bulk_tools.requests.get")
     def test_result_entries_carry_change_id(self, mock_get, mock_post):
-        mock_get.return_value = _get_response(
-            [{"number": "CHG0010001", "sys_id": _SYS_ID_A}]
-        )
+        mock_get.return_value = _get_response([{"number": "CHG0010001", "sys_id": _SYS_ID_A}])
         mock_post.return_value = _batch_response(
             [{"id": "0", "statusCode": 200, "statusText": "OK", "body": "{}"}]
         )

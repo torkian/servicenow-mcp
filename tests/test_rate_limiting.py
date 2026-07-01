@@ -70,7 +70,9 @@ class TestRateLimitTrackerUpdate(unittest.TestCase):
         self.assertIsNone(self.tracker.reset_at)
 
     def test_accumulates_state_across_calls(self):
-        self.tracker.update(_mock_response(200, {"X-RateLimit-Limit": "100", "X-RateLimit-Remaining": "90"}))
+        self.tracker.update(
+            _mock_response(200, {"X-RateLimit-Limit": "100", "X-RateLimit-Remaining": "90"})
+        )
         self.tracker.update(_mock_response(200, {"X-RateLimit-Remaining": "80"}))
         self.assertEqual(self.tracker.remaining, 80)
         self.assertEqual(self.tracker.limit, 100)
@@ -97,11 +99,14 @@ class TestRateLimitTrackerWarning(unittest.TestCase):
 
     def test_warning_includes_reset_timestamp_when_present(self):
         tracker = RateLimitTracker(warning_threshold=0.1)
-        resp = _mock_response(200, {
-            "X-RateLimit-Remaining": "5",
-            "X-RateLimit-Limit": "100",
-            "X-RateLimit-Reset": "1700000000",
-        })
+        resp = _mock_response(
+            200,
+            {
+                "X-RateLimit-Remaining": "5",
+                "X-RateLimit-Limit": "100",
+                "X-RateLimit-Reset": "1700000000",
+            },
+        )
         with self.assertLogs("servicenow_mcp.utils.helpers", level="WARNING") as cm:
             tracker.update(resp)
         self.assertTrue(any("1700000000" in msg for msg in cm.output))
@@ -242,10 +247,13 @@ class TestMakeRequestTrackerIntegration(unittest.TestCase):
 
     @patch("requests.get")
     def test_tracker_updated_after_successful_response(self, mock_get):
-        mock_get.return_value = _mock_response(200, {
-            "X-RateLimit-Remaining": "95",
-            "X-RateLimit-Limit": "100",
-        })
+        mock_get.return_value = _mock_response(
+            200,
+            {
+                "X-RateLimit-Remaining": "95",
+                "X-RateLimit-Limit": "100",
+            },
+        )
         tracker = RateLimitTracker()
         _make_request("GET", "https://example.com/api", rate_limit_tracker=tracker)
         self.assertEqual(tracker.remaining, 95)
@@ -293,7 +301,9 @@ class TestMakeRequestTrackerIntegration(unittest.TestCase):
 
     @patch("requests.get")
     def test_custom_tracker_isolates_state_from_module_level(self, mock_get):
-        mock_get.return_value = _mock_response(200, {"X-RateLimit-Remaining": "42", "X-RateLimit-Limit": "100"})
+        mock_get.return_value = _mock_response(
+            200, {"X-RateLimit-Remaining": "42", "X-RateLimit-Limit": "100"}
+        )
         tracker_a = RateLimitTracker()
         tracker_b = RateLimitTracker()
         _make_request("GET", "https://example.com/a", rate_limit_tracker=tracker_a)

@@ -50,7 +50,9 @@ class TestAuthManagerLogging(unittest.TestCase):
             "error": "invalid_client",
             "error_description": "bad client SECRET_ACCESS_TOKEN",
         }
-        failed_response.text = '{"error":"invalid_client","error_description":"bad client SECRET_ACCESS_TOKEN"}'
+        failed_response.text = (
+            '{"error":"invalid_client","error_description":"bad client SECRET_ACCESS_TOKEN"}'
+        )
 
         success_response = MagicMock()
         success_response.status_code = 200

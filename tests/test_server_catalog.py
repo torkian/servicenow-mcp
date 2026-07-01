@@ -57,7 +57,7 @@ class TestServerCatalog(unittest.TestCase):
 
         # Get the tool functions
         tool_calls = self.server.mcp_server.tool.call_args_list
-        
+
         # Instead of trying to extract names from the call args, just check that the decorator was called
         # the right number of times (at least 3 times for the catalog tools)
         self.assertGreaterEqual(len(tool_calls), 3)
@@ -125,4 +125,4 @@ class TestServerCatalog(unittest.TestCase):
 
 
 if __name__ == "__main__":
-    unittest.main() 
+    unittest.main()

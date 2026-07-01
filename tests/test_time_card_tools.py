@@ -13,7 +13,6 @@ from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, S
 
 
 class TestTimeCardTools(unittest.TestCase):
-
     def setUp(self):
         self.auth_config = AuthConfig(
             type=AuthType.BASIC,
@@ -68,9 +67,7 @@ class TestTimeCardTools(unittest.TestCase):
         """Test filtering by task number resolves to sys_id first."""
         # First call: resolve task number
         resolve_response = MagicMock()
-        resolve_response.json.return_value = {
-            "result": [{"sys_id": "task_abc"}]
-        }
+        resolve_response.json.return_value = {"result": [{"sys_id": "task_abc"}]}
         resolve_response.raise_for_status = MagicMock()
 
         # Second call: list time cards
@@ -134,9 +131,7 @@ class TestTimeCardTools(unittest.TestCase):
     def test_create_time_card_success(self, mock_get, mock_post):
         # Mock task resolution
         resolve_response = MagicMock()
-        resolve_response.json.return_value = {
-            "result": [{"sys_id": "task_abc"}]
-        }
+        resolve_response.json.return_value = {"result": [{"sys_id": "task_abc"}]}
         resolve_response.raise_for_status = MagicMock()
         mock_get.return_value = resolve_response
 
@@ -203,9 +198,7 @@ class TestTimeCardTools(unittest.TestCase):
         self.assertIn("not found", result["message"])
 
     def test_create_time_card_missing_params(self):
-        result = create_time_card(
-            self.auth_manager, self.config, {"task_number": "SCTASK0001"}
-        )
+        result = create_time_card(self.auth_manager, self.config, {"task_number": "SCTASK0001"})
 
         self.assertFalse(result["success"])
         self.assertIn("week_start", result["message"])
@@ -249,16 +242,12 @@ class TestTimeCardTools(unittest.TestCase):
         # Verify only changed fields were sent
         patch_call = mock_patch.call_args
         self.assertEqual(patch_call[1]["json"]["wednesday"], 6)
-        self.assertEqual(
-            patch_call[1]["json"]["short_description"], "Updated hours"
-        )
+        self.assertEqual(patch_call[1]["json"]["short_description"], "Updated hours")
 
     @patch("servicenow_mcp.tools.time_card_tools.requests.patch")
     def test_update_time_card_state(self, mock_patch):
         mock_response = MagicMock()
-        mock_response.json.return_value = {
-            "result": {"sys_id": "tc001", "state": "Submitted"}
-        }
+        mock_response.json.return_value = {"result": {"sys_id": "tc001", "state": "Submitted"}}
         mock_response.raise_for_status = MagicMock()
         mock_patch.return_value = mock_response
 
@@ -273,9 +262,7 @@ class TestTimeCardTools(unittest.TestCase):
         self.assertEqual(patch_call[1]["json"]["state"], "Submitted")
 
     def test_update_time_card_missing_sys_id(self):
-        result = update_time_card(
-            self.auth_manager, self.config, {"monday": 8}
-        )
+        result = update_time_card(self.auth_manager, self.config, {"monday": 8})
 
         self.assertFalse(result["success"])
         self.assertIn("time_card_sys_id", result["message"])

@@ -44,44 +44,32 @@ class CreateUserCriteriaParams(BaseModel):
     role: Optional[str] = Field(
         None,
         description=(
-            "sys_id of a ServiceNow role (sys_user_role). "
-            "Users must have this role to match."
+            "sys_id of a ServiceNow role (sys_user_role). Users must have this role to match."
         ),
     )
     user: Optional[str] = Field(
         None,
-        description=(
-            "sys_id of a specific ServiceNow user (sys_user). "
-            "Only this user will match."
-        ),
+        description=("sys_id of a specific ServiceNow user (sys_user). Only this user will match."),
     )
     group: Optional[str] = Field(
         None,
-        description=(
-            "sys_id of a user group (sys_user_group). "
-            "Members of this group will match."
-        ),
+        description=("sys_id of a user group (sys_user_group). Members of this group will match."),
     )
     department: Optional[str] = Field(
         None,
         description=(
-            "sys_id of a department (cmn_department). "
-            "Users in this department will match."
+            "sys_id of a department (cmn_department). Users in this department will match."
         ),
     )
     company: Optional[str] = Field(
         None,
         description=(
-            "sys_id of a company (core_company). "
-            "Users belonging to this company will match."
+            "sys_id of a company (core_company). Users belonging to this company will match."
         ),
     )
     location: Optional[str] = Field(
         None,
-        description=(
-            "sys_id of a location (cmn_location). "
-            "Users at this location will match."
-        ),
+        description=("sys_id of a location (cmn_location). Users at this location will match."),
     )
     script: Optional[str] = Field(
         None,
@@ -155,7 +143,8 @@ def create_user_criteria(
             data[field] = value
 
     try:
-        response = _make_request("POST", 
+        response = _make_request(
+            "POST",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -280,7 +269,8 @@ def create_user_criteria_condition(
     }
 
     try:
-        response = _make_request("POST", 
+        response = _make_request(
+            "POST",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),

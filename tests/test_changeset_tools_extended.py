@@ -44,8 +44,8 @@ def _make_setup():
 # _unwrap_and_validate_params
 # ---------------------------------------------------------------------------
 
-class TestUnwrapAndValidateParams(unittest.TestCase):
 
+class TestUnwrapAndValidateParams(unittest.TestCase):
     def test_wrong_pydantic_model_converts_via_dict(self):
         """Lines 101-105: params is a Pydantic model of wrong type, converts via .dict()."""
         # Pass a ListChangesetsParams where GetChangesetDetailsParams is expected
@@ -74,9 +74,7 @@ class TestUnwrapAndValidateParams(unittest.TestCase):
     def test_exception_in_params_returns_error(self):
         """Lines 128-132: passing invalid dict raises exception internally."""
         # Pass a non-dict, non-model that will cause an error
-        result = _unwrap_and_validate_params(
-            {"invalid_field": "value"}, GetChangesetDetailsParams
-        )
+        result = _unwrap_and_validate_params({"invalid_field": "value"}, GetChangesetDetailsParams)
         self.assertFalse(result["success"])
         self.assertIn("parameters", result["message"])
 
@@ -85,8 +83,8 @@ class TestUnwrapAndValidateParams(unittest.TestCase):
 # _get_instance_url
 # ---------------------------------------------------------------------------
 
-class TestGetInstanceUrl(unittest.TestCase):
 
+class TestGetInstanceUrl(unittest.TestCase):
     def test_falls_back_to_auth_manager_instance_url(self):
         """Lines 151-152: auth_manager has instance_url, server_config does not."""
         auth_manager = MagicMock()
@@ -111,8 +109,8 @@ class TestGetInstanceUrl(unittest.TestCase):
 # _get_headers
 # ---------------------------------------------------------------------------
 
-class TestGetHeaders(unittest.TestCase):
 
+class TestGetHeaders(unittest.TestCase):
     def test_falls_back_to_server_config_get_headers(self):
         """Lines 180-181: auth_manager has no get_headers, server_config does."""
         auth_manager = MagicMock(spec=[])  # no get_headers
@@ -133,8 +131,8 @@ class TestGetHeaders(unittest.TestCase):
 # list_changesets error paths
 # ---------------------------------------------------------------------------
 
-class TestListChangesetsErrors(unittest.TestCase):
 
+class TestListChangesetsErrors(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_setup()
 
@@ -218,8 +216,8 @@ class TestListChangesetsErrors(unittest.TestCase):
 # get_changeset_details error paths
 # ---------------------------------------------------------------------------
 
-class TestGetChangesetDetailsErrors(unittest.TestCase):
 
+class TestGetChangesetDetailsErrors(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_setup()
 
@@ -231,7 +229,9 @@ class TestGetChangesetDetailsErrors(unittest.TestCase):
     def test_no_instance_url_returns_error(self):
         """Line 317: _get_instance_url returns None."""
         bad_server_config = MagicMock(spec=[])
-        result = get_changeset_details(bad_server_config, self.auth_manager, {"changeset_id": "123"})
+        result = get_changeset_details(
+            bad_server_config, self.auth_manager, {"changeset_id": "123"}
+        )
         self.assertFalse(result["success"])
 
     def test_no_headers_returns_error(self):
@@ -255,8 +255,8 @@ class TestGetChangesetDetailsErrors(unittest.TestCase):
 # create_changeset error paths
 # ---------------------------------------------------------------------------
 
-class TestCreateChangesetErrors(unittest.TestCase):
 
+class TestCreateChangesetErrors(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_setup()
 
@@ -298,8 +298,8 @@ class TestCreateChangesetErrors(unittest.TestCase):
 # update_changeset error paths
 # ---------------------------------------------------------------------------
 
-class TestUpdateChangesetErrors(unittest.TestCase):
 
+class TestUpdateChangesetErrors(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_setup()
 
@@ -344,9 +344,7 @@ class TestUpdateChangesetErrors(unittest.TestCase):
 
     def test_no_update_fields_returns_error(self):
         """Line 500: no update fields provided."""
-        result = update_changeset(
-            self.auth_manager, self.server_config, {"changeset_id": "123"}
-        )
+        result = update_changeset(self.auth_manager, self.server_config, {"changeset_id": "123"})
         self.assertFalse(result["success"])
 
     @patch("servicenow_mcp.tools.changeset_tools.requests.patch")
@@ -384,8 +382,8 @@ class TestUpdateChangesetErrors(unittest.TestCase):
 # commit_changeset error paths
 # ---------------------------------------------------------------------------
 
-class TestCommitChangesetErrors(unittest.TestCase):
 
+class TestCommitChangesetErrors(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_setup()
 
@@ -410,9 +408,7 @@ class TestCommitChangesetErrors(unittest.TestCase):
     def test_request_exception(self, mock_patch):
         """Lines 608-610: RequestException returns error dict."""
         mock_patch.side_effect = requests_lib.exceptions.RequestException("err")
-        result = commit_changeset(
-            self.auth_manager, self.server_config, {"changeset_id": "123"}
-        )
+        result = commit_changeset(self.auth_manager, self.server_config, {"changeset_id": "123"})
         self.assertFalse(result["success"])
 
 
@@ -420,8 +416,8 @@ class TestCommitChangesetErrors(unittest.TestCase):
 # publish_changeset error paths
 # ---------------------------------------------------------------------------
 
-class TestPublishChangesetErrors(unittest.TestCase):
 
+class TestPublishChangesetErrors(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_setup()
 
@@ -446,9 +442,7 @@ class TestPublishChangesetErrors(unittest.TestCase):
     def test_request_exception(self, mock_patch):
         """Lines 686-688: RequestException returns error dict."""
         mock_patch.side_effect = requests_lib.exceptions.RequestException("err")
-        result = publish_changeset(
-            self.auth_manager, self.server_config, {"changeset_id": "123"}
-        )
+        result = publish_changeset(self.auth_manager, self.server_config, {"changeset_id": "123"})
         self.assertFalse(result["success"])
 
 
@@ -456,8 +450,8 @@ class TestPublishChangesetErrors(unittest.TestCase):
 # add_file_to_changeset error paths
 # ---------------------------------------------------------------------------
 
-class TestAddFileToChangesetErrors(unittest.TestCase):
 
+class TestAddFileToChangesetErrors(unittest.TestCase):
     def setUp(self):
         self.auth_manager, self.server_config = _make_setup()
 

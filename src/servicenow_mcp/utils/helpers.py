@@ -30,10 +30,7 @@ def _redact_headers(headers: Optional[Dict[str, str]]) -> Dict[str, str]:
     """Return a copy of *headers* with sensitive values replaced by ``<redacted>``."""
     if not headers:
         return {}
-    return {
-        k: (_REDACTED if k.lower() in _SENSITIVE_HEADERS else v)
-        for k, v in headers.items()
-    }
+    return {k: (_REDACTED if k.lower() in _SENSITIVE_HEADERS else v) for k, v in headers.items()}
 
 
 def _truncate_body(body: Any) -> str:
@@ -194,7 +191,9 @@ def _make_request(
         The :class:`requests.Response` object from the final attempt.
         Callers are responsible for calling ``response.raise_for_status()``.
     """
-    tracker: RateLimitTracker = rate_limit_tracker if rate_limit_tracker is not None else _rate_limit_tracker
+    tracker: RateLimitTracker = (
+        rate_limit_tracker if rate_limit_tracker is not None else _rate_limit_tracker
+    )
     fn: Callable = getattr(requests, method.lower())
     response: Optional[requests.Response] = None
     _debug = logger.isEnabledFor(logging.DEBUG)
@@ -229,25 +228,33 @@ def _make_request(
             if response.status_code not in _RETRYABLE_STATUS_CODES or attempt == max_retries:
                 return response
             if response.status_code == 429:
-                delay = float(response.headers.get("Retry-After") or backoff_factor * (2 ** attempt))
+                delay = float(response.headers.get("Retry-After") or backoff_factor * (2**attempt))
             else:
-                delay = backoff_factor * (2 ** attempt)
+                delay = backoff_factor * (2**attempt)
             logger.warning(
                 "HTTP %s from %s; retrying in %.1fs (attempt %d/%d)",
-                response.status_code, url, delay, attempt + 1, max_retries,
+                response.status_code,
+                url,
+                delay,
+                attempt + 1,
+                max_retries,
             )
             time.sleep(delay)
         except _RETRYABLE_EXCEPTIONS as exc:
             if attempt == max_retries:
                 raise
-            delay = backoff_factor * (2 ** attempt)
+            delay = backoff_factor * (2**attempt)
             logger.warning(
                 "Request error (%s); retrying in %.1fs (attempt %d/%d)",
-                exc, delay, attempt + 1, max_retries,
+                exc,
+                delay,
+                attempt + 1,
+                max_retries,
             )
             time.sleep(delay)
 
     return response  # type: ignore[return-value]
+
 
 T = TypeVar("T", bound=BaseModel)
 
@@ -312,11 +319,18 @@ def _unwrap_and_validate_params(
         if required_fields:
             missing = [f for f in required_fields if getattr(model_instance, f, None) is None]
             if missing:
-                return {"success": False, "message": f"Missing required fields: {', '.join(missing)}"}
+                return {
+                    "success": False,
+                    "message": f"Missing required fields: {', '.join(missing)}",
+                }
         return {"success": True, "params": model_instance}
 
     # Unwrap {"params": {...}} envelope
-    if isinstance(params, dict) and list(params.keys()) == ["params"] and isinstance(params["params"], dict):
+    if (
+        isinstance(params, dict)
+        and list(params.keys()) == ["params"]
+        and isinstance(params["params"], dict)
+    ):
         logger.warning("Detected params wrapped in a 'params' key. Unwrapping...")
         params = params["params"]
 

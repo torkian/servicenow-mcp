@@ -94,7 +94,7 @@ class DeleteIncidentParams(BaseModel):
 
 class ListIncidentsParams(BaseModel):
     """Parameters for listing incidents."""
-    
+
     limit: int = Field(10, description="Maximum number of incidents to return")
     offset: int = Field(0, description="Offset for pagination")
     state: Optional[str] = Field(None, description="Filter by incident state")
@@ -162,7 +162,8 @@ def create_incident(
 
     # Make request
     try:
-        response = _make_request("POST", 
+        response = _make_request(
+            "POST",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -218,7 +219,8 @@ def update_incident(
                 "sysparm_limit": 1,
             }
 
-            response = _make_request("GET", 
+            response = _make_request(
+                "GET",
                 query_url,
                 params=query_params,
                 headers=auth_manager.get_headers(),
@@ -275,7 +277,8 @@ def update_incident(
 
     # Make request
     try:
-        response = _make_request("PUT", 
+        response = _make_request(
+            "PUT",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -331,7 +334,8 @@ def add_comment(
                 "sysparm_limit": 1,
             }
 
-            response = _make_request("GET", 
+            response = _make_request(
+                "GET",
                 query_url,
                 params=query_params,
                 headers=auth_manager.get_headers(),
@@ -366,7 +370,8 @@ def add_comment(
 
     # Make request
     try:
-        response = _make_request("PUT", 
+        response = _make_request(
+            "PUT",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -422,7 +427,8 @@ def resolve_incident(
                 "sysparm_limit": 1,
             }
 
-            response = _make_request("GET", 
+            response = _make_request(
+                "GET",
                 query_url,
                 params=query_params,
                 headers=auth_manager.get_headers(),
@@ -457,7 +463,8 @@ def resolve_incident(
 
     # Make request
     try:
-        response = _make_request("PUT", 
+        response = _make_request(
+            "PUT",
             api_url,
             json=data,
             headers=auth_manager.get_headers(),
@@ -661,7 +668,8 @@ def list_incidents(
     )
 
     try:
-        response = _make_request("GET", 
+        response = _make_request(
+            "GET",
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
@@ -674,19 +682,21 @@ def list_incidents(
             assigned_to = incident_data.get("assigned_to")
             if isinstance(assigned_to, dict):
                 assigned_to = assigned_to.get("display_value")
-            incidents.append({
-                "sys_id": incident_data.get("sys_id"),
-                "number": incident_data.get("number"),
-                "short_description": incident_data.get("short_description"),
-                "description": incident_data.get("description"),
-                "state": incident_data.get("state"),
-                "priority": incident_data.get("priority"),
-                "assigned_to": assigned_to,
-                "category": incident_data.get("category"),
-                "subcategory": incident_data.get("subcategory"),
-                "created_on": incident_data.get("sys_created_on"),
-                "updated_on": incident_data.get("sys_updated_on"),
-            })
+            incidents.append(
+                {
+                    "sys_id": incident_data.get("sys_id"),
+                    "number": incident_data.get("number"),
+                    "short_description": incident_data.get("short_description"),
+                    "description": incident_data.get("description"),
+                    "state": incident_data.get("state"),
+                    "priority": incident_data.get("priority"),
+                    "assigned_to": assigned_to,
+                    "category": incident_data.get("category"),
+                    "subcategory": incident_data.get("subcategory"),
+                    "created_on": incident_data.get("sys_created_on"),
+                    "updated_on": incident_data.get("sys_updated_on"),
+                }
+            )
 
         return _paginated_list_response(
             incidents,
@@ -733,7 +743,8 @@ def get_incident_by_number(
 
     # Make request
     try:
-        response = _make_request("GET", 
+        response = _make_request(
+            "GET",
             api_url,
             params=query_params,
             headers=auth_manager.get_headers(),
