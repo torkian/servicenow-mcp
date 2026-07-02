@@ -8,6 +8,7 @@ import requests
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.notification_tools import (
     _format_notification,
+    get_notification,
     list_notifications,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -266,6 +267,134 @@ class TestListNotifications(unittest.TestCase):
         result = list_notifications(_make_auth_manager(), _make_config(), {})
         self.assertTrue(result["success"])
         self.assertEqual(result["count"], 2)
+
+
+# ---------------------------------------------------------------------------
+# get_notification
+# ---------------------------------------------------------------------------
+
+class TestGetNotification(unittest.TestCase):
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_success_returns_notification(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_NOTIFICATION})
+        result = get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["notification"]["sys_id"], FAKE_SYS_ID)
+        self.assertEqual(result["notification"]["state"], "sent")
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_url_contains_sys_id(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_NOTIFICATION})
+        get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        url = mock_req.call_args[0][1]
+        self.assertIn(FAKE_SYS_ID, url)
+        self.assertIn("sysevent_email_log", url)
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_uses_get_method(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_NOTIFICATION})
+        get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertEqual(mock_req.call_args[0][0], "GET")
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_404_returns_failure(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 404
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+        result = get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn(FAKE_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_empty_result_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving notification record", result["message"])
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_connection_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("network down")
+        result = get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving notification record", result["message"])
+
+    def test_missing_notification_id_returns_failure(self):
+        result = get_notification(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    def test_no_instance_url_returns_failure(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        auth.instance_url = None
+        config = MagicMock()
+        config.instance_url = None
+        result = get_notification(auth, config, {"notification_id": FAKE_SYS_ID})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_display_value_params_set(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_NOTIFICATION})
+        get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        params = mock_req.call_args[1]["params"]
+        self.assertEqual(params.get("sysparm_display_value"), "true")
+        self.assertEqual(params.get("sysparm_exclude_reference_link"), "true")
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_notification_fields_requested(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_NOTIFICATION})
+        get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        params = mock_req.call_args[1]["params"]
+        fields = params.get("sysparm_fields", "")
+        self.assertIn("sys_id", fields)
+        self.assertIn("state", fields)
+        self.assertIn("email_address", fields)
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_normalises_reference_fields(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_NOTIFICATION})
+        result = get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertEqual(result["notification"]["target"], "John Doe")
+
+    @patch("servicenow_mcp.tools.notification_tools._make_request")
+    def test_failed_notification_with_error_string(self, mock_req):
+        failed_notif = {**FAKE_NOTIFICATION, "state": "failed", "error_string": "SMTP timeout"}
+        mock_req.return_value = _make_response(200, {"result": failed_notif})
+        result = get_notification(
+            _make_auth_manager(), _make_config(), {"notification_id": FAKE_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["notification"]["state"], "failed")
+        self.assertEqual(result["notification"]["error_string"], "SMTP timeout")
 
 
 if __name__ == "__main__":

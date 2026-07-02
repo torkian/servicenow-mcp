@@ -1,7 +1,7 @@
 """Tests for problem_task_tools (create_problem_task, list_problem_tasks, close_problem_task)."""
 
 import unittest
-from unittest.mock import MagicMock, call, patch
+from unittest.mock import MagicMock, patch
 
 import requests
 

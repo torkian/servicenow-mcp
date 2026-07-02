@@ -500,9 +500,11 @@ from servicenow_mcp.tools.knowledge_base import (
     update_article as update_article_tool,
 )
 from servicenow_mcp.tools.notification_tools import (
+    GetNotificationParams,
     ListNotificationsParams,
 )
 from servicenow_mcp.tools.notification_tools import (
+    get_notification as get_notification_tool,
     list_notifications as list_notifications_tool,
 )
 from servicenow_mcp.tools.problem_task_tools import (
@@ -2613,6 +2615,18 @@ def get_tool_definitions(
                 "recipient email address, source record sys_id, or creation date range. "
                 "Supports pagination. Useful for auditing notification delivery and diagnosing "
                 "failed emails."
+            ),
+            "raw_dict",
+        ),
+        "get_notification": (
+            get_notification_tool,
+            GetNotificationParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single outbound email notification record from the ServiceNow "
+                "sysevent_email_log table by sys_id. Returns delivery state, recipient address, "
+                "subject, source record, notification type, and any error details. "
+                "Useful for inspecting why a specific notification succeeded or failed."
             ),
             "raw_dict",
         ),

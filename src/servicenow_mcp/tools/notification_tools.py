@@ -1,8 +1,8 @@
 """
 Notification history tools for the ServiceNow MCP server.
 
-Provides tools for listing outbound email notification records from the
-sysevent_email_log table via the /api/now/table/* endpoint.
+Provides tools for listing and retrieving outbound email notification records
+from the sysevent_email_log table via the /api/now/table/* endpoint.
 """
 
 import logging
@@ -41,6 +41,15 @@ NOTIFICATION_FIELDS = [
     "sys_created_on",
     "sys_updated_on",
 ]
+
+
+class GetNotificationParams(BaseModel):
+    """Parameters for retrieving a single email notification log entry."""
+
+    notification_id: str = Field(
+        ...,
+        description="sys_id of the sysevent_email_log record to retrieve (32-char hex)",
+    )
 
 
 class ListNotificationsParams(BaseModel):
@@ -165,4 +174,66 @@ def list_notifications(
         return {
             "success": False,
             "message": f"Error listing notifications: {_format_http_error(e)}",
+        }
+
+
+def get_notification(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single outbound email notification record by sys_id.
+
+    Fetches a specific sysevent_email_log entry to inspect its delivery state,
+    recipient, subject, and any error details.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetNotificationParams.
+
+    Returns:
+        Dictionary with ``success`` and ``notification`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, GetNotificationParams, required_fields=["notification_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{NOTIFICATION_TABLE}/{validated.notification_id}"
+    query_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(NOTIFICATION_FIELDS),
+    }
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Notification record not found: {validated.notification_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {
+                "success": False,
+                "message": f"Notification record not found: {validated.notification_id}",
+            }
+        return {"success": True, "notification": _format_notification(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving notification record: {e}")
+        return {
+            "success": False,
+            "message": f"Error retrieving notification record: {_format_http_error(e)}",
         }

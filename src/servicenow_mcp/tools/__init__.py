@@ -149,6 +149,7 @@ from servicenow_mcp.tools.knowledge_base import (
     update_article,
 )
 from servicenow_mcp.tools.notification_tools import (
+    get_notification,
     list_notifications,
 )
 from servicenow_mcp.tools.problem_task_tools import (
@@ -530,4 +531,5 @@ __all__ = [
 
     # Notification tools
     "list_notifications",
+    "get_notification",
 ]
