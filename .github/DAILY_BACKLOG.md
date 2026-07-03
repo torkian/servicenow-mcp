@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-13. Add list_scheduled_jobs tool (GET sysauto_script; filters for name/active/run_as)
 14. Add get_ci_class_schema tool (GET cmdb_ci metadata for a class: fields, relationships, mandatory attrs)
 15. Add bulk_update_problem_tasks tool (Batch API; PRB-TASK number resolver)
 16. Add list_on_call_rotations tool (GET cmn_rota; filters for group/active)
@@ -98,3 +97,4 @@
 85. 2026-06-30 — Add list_change_conflicts tool (GET change_conflict; filters for change_id/type/state; CHG number/sys_id resolver; _format_change_conflict normalises reference fields; pagination; registered in change_coordinator and full packages; 25 new tests; 1934 total tests; 93% coverage)
 86. 2026-07-01 — Add create_problem_task, list_problem_tasks, close_problem_task tools (problem_task table; PRB number/sys_id resolver for parent link; PTASK number/sys_id resolver for close; state filter + pagination for list; registered in service_desk and full packages; 28 new tests; 1962 total tests; 93% coverage)
 87. 2026-07-02 — Add get_notification tool (GET sysevent_email_log/{sys_id}; 404/empty-result guards; reference fields normalised; registered in service_desk, system_administrator, catalog_builder, full packages; 13 new tests; 1975 total tests; 93% coverage)
+88. 2026-07-03 — Add list_scheduled_jobs tool (GET sysauto_script; filters for name/active/run_as/run_type; run_as reference normalised to display_value; ordered by name; registered in system_administrator and full packages; 27 new tests; 2002 total tests; 93% coverage)

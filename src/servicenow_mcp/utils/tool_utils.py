@@ -712,6 +712,12 @@ from servicenow_mcp.tools.story_tools import (
 from servicenow_mcp.tools.story_tools import (
     update_story as update_story_tool,
 )
+from servicenow_mcp.tools.scheduled_job_tools import (
+    ListScheduledJobsParams,
+)
+from servicenow_mcp.tools.scheduled_job_tools import (
+    list_scheduled_jobs as list_scheduled_jobs_tool,
+)
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -1875,6 +1881,19 @@ def get_tool_definitions(
             str,
             "Update an existing time card entry in ServiceNow",
             "json",
+        ),
+        # Scheduled Job Tools
+        "list_scheduled_jobs": (
+            list_scheduled_jobs_tool,
+            ListScheduledJobsParams,
+            Dict[str, Any],
+            (
+                "List scheduled script execution jobs from the ServiceNow sysauto_script table. "
+                "Filter by job name (substring), active state, run_as user name, or run_type "
+                "(daily/weekly/monthly/once/periodically). Returns job name, schedule settings, "
+                "script body, and run_as account. Supports pagination."
+            ),
+            "raw_dict",
         ),
         # Syslog Tools
         "list_syslog_entries": (

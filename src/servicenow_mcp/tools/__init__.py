@@ -218,6 +218,9 @@ from servicenow_mcp.tools.story_tools import (
     list_story_dependencies,
     update_story,
 )
+from servicenow_mcp.tools.scheduled_job_tools import (
+    list_scheduled_jobs,
+)
 from servicenow_mcp.tools.syslog_tools import (
     get_syslog_entry,
     list_syslog_entries,
@@ -422,6 +425,9 @@ __all__ = [
     "list_time_cards",
     "create_time_card",
     "update_time_card",
+
+    # Scheduled Job tools
+    "list_scheduled_jobs",
 
     # Syslog tools
     "list_syslog_entries",
