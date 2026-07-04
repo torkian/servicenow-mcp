@@ -98,6 +98,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     delete_ci_outage,
     get_ci,
     get_ci_by_name,
+    get_ci_class_schema as get_ci_class_schema,
     get_ci_outage,
     list_cis,
     list_cmdb_ci_outages,

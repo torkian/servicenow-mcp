@@ -146,6 +146,29 @@ class CreateCIParams(BaseModel):
     company: Optional[str] = Field(None, description="sys_id of the company record")
 
 
+class GetCIClassSchemaParams(BaseModel):
+    """Parameters for retrieving the field schema of a CMDB CI class."""
+
+    ci_class: str = Field(
+        ...,
+        description=(
+            "CI class table name to inspect (e.g. cmdb_ci_server, cmdb_ci_computer, "
+            "cmdb_ci_service). Use list_cmdb_classes to discover valid class names."
+        ),
+    )
+    mandatory_only: Optional[bool] = Field(
+        False,
+        description="When True, return only fields that are marked mandatory (default False)",
+    )
+    include_inherited: Optional[bool] = Field(
+        False,
+        description=(
+            "When True, also return fields inherited from the base cmdb_ci table "
+            "(default False — only fields defined on the specific class are returned)"
+        ),
+    )
+
+
 class ListCMDBClassesParams(BaseModel):
     """Parameters for listing distinct CMDB CI class names."""
 
@@ -980,3 +1003,116 @@ def delete_ci_outage(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error deleting CI outage: {e}")
         return {"success": False, "message": f"Error deleting CI outage: {_format_http_error(e)}"}
+
+
+_SYS_DICTIONARY_FIELDS = [
+    "element",
+    "column_label",
+    "internal_type",
+    "mandatory",
+    "max_length",
+    "default_value",
+    "reference",
+    "read_only",
+    "active",
+]
+
+_SYS_DICTIONARY_TABLE = "sys_dictionary"
+
+
+def _format_schema_field(record: Dict) -> Dict:
+    """Normalise a sys_dictionary record into a concise schema field dict."""
+
+    def _str(v: Any) -> str:
+        if isinstance(v, dict):
+            return v.get("display_value") or v.get("value") or ""
+        return str(v) if v is not None else ""
+
+    ref_raw = record.get("reference", "")
+    reference = _str(ref_raw)
+
+    return {
+        "field_name": _str(record.get("element")),
+        "label": _str(record.get("column_label")),
+        "type": _str(record.get("internal_type")),
+        "mandatory": str(record.get("mandatory", "")).lower() in ("true", "1"),
+        "read_only": str(record.get("read_only", "")).lower() in ("true", "1"),
+        "max_length": record.get("max_length"),
+        "default_value": _str(record.get("default_value")) or None,
+        "reference_table": reference or None,
+    }
+
+
+def get_ci_class_schema(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve the field schema for a CMDB CI class from sys_dictionary.
+
+    Queries the sys_dictionary table to return all active field definitions
+    for the specified CI class, including field name, label, data type,
+    mandatory flag, max length, default value, and reference table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetCIClassSchemaParams.
+
+    Returns:
+        Dictionary with ``success``, ``ci_class``, ``fields`` (list), and
+        ``field_count`` keys.
+    """
+    result = _unwrap_and_validate_params(params, GetCIClassSchemaParams, required_fields=["ci_class"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    classes_to_query = [validated.ci_class]
+    if validated.include_inherited and validated.ci_class != CMDB_CI_TABLE:
+        classes_to_query.append(CMDB_CI_TABLE)
+
+    query_parts = [f"nameIN{','.join(classes_to_query)}", "active=true", "elementISNOTEMPTY"]
+    if validated.mandatory_only:
+        query_parts.append("mandatory=true")
+
+    url = f"{instance_url}/api/now/table/{_SYS_DICTIONARY_TABLE}"
+    query_params: Dict[str, Any] = {
+        "sysparm_query": "^".join(query_parts),
+        "sysparm_fields": ",".join(_SYS_DICTIONARY_FIELDS),
+        "sysparm_limit": "500",
+        "sysparm_offset": "0",
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        records = response.json().get("result", [])
+
+        fields = [_format_schema_field(r) for r in records]
+        fields = [f for f in fields if f["field_name"]]
+        fields.sort(key=lambda f: (not f["mandatory"], f["field_name"]))
+
+        return {
+            "success": True,
+            "ci_class": validated.ci_class,
+            "include_inherited": validated.include_inherited,
+            "mandatory_only": validated.mandatory_only,
+            "fields": fields,
+            "field_count": len(fields),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving CI class schema: {e}")
+        return {
+            "success": False,
+            "message": f"Error retrieving CI class schema: {_format_http_error(e)}",
+        }

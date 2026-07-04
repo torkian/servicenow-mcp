@@ -316,6 +316,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     CreateCIParams,
     DeleteCIOutageParams,
     GetCIByNameParams,
+    GetCIClassSchemaParams,
     GetCIOutageParams,
     GetCIParams,
     ListCIsParams,
@@ -338,6 +339,9 @@ from servicenow_mcp.tools.cmdb_tools import (
 )
 from servicenow_mcp.tools.cmdb_tools import (
     get_ci_by_name as get_ci_by_name_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    get_ci_class_schema as get_ci_class_schema_tool,
 )
 from servicenow_mcp.tools.cmdb_tools import (
     get_ci_outage as get_ci_outage_tool,
@@ -2066,6 +2070,19 @@ def get_tool_definitions(
                 "Search for CMDB configuration items by name substring. Returns all CIs "
                 "whose name contains the given string. Use exact=true for an exact match. "
                 "Optionally scope the search to a specific ci_class table."
+            ),
+            "raw_dict",
+        ),
+        "get_ci_class_schema": (
+            get_ci_class_schema_tool,
+            GetCIClassSchemaParams,
+            Dict[str, Any],
+            (
+                "Retrieve the field schema for a CMDB CI class from sys_dictionary. "
+                "Returns all active field definitions including field name, label, data type, "
+                "mandatory flag, read-only flag, max length, default value, and reference table. "
+                "Use mandatory_only=true to see only required fields. "
+                "Use include_inherited=true to also include base cmdb_ci fields."
             ),
             "raw_dict",
         ),
