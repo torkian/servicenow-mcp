@@ -74,6 +74,7 @@ service_desk:
   # Bulk Operations
   - bulk_update_incidents
   - bulk_update_problems
+  - bulk_update_problem_tasks
   # Change Approval (read-only)
   - list_change_approvals
   - get_change_approval
@@ -147,6 +148,7 @@ change_coordinator:
   - bulk_update_change_requests
   - bulk_update_change_tasks
   - bulk_update_problems
+  - bulk_update_problem_tasks
 
 knowledge_author:
   # KB Management
@@ -545,3 +547,4 @@ full:
   - bulk_update_change_requests
   - bulk_update_change_tasks
   - bulk_update_problems
+  - bulk_update_problem_tasks

@@ -21,6 +21,7 @@ from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_requests,
     bulk_update_change_tasks,
     bulk_update_incidents,
+    bulk_update_problem_tasks,
     bulk_update_problems,
     execute_bulk_operations,
 )
@@ -449,6 +450,7 @@ __all__ = [
     "bulk_update_change_requests",
     "bulk_update_change_tasks",
     "bulk_update_problems",
+    "bulk_update_problem_tasks",
 
     # CMDB tools
     "list_cmdb_classes",
