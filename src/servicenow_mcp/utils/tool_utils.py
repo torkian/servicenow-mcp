@@ -720,6 +720,12 @@ from servicenow_mcp.tools.story_tools import (
 from servicenow_mcp.tools.story_tools import (
     update_story as update_story_tool,
 )
+from servicenow_mcp.tools.on_call_tools import (
+    ListOnCallRotationsParams,
+)
+from servicenow_mcp.tools.on_call_tools import (
+    list_on_call_rotations as list_on_call_rotations_tool,
+)
 from servicenow_mcp.tools.scheduled_job_tools import (
     ListScheduledJobsParams,
 )
@@ -1889,6 +1895,19 @@ def get_tool_definitions(
             str,
             "Update an existing time card entry in ServiceNow",
             "json",
+        ),
+        # On-call Rotation Tools
+        "list_on_call_rotations": (
+            list_on_call_rotations_tool,
+            ListOnCallRotationsParams,
+            Dict[str, Any],
+            (
+                "List on-call rotation schedules from the ServiceNow cmn_rota table. "
+                "Filter by group name or sys_id, active state, and rotation name substring. "
+                "Returns rotation name, group, manager, schedule, escalation policy, and type. "
+                "Supports pagination."
+            ),
+            "raw_dict",
         ),
         # Scheduled Job Tools
         "list_scheduled_jobs": (

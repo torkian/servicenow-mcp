@@ -220,6 +220,9 @@ from servicenow_mcp.tools.story_tools import (
     list_story_dependencies,
     update_story,
 )
+from servicenow_mcp.tools.on_call_tools import (
+    list_on_call_rotations,
+)
 from servicenow_mcp.tools.scheduled_job_tools import (
     list_scheduled_jobs,
 )
@@ -541,4 +544,7 @@ __all__ = [
     # Notification tools
     "list_notifications",
     "get_notification",
+
+    # On-call rotation tools
+    "list_on_call_rotations",
 ]

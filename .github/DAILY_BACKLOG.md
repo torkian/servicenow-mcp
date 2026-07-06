@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-16. Add list_on_call_rotations tool (GET cmn_rota; filters for group/active)
 17. Add get_change_schedule_span tool (GET cmn_schedule_span/{sys_id} with 404 guard)
 18. Add list_change_windows_for_date tool (query cmn_schedule_span with date range to find active windows)
 19. Add cancel_incident tool (PATCH incident state=8 Cancelled; number/sys_id resolver)
@@ -98,3 +97,4 @@
 88. 2026-07-03 — Add list_scheduled_jobs tool (GET sysauto_script; filters for name/active/run_as/run_type; run_as reference normalised to display_value; ordered by name; registered in system_administrator and full packages; 27 new tests; 2002 total tests; 93% coverage)
 89. 2026-07-04 — Add get_ci_class_schema tool (GET sys_dictionary for a CI class; fields include name/label/type/mandatory/read_only/max_length/default_value/reference_table; mandatory_only and include_inherited flags; mandatory fields sorted first; registered in system_administrator and full packages; 22 new tests; 2024 total tests; 93% coverage)
 90. 2026-07-05 — Add bulk_update_problem_tasks tool (PATCH multiple problem_task records in one Batch API call; ProblemTaskUpdate model with 8 optional fields; PTASK numbers batch-resolved via single numberIN GET; per-result task_id enrichment; registered in service_desk, change_coordinator, and full packages; 21 new tests; 2045 total tests; 93% coverage)
+91. 2026-07-06 — Add list_on_call_rotations tool (GET cmn_rota; filters for group name/sys_id, active state, name substring; reference fields normalised; pagination; registered in system_administrator and full packages; 25 new tests; 2070 total tests; 100% on_call_tools.py coverage)

@@ -261,6 +261,8 @@ system_administrator:
   # System Logs
   - list_syslog_entries
   - get_syslog_entry
+  # On-call Rotations
+  - list_on_call_rotations
   # Scheduled Jobs
   - list_scheduled_jobs
   # Notifications
@@ -438,6 +440,8 @@ full:
   # Syslog
   - list_syslog_entries
   - get_syslog_entry
+  # On-call Rotations
+  - list_on_call_rotations
   # Scheduled Jobs
   - list_scheduled_jobs
   # Notifications
