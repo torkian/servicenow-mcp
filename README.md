@@ -114,6 +114,12 @@ By default, the server will listen on `0.0.0.0:8080`. You can customize the host
 servicenow-mcp-sse --host=127.0.0.1 --port=8000
 ```
 
+For faster shutdown with active SSE clients (less waiting after `CTRL+C`), tune keep-alive and graceful shutdown timeouts:
+
+```bash
+servicenow-mcp-sse --host=127.0.0.1 --port=8000 --keep-alive-timeout=2 --graceful-shutdown-timeout=2
+```
+
 #### Connecting to the SSE Server
 
 The SSE server exposes two main endpoints:
@@ -376,7 +382,7 @@ To configure the ServiceNow MCP server in Claude Desktop:
 
 ```bash
 # Web Mode
-cd "C:\[path]\servicenow-mcp"
+#cd "C:\[path]\servicenow-mcp"
 .\.venv\Scripts\Activate.ps1
 #pip install -e .
 servicenow-mcp-sse --host=127.0.0.1 --port=8000
@@ -397,7 +403,8 @@ servicenow-mcp-sse --host=127.0.0.1 --port=8000
 #### Local
 
 ```bash
-python -m venv .venv
+#cd "C:\[path]\servicenow-mcp"
+# python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -e .
 ```
