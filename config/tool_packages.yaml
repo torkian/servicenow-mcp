@@ -137,6 +137,7 @@ change_coordinator:
   - update_change_schedule
   - delete_change_schedule
   - list_change_schedule_spans
+  - get_change_schedule_span
   - list_change_conflicts
   # Problem Management (changes often linked to problems)
   - list_problems
@@ -374,6 +375,7 @@ full:
   - update_change_schedule
   - delete_change_schedule
   - list_change_schedule_spans
+  - get_change_schedule_span
   - list_change_conflicts
   # Workflow
   - list_workflows

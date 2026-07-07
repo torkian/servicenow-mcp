@@ -258,6 +258,12 @@ from servicenow_mcp.tools.change_tools import (
     ListChangeScheduleSpansParams,
 )
 from servicenow_mcp.tools.change_tools import (
+    get_change_schedule_span as get_change_schedule_span_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    GetChangeScheduleSpanParams,
+)
+from servicenow_mcp.tools.change_tools import (
     list_change_conflicts as list_change_conflicts_tool,
 )
 from servicenow_mcp.tools.change_tools import (
@@ -1385,6 +1391,18 @@ def get_tool_definitions(
                 "Optional: schedule_id (sys_id or schedule name), day_of_week (0=Sun…6=Sat), "
                 "repeat_type ('none','daily','weekly','monthly','yearly'), name_query, limit, offset. "
                 "Returns spans with day_of_week_label, start/end times, and pagination info."
+            ),
+            "json",
+        ),
+        "get_change_schedule_span": (
+            get_change_schedule_span_tool,
+            GetChangeScheduleSpanParams,
+            str,
+            (
+                "Retrieve a single cmn_schedule_span record by its sys_id. "
+                "Required: span_id (32-char hex sys_id). "
+                "Returns span details including schedule, type, repeat_type, "
+                "day_of_week, day_of_week_label, start/end times, all_day, and repeat_until."
             ),
             "json",
         ),

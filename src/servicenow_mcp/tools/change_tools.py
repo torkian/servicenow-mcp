@@ -2631,6 +2631,69 @@ def list_change_schedule_spans(
 
 
 # ---------------------------------------------------------------------------
+# get_change_schedule_span
+# ---------------------------------------------------------------------------
+
+
+class GetChangeScheduleSpanParams(BaseModel):
+    """Parameters for retrieving a single cmn_schedule_span record."""
+
+    span_id: str = Field(
+        ...,
+        description=(
+            "The cmn_schedule_span sys_id (32-char hex) to retrieve."
+        ),
+    )
+
+
+def get_change_schedule_span(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single cmn_schedule_span record by its sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetChangeScheduleSpanParams.
+
+    Returns:
+        Dictionary with ``success`` and ``span`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, GetChangeScheduleSpanParams, required_fields=["span_id"])
+    if not result["success"]:
+        return result
+    validated: GetChangeScheduleSpanParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_SPAN_TABLE}/{validated.span_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(CHANGE_SCHEDULE_SPAN_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change schedule span not found: {validated.span_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {"success": False, "message": f"Change schedule span not found: {validated.span_id}"}
+        return {"success": True, "span": _format_change_schedule_span(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving change schedule span: {e}")
+        return {"success": False, "message": f"Error retrieving change schedule span: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
 # Change Conflict tools
 # ---------------------------------------------------------------------------
 
