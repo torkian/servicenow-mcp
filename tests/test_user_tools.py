@@ -18,6 +18,7 @@ from servicenow_mcp.tools.user_tools import (
     UpdateGroupParams,
     UpdateUserParams,
     add_group_members,
+    _build_customer_query_variants,
     create_group,
     create_user,
     _fix_mojibake_text,
@@ -357,6 +358,97 @@ class TestUserTools(unittest.TestCase):
         self.assertTrue(result["success"])
         self.assertEqual(result["customers"][0]["name"], "John Brändle GmbH")
         self.assertEqual(result["customers"][0]["u_sdm"]["display_value"], "René Doe")
+
+    @patch("requests.get")
+    def test_list_customers_caps_large_limit_and_returns_pagination_metadata(self, mock_get):
+        """Large list_customers requests are capped and return navigation metadata."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": [
+                {
+                    "sys_id": "company123",
+                    "name": "Example Customer One",
+                    "u_customerid": "101597",
+                }
+            ]
+            * 200
+        }
+        mock_get.return_value = mock_response
+
+        params = ListCustomersParams(limit=1000, offset=0)
+        result = list_customers(self.config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["requested_limit"], 1000)
+        self.assertEqual(result["applied_limit"], 200)
+        self.assertTrue(result["truncated"])
+        self.assertTrue(result["has_more"])
+        self.assertEqual(result["next_offset"], 200)
+        self.assertIn("warnings", result)
+        self.assertIn("MCP-safe maximum", result["warnings"][0])
+
+        mock_get.assert_called_once()
+        call_args = mock_get.call_args
+        self.assertEqual(call_args[1]["params"]["sysparm_limit"], "200")
+
+    def test_build_customer_query_variants_handles_umlauts_and_ampersand(self):
+        """Search variants include common umlaut and '&'/'und' forms."""
+        variants = _build_customer_query_variants("Sample & Partners Zuerich")
+
+        self.assertIn("Sample & Partners Zuerich", variants)
+        self.assertIn("Sample und Partners Zuerich", variants)
+        self.assertIn("Sample & Partners Zürich", variants)
+
+    def test_build_customer_query_variants_converts_zuerich_but_not_neue(self):
+        """'Neue Zuercher' should become 'Neue Zürcher' without corrupting 'Neue'."""
+        variants = _build_customer_query_variants("Treue Zuercher Gruppe AG")
+
+        self.assertIn("Treue Zuercher Gruppe AG", variants)
+        self.assertIn("Treue Zürcher Gruppe AG", variants)
+        self.assertNotIn("Treüe Zürcher Gruppe AG", variants)
+
+    def test_build_customer_query_variants_handles_legal_suffix_and_alias(self):
+        """Search variants include legal-suffix stripped and parenthetical alias forms."""
+        variants = _build_customer_query_variants("Example Industrial GmbH (EIG)")
+
+        self.assertIn("Example Industrial GmbH (EIG)", variants)
+        self.assertIn("Example Industrial", variants)
+        self.assertIn("EIG", variants)
+
+    @patch("requests.get")
+    def test_list_customers_query_uses_variant_expansion(self, mock_get):
+        """list_customers should search with expanded variants to improve matches."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {
+            "result": [{"sys_id": "companyA", "name": "Example", "u_customerid": "A-1"}]
+        }
+        mock_get.return_value = mock_response
+
+        params = ListCustomersParams(query="Zuerich", limit=10)
+        _ = list_customers(self.config, self.auth_manager, params)
+
+        mock_get.assert_called_once()
+        sysparm_query = mock_get.call_args[1]["params"]["sysparm_query"]
+        self.assertIn("nameLIKEZuerich", sysparm_query)
+        self.assertIn("nameLIKEZürich", sysparm_query)
+
+    @patch("requests.get")
+    def test_list_customers_query_includes_legal_suffix_and_alias_variants(self, mock_get):
+        """list_customers should include legal-suffix and alias variants in query."""
+        mock_response = MagicMock()
+        mock_response.raise_for_status = MagicMock()
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        params = ListCustomersParams(query="Example Industrial GmbH (EIG)", limit=10)
+        _ = list_customers(self.config, self.auth_manager, params)
+
+        mock_get.assert_called_once()
+        sysparm_query = mock_get.call_args[1]["params"]["sysparm_query"]
+        self.assertIn("nameLIKEExample Industrial", sysparm_query)
+        self.assertIn("nameLIKEEIG", sysparm_query)
 
     @patch("requests.get")
     def test_list_groups(self, mock_get):

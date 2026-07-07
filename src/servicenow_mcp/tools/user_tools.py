@@ -6,6 +6,7 @@ This module provides tools for managing users and groups in ServiceNow.
 
 import logging
 import re
+import unicodedata
 from typing import List, Optional
 
 import requests
@@ -16,6 +17,8 @@ from servicenow_mcp.utils.config import ServerConfig
 from servicenow_mcp.utils.helpers import _format_http_error, _make_request
 
 logger = logging.getLogger(__name__)
+
+LIST_CUSTOMERS_MAX_LIMIT = 200
 
 
 def _fix_mojibake_text(value: str) -> str:
@@ -48,6 +51,126 @@ def _normalize_text_values(obj):
     if isinstance(obj, dict):
         return {key: _normalize_text_values(value) for key, value in obj.items()}
     return obj
+
+
+def _ascii_fold(value: str) -> str:
+    """Return ASCII approximation for a Unicode string (e.g., Zürich -> Zurich)."""
+    normalized = unicodedata.normalize("NFKD", value)
+    return "".join(ch for ch in normalized if not unicodedata.combining(ch))
+
+
+def _replace_umlaut_digraphs_context_aware(value: str) -> str:
+    """Convert ae/oe/ue digraphs to umlauts using a conservative heuristic.
+
+    We avoid converting digraphs when they follow a vowel to reduce false
+    positives such as "Neue" -> "Neüe".
+    """
+
+    def _replace(pattern: str, umlaut: str, text: str) -> str:
+        compiled = re.compile(pattern, flags=re.IGNORECASE)
+
+        def _repl(match: re.Match) -> str:
+            token = match.group(0)
+            if token.isupper():
+                return umlaut.upper()
+            if token[0].isupper():
+                return umlaut.upper()
+            return umlaut
+
+        return compiled.sub(_repl, text)
+
+    converted = value
+    # Do not convert after vowels (and for "ue", also after q).
+    converted = _replace(r"(?<![aeiouäöü])ae", "ä", converted)
+    converted = _replace(r"(?<![aeiouäöü])oe", "ö", converted)
+    converted = _replace(r"(?<![aeiouäöüq])ue", "ü", converted)
+    return converted
+
+
+def _build_customer_query_variants(query: str) -> List[str]:
+    """Build robust name-search variants for common DE/EN spellings.
+
+    Examples:
+    - Soehne <-> Söhne
+    - Sample & Partners <-> Sample und Partners
+    """
+    value = (query or "").strip()
+    if not value:
+        return []
+
+    variants = {value}
+
+    legal_suffix_pattern = re.compile(
+        r"\b(?:ag|gmbh|sa|ltd|llc|inc|corp|co\.?|sarl|bv|kg|plc)\b\.?",
+        flags=re.IGNORECASE,
+    )
+
+    # Digraphs to umlauts (commonly used as ASCII fallback in DE names).
+    for current in list(variants):
+        converted = _replace_umlaut_digraphs_context_aware(current)
+        if converted != current:
+            variants.add(converted)
+
+    # Umlauts back to digraphs.
+    umlaut_to_digraph = {
+        "ä": "ae",
+        "ö": "oe",
+        "ü": "ue",
+        "Ä": "Ae",
+        "Ö": "Oe",
+        "Ü": "Ue",
+    }
+    for current in list(variants):
+        converted = current
+        for src, dst in umlaut_to_digraph.items():
+            converted = converted.replace(src, dst)
+        variants.add(converted)
+
+    # Symbol/word variations often used in company names.
+    for current in list(variants):
+        if "&" in current:
+            variants.add(current.replace("&", "und"))
+        if re.search(r"\bund\b", current, flags=re.IGNORECASE):
+            variants.add(re.sub(r"\bund\b", "&", current, flags=re.IGNORECASE))
+
+    # Add variants without legal suffixes and parenthetical aliases.
+    for current in list(variants):
+        # Example: "Example Group GmbH" -> "Example Group"
+        without_legal_suffix = legal_suffix_pattern.sub("", current)
+        without_legal_suffix = re.sub(r"\s+", " ", without_legal_suffix).strip(" ,.-")
+        if without_legal_suffix:
+            variants.add(without_legal_suffix)
+
+        # Example: "Association Name (ABC)" -> "Association Name" and "ABC"
+        paren_groups = re.findall(r"\(([^)]{1,40})\)", current)
+        without_parenthetical = re.sub(r"\s*\([^)]*\)", "", current)
+        without_parenthetical = re.sub(r"\s+", " ", without_parenthetical).strip(" ,.-")
+        if without_parenthetical:
+            variants.add(without_parenthetical)
+
+        # Combined normalization catches cases like "Name GmbH (ABC)" -> "Name".
+        without_both = legal_suffix_pattern.sub("", without_parenthetical)
+        without_both = re.sub(r"\s+", " ", without_both).strip(" ,.-")
+        if without_both:
+            variants.add(without_both)
+
+        for alias in paren_groups:
+            alias_clean = alias.strip()
+            if re.fullmatch(r"[A-Za-z0-9&.\-\s]{2,40}", alias_clean):
+                variants.add(alias_clean)
+
+    # Add ASCII-folded forms to catch accent-insensitive matching.
+    for current in list(variants):
+        variants.add(_ascii_fold(current))
+
+    # Normalize spacing and remove empty entries while preserving deterministic order.
+    ordered = []
+    for candidate in variants:
+        normalized = re.sub(r"\s+", " ", candidate).strip()
+        if normalized and normalized not in ordered:
+            ordered.append(normalized)
+
+    return ordered
 
 
 class CreateUserParams(BaseModel):
@@ -560,8 +683,17 @@ def list_customers(
 
     fields = list(dict.fromkeys(default_fields + extra_fields))
 
+    requested_limit = max(1, params.limit)
+    effective_limit = min(requested_limit, LIST_CUSTOMERS_MAX_LIMIT)
+
+    warnings = []
+    if requested_limit > LIST_CUSTOMERS_MAX_LIMIT:
+        warnings.append(
+            f"Requested limit {requested_limit} exceeds MCP-safe maximum {LIST_CUSTOMERS_MAX_LIMIT}; using {effective_limit}."
+        )
+
     query_params = {
-        "sysparm_limit": str(params.limit),
+        "sysparm_limit": str(effective_limit),
         "sysparm_offset": str(params.offset),
         "sysparm_display_value": "true",
         "sysparm_fields": ",".join(fields),
@@ -579,22 +711,38 @@ def list_customers(
     if params.only_sso is False:
         query_parts.append("sso_sourceISEMPTY")
     if params.query:
-        query_parts.append(f"nameLIKE{params.query}^ORu_customeridLIKE{params.query}")
+        query_variants = _build_customer_query_variants(params.query)
+        query_clauses = []
+        for term in query_variants:
+            query_clauses.append(f"nameLIKE{term}")
+            query_clauses.append(f"u_customeridLIKE{term}")
+        if query_clauses:
+            query_parts.append("^OR".join(query_clauses))
 
     if query_parts:
         query_params["sysparm_query"] = "^".join(query_parts)
+    elif effective_limit >= 100:
+        warnings.append(
+            "Unfiltered large customer queries are better handled as export jobs outside MCP."
+        )
 
-    try:
+    def _request_with_query(query_override: Optional[str] = None) -> list:
+        request_params = dict(query_params)
+        if query_override:
+            request_params["sysparm_query"] = query_override
+
         response = _make_request(
             "GET",
             api_url,
-            params=query_params,
+            params=request_params,
             headers=auth_manager.get_headers(),
             timeout=config.timeout,
         )
         response.raise_for_status()
+        return response.json().get("result", [])
 
-        result = response.json().get("result", [])
+    try:
+        result = _request_with_query()
 
         # Keep requested output keys stable even when ServiceNow omits empty fields.
         for customer in result:
@@ -606,12 +754,29 @@ def list_customers(
         # Normalize common mojibake in names/display values (e.g., BrÃ¤ndle -> Brändle).
         result = _normalize_text_values(result)
 
-        return {
+        has_more = len(result) == effective_limit
+
+        next_offset = None
+        if has_more:
+            next_offset = params.offset + effective_limit
+
+        response_payload = {
             "success": True,
             "message": f"Found {len(result)} customers",
             "customers": result,
             "count": len(result),
+            "requested_limit": requested_limit,
+            "applied_limit": effective_limit,
+            "offset": params.offset,
+            "has_more": has_more,
+            "next_offset": next_offset,
+            "truncated": requested_limit > effective_limit,
         }
+
+        if warnings:
+            response_payload["warnings"] = warnings
+
+        return response_payload
 
     except requests.RequestException as e:
         logger.error(f"Failed to list customers: {e}")
