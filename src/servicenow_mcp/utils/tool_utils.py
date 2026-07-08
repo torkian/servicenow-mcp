@@ -264,6 +264,12 @@ from servicenow_mcp.tools.change_tools import (
     GetChangeScheduleSpanParams,
 )
 from servicenow_mcp.tools.change_tools import (
+    list_change_windows_for_date as list_change_windows_for_date_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    ListChangeWindowsForDateParams,
+)
+from servicenow_mcp.tools.change_tools import (
     list_change_conflicts as list_change_conflicts_tool,
 )
 from servicenow_mcp.tools.change_tools import (
@@ -1403,6 +1409,19 @@ def get_tool_definitions(
                 "Required: span_id (32-char hex sys_id). "
                 "Returns span details including schedule, type, repeat_type, "
                 "day_of_week, day_of_week_label, start/end times, all_day, and repeat_until."
+            ),
+            "json",
+        ),
+        "list_change_windows_for_date": (
+            list_change_windows_for_date_tool,
+            ListChangeWindowsForDateParams,
+            str,
+            (
+                "List cmn_schedule_span records (change windows) that are active on a specific date. "
+                "Required: query_date (YYYY-MM-DD). "
+                "Optional: schedule_id (sys_id or name) to scope to one parent schedule, limit, offset. "
+                "Returns windows with day_of_week_label, start/end times, repeat info, "
+                "plus query_date, day_of_week, day_of_week_label, has_more, next_offset."
             ),
             "json",
         ),

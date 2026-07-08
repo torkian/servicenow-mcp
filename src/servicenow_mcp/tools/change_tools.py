@@ -22,6 +22,7 @@ from servicenow_mcp.utils.helpers import (
     _make_request,
     _paginated_list_response,
     _unwrap_and_validate_params,
+    validate_servicenow_date,
     validate_servicenow_datetime,
 )
 
@@ -2824,3 +2825,145 @@ def list_change_conflicts(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing change conflicts: {e}")
         return {"success": False, "message": f"Error listing change conflicts: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# list_change_windows_for_date
+# ---------------------------------------------------------------------------
+
+# ServiceNow weekday: 0=Sunday, 1=Monday, ..., 6=Saturday
+_PYTHON_TO_SN_WEEKDAY = {0: 1, 1: 2, 2: 3, 3: 4, 4: 5, 5: 6, 6: 0}
+
+
+class ListChangeWindowsForDateParams(BaseModel):
+    """Parameters for listing change window spans active on a specific date."""
+
+    query_date: str = Field(
+        ...,
+        description=(
+            "The calendar date to search for active change windows (YYYY-MM-DD). "
+            "Returns non-repeating spans that overlap the date, weekly spans whose "
+            "day-of-week matches, and daily spans that have started by the date."
+        ),
+    )
+    schedule_id: Optional[str] = Field(
+        None,
+        description=(
+            "Optionally scope results to a single parent schedule. "
+            "Accepts a cmn_schedule sys_id (32-char hex) or exact schedule name."
+        ),
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20).")
+    offset: Optional[int] = Field(0, description="Pagination offset.")
+
+    @field_validator("query_date", mode="before")
+    @classmethod
+    def _validate_query_date(cls, v: Optional[str]) -> Optional[str]:
+        return validate_servicenow_date(v)
+
+
+def list_change_windows_for_date(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List cmn_schedule_span records (change windows) active on a given date.
+
+    Queries the ``cmn_schedule_span`` table using an OR query (^NQ groups) to
+    find three categories of spans active on ``query_date``:
+
+    - **Non-repeating** spans whose start_date_time <= date AND end_date_time >= date.
+    - **Weekly** recurring spans whose day_of_week matches the weekday of the date
+      and whose start_date_time is on or before the date.
+    - **Daily** recurring spans that have started by the date.
+
+    Expired spans (repeat_until is set and falls before the queried date) are
+    filtered out in Python after the API call.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListChangeWindowsForDateParams.
+
+    Returns:
+        Dictionary with ``success``, ``query_date``, ``day_of_week``,
+        ``day_of_week_label``, ``count``, ``has_more``, ``next_offset``, and
+        ``windows`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, ListChangeWindowsForDateParams, required_fields=["query_date"])
+    if not result["success"]:
+        return result
+    validated: ListChangeWindowsForDateParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    date_str = validated.query_date
+    date_start = f"{date_str} 00:00:00"
+    date_end = f"{date_str} 23:59:59"
+
+    dt = datetime.strptime(date_str, "%Y-%m-%d")
+    sn_weekday = _PYTHON_TO_SN_WEEKDAY[dt.weekday()]
+    weekday_label = _DAY_OF_WEEK_LABELS[str(sn_weekday)]
+
+    schedule_prefix = ""
+    if validated.schedule_id:
+        schedule_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.schedule_id)
+        if not schedule_sys_id:
+            return {"success": False, "message": f"Change schedule not found: {validated.schedule_id}"}
+        schedule_prefix = f"schedule={schedule_sys_id}^"
+
+    nq_groups = [
+        f"{schedule_prefix}repeat_type=none^start_date_time<={date_end}^end_date_time>={date_start}",
+        f"{schedule_prefix}repeat_type=weekly^day_of_week={sn_weekday}^start_date_time<={date_end}",
+        f"{schedule_prefix}repeat_type=daily^start_date_time<={date_end}",
+    ]
+    sysparm_query = "^NQ".join(nq_groups)
+
+    limit = validated.limit or 20
+    offset = validated.offset or 0
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_SPAN_TABLE}"
+    api_params = _build_sysparm_params(
+        fields=CHANGE_SCHEDULE_SPAN_FIELDS,
+        limit=limit + offset + 200,  # fetch extra to allow post-filtering
+        offset=0,
+    )
+    api_params["sysparm_query"] = sysparm_query
+    api_params["sysparm_display_value"] = "all"
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=api_params)
+        response.raise_for_status()
+        raw_records = response.json().get("result", [])
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change windows for date: {e}")
+        return {"success": False, "message": f"Error listing change windows for date: {_format_http_error(e)}"}
+
+    # Post-filter: discard spans whose repeat_until has passed
+    active = []
+    for rec in raw_records:
+        repeat_until = rec.get("repeat_until")
+        if isinstance(repeat_until, dict):
+            repeat_until = repeat_until.get("value") or repeat_until.get("display_value")
+        if repeat_until and repeat_until.strip() < date_start:
+            continue
+        active.append(_format_change_schedule_span(rec))
+
+    # Apply pagination over filtered results
+    page = active[offset: offset + limit]
+    has_more = len(active) > offset + limit
+    return {
+        "success": True,
+        "query_date": date_str,
+        "day_of_week": sn_weekday,
+        "day_of_week_label": weekday_label,
+        "count": len(page),
+        "has_more": has_more,
+        "next_offset": offset + limit if has_more else None,
+        "windows": page,
+    }

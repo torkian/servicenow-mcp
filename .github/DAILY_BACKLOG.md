@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-18. Add list_change_windows_for_date tool (query cmn_schedule_span with date range to find active windows)
 19. Add cancel_incident tool (PATCH incident state=8 Cancelled; number/sys_id resolver)
 20. Add list_ci_dependencies tool (cmdb_rel_ci where parent=ci_sys_id; directional graph view)
 
@@ -98,3 +97,4 @@
 90. 2026-07-05 — Add bulk_update_problem_tasks tool (PATCH multiple problem_task records in one Batch API call; ProblemTaskUpdate model with 8 optional fields; PTASK numbers batch-resolved via single numberIN GET; per-result task_id enrichment; registered in service_desk, change_coordinator, and full packages; 21 new tests; 2045 total tests; 93% coverage)
 91. 2026-07-06 — Add list_on_call_rotations tool (GET cmn_rota; filters for group name/sys_id, active state, name substring; reference fields normalised; pagination; registered in system_administrator and full packages; 25 new tests; 2070 total tests; 100% on_call_tools.py coverage)
 92. 2026-07-07 — Add get_change_schedule_span tool (GET cmn_schedule_span/{sys_id}; 404/empty-result guards; GetChangeScheduleSpanParams model; _format_change_schedule_span normalisation with day_of_week_label; registered in change_coordinator and full packages; 14 new tests; 2084 total tests; 93% coverage)
+93. 2026-07-08 — Add list_change_windows_for_date tool (cmn_schedule_span ^NQ OR query across non-repeating/weekly/daily span types; Python→SN weekday mapping; repeat_until post-filter; optional schedule_id scoping; day_of_week_label metadata in response; registered in change_coordinator and full packages; 27 new tests; 2111 total tests; 93% coverage)
