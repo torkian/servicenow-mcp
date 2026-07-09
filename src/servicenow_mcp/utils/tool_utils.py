@@ -437,6 +437,7 @@ from servicenow_mcp.tools.incident_task_tools import (
 )
 from servicenow_mcp.tools.incident_tools import (
     AddCommentParams,
+    CancelIncidentParams,
     CreateIncidentParams,
     DeleteIncidentParams,
     EscalateIncidentParams,
@@ -448,6 +449,9 @@ from servicenow_mcp.tools.incident_tools import (
 )
 from servicenow_mcp.tools.incident_tools import (
     add_comment as add_comment_tool,
+)
+from servicenow_mcp.tools.incident_tools import (
+    cancel_incident as cancel_incident_tool,
 )
 from servicenow_mcp.tools.incident_tools import (
     create_incident as create_incident_tool,
@@ -1002,6 +1006,17 @@ def get_tool_definitions(
                 "it to a different group. Accepts an incident number (e.g. INC0010001) or sys_id. "
                 "A required priority value ('1'=Critical … '5'=Planning) is set via PATCH. "
                 "Optionally supply assignment_group to reassign and audit_note to document the reason."
+            ),
+            "str",
+        ),
+        "cancel_incident": (
+            cancel_incident_tool,
+            CancelIncidentParams,
+            str,
+            (
+                "Cancel a ServiceNow incident by setting its state to 8 (Cancelled). "
+                "Accepts an incident number (e.g. INC0010001) or sys_id. "
+                "An optional cancel_reason is recorded as a work note for audit purposes."
             ),
             "str",
         ),

@@ -130,6 +130,7 @@ from servicenow_mcp.tools.incident_task_tools import (
 )
 from servicenow_mcp.tools.incident_tools import (
     add_comment,
+    cancel_incident,
     create_incident,
     delete_incident,
     escalate_incident,
@@ -285,6 +286,7 @@ __all__ = [
     "create_incident",
     "update_incident",
     "delete_incident",
+    "cancel_incident",
     "add_comment",
     "resolve_incident",
     "reopen_incident",

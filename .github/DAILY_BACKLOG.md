@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-19. Add cancel_incident tool (PATCH incident state=8 Cancelled; number/sys_id resolver)
 20. Add list_ci_dependencies tool (cmdb_rel_ci where parent=ci_sys_id; directional graph view)
 
 ## Completed
@@ -98,3 +97,4 @@
 91. 2026-07-06 — Add list_on_call_rotations tool (GET cmn_rota; filters for group name/sys_id, active state, name substring; reference fields normalised; pagination; registered in system_administrator and full packages; 25 new tests; 2070 total tests; 100% on_call_tools.py coverage)
 92. 2026-07-07 — Add get_change_schedule_span tool (GET cmn_schedule_span/{sys_id}; 404/empty-result guards; GetChangeScheduleSpanParams model; _format_change_schedule_span normalisation with day_of_week_label; registered in change_coordinator and full packages; 14 new tests; 2084 total tests; 93% coverage)
 93. 2026-07-08 — Add list_change_windows_for_date tool (cmn_schedule_span ^NQ OR query across non-repeating/weekly/daily span types; Python→SN weekday mapping; repeat_until post-filter; optional schedule_id scoping; day_of_week_label metadata in response; registered in change_coordinator and full packages; 27 new tests; 2111 total tests; 93% coverage)
+94. 2026-07-09 — Add cancel_incident tool (PATCH incident state=8 Cancelled; number/sys_id resolver; optional cancel_reason written as work note; registered in service_desk and full packages; 15 new tests; 2126 total tests; 93% coverage)

@@ -16,6 +16,7 @@ service_desk:
   - resolve_incident
   - reopen_incident
   - escalate_incident
+  - cancel_incident
   - list_incidents
   - get_incident_by_number
   # Incident Tasks
@@ -321,6 +322,7 @@ full:
   - resolve_incident
   - reopen_incident
   - escalate_incident
+  - cancel_incident
   - list_incidents
   - get_incident_by_number
   # Incident Tasks
