@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-20. Add list_ci_dependencies tool (cmdb_rel_ci where parent=ci_sys_id; directional graph view)
+(empty — add new items here)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -98,3 +98,4 @@
 92. 2026-07-07 — Add get_change_schedule_span tool (GET cmn_schedule_span/{sys_id}; 404/empty-result guards; GetChangeScheduleSpanParams model; _format_change_schedule_span normalisation with day_of_week_label; registered in change_coordinator and full packages; 14 new tests; 2084 total tests; 93% coverage)
 93. 2026-07-08 — Add list_change_windows_for_date tool (cmn_schedule_span ^NQ OR query across non-repeating/weekly/daily span types; Python→SN weekday mapping; repeat_until post-filter; optional schedule_id scoping; day_of_week_label metadata in response; registered in change_coordinator and full packages; 27 new tests; 2111 total tests; 93% coverage)
 94. 2026-07-09 — Add cancel_incident tool (PATCH incident state=8 Cancelled; number/sys_id resolver; optional cancel_reason written as work note; registered in service_desk and full packages; 15 new tests; 2126 total tests; 93% coverage)
+95. 2026-07-10 — Add list_ci_dependencies tool (BFS traversal of cmdb_rel_ci for a given CI; direction=upstream/downstream/both; depth 1-3; relationship_type filter; graph output with deduplicated nodes+edges; registered in system_administrator and full packages; 23 new tests; 2149 total tests; 93% coverage)

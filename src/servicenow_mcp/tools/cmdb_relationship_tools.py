@@ -7,7 +7,7 @@ cmdb_rel_type.
 """
 
 import logging
-from typing import Any, Dict, List, Optional
+from typing import Any, Dict, List, Literal, Optional, Set
 
 import requests
 from pydantic import BaseModel, Field
@@ -102,6 +102,33 @@ class ListCIRelationshipTypesParams(BaseModel):
     offset: Optional[int] = Field(0, description="Pagination offset")
     name: Optional[str] = Field(
         None, description="Filter by relationship type name (substring match)"
+    )
+
+
+class ListCIDependenciesParams(BaseModel):
+    """Parameters for listing CI dependencies as a directional graph."""
+
+    ci_sys_id: str = Field(..., description="sys_id of the CI whose dependencies to fetch")
+    direction: Literal["upstream", "downstream", "both"] = Field(
+        "both",
+        description=(
+            "'upstream': CIs that this CI depends on (parent=ci_sys_id); "
+            "'downstream': CIs that depend on this CI (child=ci_sys_id); "
+            "'both': include both directions (default)"
+        ),
+    )
+    depth: int = Field(
+        1,
+        ge=1,
+        le=3,
+        description="Traversal depth (1=immediate neighbours, max 3). Default 1.",
+    )
+    relationship_type: Optional[str] = Field(
+        None, description="sys_id of cmdb_rel_type to restrict which relationship kinds to follow"
+    )
+    limit: Optional[int] = Field(
+        50,
+        description="Max edges to return per direction per depth level (default 50)",
     )
 
 
@@ -398,3 +425,179 @@ def list_ci_relationship_types(
             "success": False,
             "message": f"Error listing CI relationship types: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# CI dependency graph
+# ---------------------------------------------------------------------------
+
+
+def _fetch_rel_ci_edges(
+    url_base: str,
+    headers: Dict,
+    ci_sys_ids: Set[str],
+    direction: str,
+    relationship_type: Optional[str],
+    limit: int,
+) -> List[Dict]:
+    """Fetch cmdb_rel_ci edges for a set of CI sys_ids in one or two queries."""
+    all_edges: List[Dict] = []
+    id_list = ",".join(ci_sys_ids)
+    directions = []
+    if direction in ("upstream", "both"):
+        directions.append("upstream")
+    if direction in ("downstream", "both"):
+        directions.append("downstream")
+
+    for d in directions:
+        if d == "upstream":
+            query = f"parentIN{id_list}"
+        else:
+            query = f"childIN{id_list}"
+        if relationship_type:
+            query += f"^type={relationship_type}"
+
+        query_params: Dict[str, Any] = {
+            "sysparm_query": query,
+            "sysparm_limit": str(limit),
+            "sysparm_display_value": "all",
+            "sysparm_exclude_reference_link": "true",
+            "sysparm_fields": ",".join(_REL_CI_FIELDS),
+        }
+        try:
+            response = _make_request(
+                "GET", f"{url_base}/api/now/table/{CMDB_REL_CI_TABLE}",
+                headers=headers, params=query_params
+            )
+            response.raise_for_status()
+            for rec in response.json().get("result", []):
+                rec["_direction"] = d
+                all_edges.append(rec)
+        except requests.exceptions.RequestException as e:
+            logger.warning(f"Error fetching {d} edges for {ci_sys_ids}: {e}")
+
+    return all_edges
+
+
+def _extract_node(rec: Dict, ci_sys_id: str, d: str) -> Optional[Dict]:
+    """Extract the neighbour CI node from an edge record."""
+
+    def _ref_val(field):
+        v = rec.get(field, {})
+        if isinstance(v, dict):
+            return v.get("value", ""), v.get("display_value", "")
+        return v or "", ""
+
+    parent_id, parent_name = _ref_val("parent")
+    child_id, child_name = _ref_val("child")
+
+    if d == "upstream":
+        neighbour_id, neighbour_name = child_id, child_name
+    else:
+        neighbour_id, neighbour_name = parent_id, parent_name
+
+    if not neighbour_id or neighbour_id == ci_sys_id:
+        return None
+
+    return {"sys_id": neighbour_id, "name": neighbour_name, "direction": d}
+
+
+def _build_edge(rec: Dict, d: str) -> Dict:
+    """Build a clean edge dict from a raw cmdb_rel_ci record."""
+
+    def _ref_val(field):
+        v = rec.get(field, {})
+        if isinstance(v, dict):
+            return v.get("value", ""), v.get("display_value", "")
+        return v or "", ""
+
+    parent_id, parent_name = _ref_val("parent")
+    child_id, child_name = _ref_val("child")
+    type_id, type_name = _ref_val("type")
+
+    return {
+        "sys_id": rec.get("sys_id"),
+        "parent_sys_id": parent_id,
+        "parent_name": parent_name,
+        "child_sys_id": child_id,
+        "child_name": child_name,
+        "type_sys_id": type_id,
+        "type_name": type_name,
+        "direction": d,
+    }
+
+
+def list_ci_dependencies(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Return the dependency graph for a CI up to the requested traversal depth.
+
+    Each level of depth follows the edges returned by the previous level,
+    performing BFS across ``cmdb_rel_ci``.  The response contains deduplicated
+    ``nodes`` (neighbour CIs) and ``edges`` (relationship records) in a
+    format suitable for graph rendering.
+
+    Returns:
+        Dictionary with ``success``, ``ci_sys_id``, ``direction``, ``depth``,
+        ``nodes``, ``edges``, and ``count`` (total edge count).
+    """
+    result = _unwrap_and_validate_params(
+        params, ListCIDependenciesParams, required_fields=["ci_sys_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    limit = validated.limit or 50
+
+    seen_edge_ids: Set[str] = set()
+    seen_node_ids: Set[str] = {validated.ci_sys_id}
+    all_edges: List[Dict] = []
+    all_nodes: List[Dict] = []
+
+    frontier: Set[str] = {validated.ci_sys_id}
+
+    for _level in range(validated.depth):
+        if not frontier:
+            break
+        raw_edges = _fetch_rel_ci_edges(
+            instance_url,
+            headers,
+            frontier,
+            validated.direction,
+            validated.relationship_type,
+            limit,
+        )
+        new_frontier: Set[str] = set()
+        for rec in raw_edges:
+            edge_id = rec.get("sys_id", "")
+            if edge_id in seen_edge_ids:
+                continue
+            seen_edge_ids.add(edge_id)
+            d = rec.get("_direction", "upstream")
+            all_edges.append(_build_edge(rec, d))
+            node = _extract_node(rec, validated.ci_sys_id, d)
+            if node and node["sys_id"] not in seen_node_ids:
+                seen_node_ids.add(node["sys_id"])
+                all_nodes.append(node)
+                new_frontier.add(node["sys_id"])
+        frontier = new_frontier
+
+    return {
+        "success": True,
+        "ci_sys_id": validated.ci_sys_id,
+        "direction": validated.direction,
+        "depth": validated.depth,
+        "nodes": all_nodes,
+        "edges": all_edges,
+        "count": len(all_edges),
+    }

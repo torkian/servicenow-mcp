@@ -290,6 +290,7 @@ system_administrator:
   - create_ci_relationship
   - delete_ci_relationship
   - list_ci_relationship_types
+  - list_ci_dependencies
   # Incident Management (destructive)
   - delete_incident
   # Asset Management
@@ -479,6 +480,7 @@ full:
   - create_ci_relationship
   - delete_ci_relationship
   - list_ci_relationship_types
+  - list_ci_dependencies
   # Asset Management
   - create_asset
   - delete_asset

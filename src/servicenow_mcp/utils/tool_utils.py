@@ -309,6 +309,7 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
     DeleteCIRelationshipParams,
     GetCIRelationshipParams,
+    ListCIDependenciesParams,
     ListCIRelationshipsParams,
     ListCIRelationshipTypesParams,
 )
@@ -320,6 +321,9 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
 )
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     get_ci_relationship as get_ci_relationship_tool,
+)
+from servicenow_mcp.tools.cmdb_relationship_tools import (
+    list_ci_dependencies as list_ci_dependencies_tool,
 )
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     list_ci_relationship_types as list_ci_relationship_types_tool,
@@ -2289,6 +2293,19 @@ def get_tool_definitions(
                 "List available CI relationship types from the cmdb_rel_type table. "
                 "Each type has a parent_descriptor (e.g. 'Depends on') and a "
                 "child_descriptor (e.g. 'Used by'). Filter by name substring."
+            ),
+            "raw_dict",
+        ),
+        "list_ci_dependencies": (
+            list_ci_dependencies_tool,
+            ListCIDependenciesParams,
+            Dict[str, Any],
+            (
+                "Return the dependency graph for a CI as a list of nodes and edges. "
+                "direction='upstream' finds CIs this CI depends on (parent=ci_sys_id); "
+                "direction='downstream' finds CIs that depend on this CI (child=ci_sys_id); "
+                "direction='both' returns both. depth (1-3) controls BFS traversal depth. "
+                "Optional relationship_type sys_id restricts which relationship kinds to follow."
             ),
             "raw_dict",
         ),

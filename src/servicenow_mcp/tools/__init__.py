@@ -92,6 +92,7 @@ from servicenow_mcp.tools.cmdb_relationship_tools import (
     create_ci_relationship,
     delete_ci_relationship,
     get_ci_relationship,
+    list_ci_dependencies,
     list_ci_relationship_types,
     list_ci_relationships,
 )
@@ -480,6 +481,7 @@ __all__ = [
     "create_ci_relationship",
     "delete_ci_relationship",
     "list_ci_relationship_types",
+    "list_ci_dependencies",
 
     # Asset management tools
     "create_asset",
