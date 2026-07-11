@@ -87,6 +87,95 @@ def _format_on_call_rotation(record: Dict) -> Dict:
     }
 
 
+class GetOnCallRotationParams(BaseModel):
+    """Parameters for retrieving a single on-call rotation."""
+
+    rotation_id: str = Field(
+        ...,
+        description="The sys_id or exact name of the on-call rotation to retrieve.",
+    )
+
+
+def _resolve_on_call_rotation_sys_id(
+    instance_url: str,
+    headers: Dict,
+    rotation_id: str,
+) -> Optional[str]:
+    """Return the sys_id for a rotation name or passthrough if already a sys_id."""
+    if len(rotation_id) == 32 and all(c in "0123456789abcdef" for c in rotation_id):
+        return rotation_id
+    url = f"{instance_url}/api/now/table/{ON_CALL_ROTA_TABLE}"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"name={rotation_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+def get_on_call_rotation(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single cmn_rota record by sys_id or exact name.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetOnCallRotationParams.
+
+    Returns:
+        Dictionary with ``success`` and ``rotation`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, GetOnCallRotationParams, required_fields=["rotation_id"])
+    if not result["success"]:
+        return result
+    validated: GetOnCallRotationParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_on_call_rotation_sys_id(instance_url, headers, validated.rotation_id)
+    if not sys_id:
+        return {"success": False, "message": f"On-call rotation not found: {validated.rotation_id}"}
+
+    url = f"{instance_url}/api/now/table/{ON_CALL_ROTA_TABLE}/{sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(ON_CALL_ROTA_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"On-call rotation not found: {validated.rotation_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {"success": False, "message": f"On-call rotation not found: {validated.rotation_id}"}
+        return {"success": True, "rotation": _format_on_call_rotation(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving on-call rotation: {e}")
+        return {"success": False, "message": f"Error retrieving on-call rotation: {_format_http_error(e)}"}
+
+
 def list_on_call_rotations(
     auth_manager: AuthManager,
     server_config: ServerConfig,

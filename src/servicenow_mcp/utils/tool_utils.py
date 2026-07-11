@@ -741,15 +741,19 @@ from servicenow_mcp.tools.story_tools import (
     update_story as update_story_tool,
 )
 from servicenow_mcp.tools.on_call_tools import (
+    GetOnCallRotationParams,
     ListOnCallRotationsParams,
 )
 from servicenow_mcp.tools.on_call_tools import (
+    get_on_call_rotation as get_on_call_rotation_tool,
     list_on_call_rotations as list_on_call_rotations_tool,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
+    GetScheduledJobParams,
     ListScheduledJobsParams,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
+    get_scheduled_job as get_scheduled_job_tool,
     list_scheduled_jobs as list_scheduled_jobs_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
@@ -1965,6 +1969,17 @@ def get_tool_definitions(
             ),
             "raw_dict",
         ),
+        "get_on_call_rotation": (
+            get_on_call_rotation_tool,
+            GetOnCallRotationParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single on-call rotation record from the ServiceNow cmn_rota table "
+                "by its sys_id or exact name. Returns all rotation fields including group, "
+                "manager, schedule, escalation policy, type, and timestamps."
+            ),
+            "raw_dict",
+        ),
         # Scheduled Job Tools
         "list_scheduled_jobs": (
             list_scheduled_jobs_tool,
@@ -1975,6 +1990,18 @@ def get_tool_definitions(
                 "Filter by job name (substring), active state, run_as user name, or run_type "
                 "(daily/weekly/monthly/once/periodically). Returns job name, schedule settings, "
                 "script body, and run_as account. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_scheduled_job": (
+            get_scheduled_job_tool,
+            GetScheduledJobParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single scheduled script execution job from the ServiceNow "
+                "sysauto_script table by its sys_id or exact name. Returns job name, active "
+                "state, run schedule settings (type/period/time/day), script body, and "
+                "run_as account."
             ),
             "raw_dict",
         ),

@@ -1,7 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-(empty — add new items here)
+1. Add create_change_schedule_span tool (POST cmn_schedule_span; define new change window spans with schedule/name/start_date_time/end_date_time/repeat_type/day_of_week fields)
+2. Add update_change_schedule_span tool (PATCH cmn_schedule_span/{sys_id})
+3. Add delete_change_schedule_span tool (DELETE cmn_schedule_span/{sys_id})
+4. Add get_on_call_rotation_members tool (list cmn_rota_member records for a rotation)
+5. Add create_on_call_rotation tool (POST cmn_rota)
+6. Add update_on_call_rotation tool (PATCH cmn_rota/{sys_id})
+7. Add get_catalog_category tool (GET sc_category/{sys_id} — completes create/list/update set)
+8. Add create_request_item_task tool (sc_task linked to RITM)
+9. Add list_cmdb_audit_log tool (sys_audit for cmdb_ci table; filters for ci/field/user/date range)
+10. Add close_request tool (PATCH sc_request state=3 Closed Complete; number/sys_id resolver)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -99,3 +108,4 @@
 93. 2026-07-08 — Add list_change_windows_for_date tool (cmn_schedule_span ^NQ OR query across non-repeating/weekly/daily span types; Python→SN weekday mapping; repeat_until post-filter; optional schedule_id scoping; day_of_week_label metadata in response; registered in change_coordinator and full packages; 27 new tests; 2111 total tests; 93% coverage)
 94. 2026-07-09 — Add cancel_incident tool (PATCH incident state=8 Cancelled; number/sys_id resolver; optional cancel_reason written as work note; registered in service_desk and full packages; 15 new tests; 2126 total tests; 93% coverage)
 95. 2026-07-10 — Add list_ci_dependencies tool (BFS traversal of cmdb_rel_ci for a given CI; direction=upstream/downstream/both; depth 1-3; relationship_type filter; graph output with deduplicated nodes+edges; registered in system_administrator and full packages; 23 new tests; 2149 total tests; 93% coverage)
+96. 2026-07-11 — Add get_scheduled_job and get_on_call_rotation tools (sys_id passthrough or name→sys_id resolver; 404/empty-result guards; reference field normalisation; registered in system_administrator and full packages; 34 new tests; 2183 total tests; 93% coverage)

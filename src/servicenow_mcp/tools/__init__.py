@@ -225,9 +225,11 @@ from servicenow_mcp.tools.story_tools import (
     update_story,
 )
 from servicenow_mcp.tools.on_call_tools import (
+    get_on_call_rotation,
     list_on_call_rotations,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
+    get_scheduled_job,
     list_scheduled_jobs,
 )
 from servicenow_mcp.tools.syslog_tools import (
@@ -440,6 +442,7 @@ __all__ = [
 
     # Scheduled Job tools
     "list_scheduled_jobs",
+    "get_scheduled_job",
 
     # Syslog tools
     "list_syslog_entries",
@@ -555,4 +558,5 @@ __all__ = [
 
     # On-call rotation tools
     "list_on_call_rotations",
+    "get_on_call_rotation",
 ]
