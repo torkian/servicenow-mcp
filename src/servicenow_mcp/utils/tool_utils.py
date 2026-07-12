@@ -264,6 +264,12 @@ from servicenow_mcp.tools.change_tools import (
     GetChangeScheduleSpanParams,
 )
 from servicenow_mcp.tools.change_tools import (
+    create_change_schedule_span as create_change_schedule_span_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    CreateChangeScheduleSpanParams,
+)
+from servicenow_mcp.tools.change_tools import (
     list_change_windows_for_date as list_change_windows_for_date_tool,
 )
 from servicenow_mcp.tools.change_tools import (
@@ -1432,6 +1438,21 @@ def get_tool_definitions(
                 "Required: span_id (32-char hex sys_id). "
                 "Returns span details including schedule, type, repeat_type, "
                 "day_of_week, day_of_week_label, start/end times, all_day, and repeat_until."
+            ),
+            "json",
+        ),
+        "create_change_schedule_span": (
+            create_change_schedule_span_tool,
+            CreateChangeScheduleSpanParams,
+            str,
+            (
+                "Create a new cmn_schedule_span record (a time block within a change schedule). "
+                "Required: name, schedule (sys_id or schedule name), "
+                "start_date_time ('YYYY-MM-DD HH:MM:SS'), end_date_time ('YYYY-MM-DD HH:MM:SS'). "
+                "Optional: repeat_type ('none','daily','weekly','monthly','yearly'), "
+                "day_of_week (0=Sunday…6=Saturday, for weekly spans), "
+                "all_day (bool), repeat_until ('YYYY-MM-DD'), span_type. "
+                "Returns success, message, and span details."
             ),
             "json",
         ),

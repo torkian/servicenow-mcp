@@ -56,6 +56,7 @@ from servicenow_mcp.tools.change_tools import (
     close_change_task,
     create_change_request,
     create_change_schedule,
+    create_change_schedule_span,
     create_change_task,
     delete_change_schedule,
     get_change_approval,
@@ -349,6 +350,7 @@ __all__ = [
     "list_change_conflicts",
     "get_change_schedule",
     "create_change_schedule",
+    "create_change_schedule_span",
     "update_change_schedule",
     "delete_change_schedule",
 

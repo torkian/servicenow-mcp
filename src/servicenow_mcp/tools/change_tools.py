@@ -2695,6 +2695,148 @@ def get_change_schedule_span(
 
 
 # ---------------------------------------------------------------------------
+# create_change_schedule_span
+# ---------------------------------------------------------------------------
+
+
+class CreateChangeScheduleSpanParams(BaseModel):
+    """Parameters for creating a new cmn_schedule_span record."""
+
+    name: str = Field(
+        ...,
+        description="Display name for the new span (e.g. 'Saturday Night Window').",
+    )
+    schedule: str = Field(
+        ...,
+        description=(
+            "Parent cmn_schedule sys_id (32-char hex) or exact schedule name. "
+            "The span will be attached to this schedule."
+        ),
+    )
+    start_date_time: str = Field(
+        ...,
+        description="Start of the time window in ServiceNow datetime format: 'YYYY-MM-DD HH:MM:SS'.",
+    )
+    end_date_time: str = Field(
+        ...,
+        description="End of the time window in ServiceNow datetime format: 'YYYY-MM-DD HH:MM:SS'.",
+    )
+    repeat_type: Optional[str] = Field(
+        None,
+        description=(
+            "Recurrence rule: 'none' (one-off), 'daily', 'weekly', 'monthly', or 'yearly'. "
+            "Defaults to 'none' when omitted."
+        ),
+    )
+    day_of_week: Optional[int] = Field(
+        None,
+        ge=0,
+        le=6,
+        description=(
+            "Day of week for weekly repeating spans: 0=Sunday … 6=Saturday. "
+            "Only meaningful when repeat_type='weekly'."
+        ),
+    )
+    all_day: Optional[bool] = Field(
+        None,
+        description="If True the span covers the entire day and start/end times are ignored by ServiceNow.",
+    )
+    repeat_until: Optional[str] = Field(
+        None,
+        description="Date on which recurrence stops, in 'YYYY-MM-DD' format.",
+    )
+    span_type: Optional[str] = Field(
+        None,
+        description="Span type value as stored in ServiceNow (e.g. 'exclude', 'include'). Leave unset for default.",
+    )
+
+    @field_validator("start_date_time", "end_date_time")
+    @classmethod
+    def _validate_datetime(cls, v: str) -> str:
+        return validate_servicenow_datetime(v)
+
+    @field_validator("repeat_until")
+    @classmethod
+    def _validate_date(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate_servicenow_date(v)
+
+
+def create_change_schedule_span(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new cmn_schedule_span record (a time block within a change schedule).
+
+    POSTs to the ``cmn_schedule_span`` table.  The ``schedule`` field is
+    resolved to a sys_id if a name is supplied instead.  All optional fields
+    are omitted from the request body when not provided.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateChangeScheduleSpanParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``span`` on success.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        CreateChangeScheduleSpanParams,
+        required_fields=["name", "schedule", "start_date_time", "end_date_time"],
+    )
+    if not result["success"]:
+        return result
+    validated: CreateChangeScheduleSpanParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+    headers["Content-Type"] = "application/json"
+
+    # Resolve schedule to sys_id
+    schedule_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.schedule)
+    if not schedule_sys_id:
+        return {"success": False, "message": f"Parent schedule not found: {validated.schedule}"}
+
+    body: Dict[str, Any] = {
+        "name": validated.name,
+        "schedule": schedule_sys_id,
+        "start_date_time": validated.start_date_time,
+        "end_date_time": validated.end_date_time,
+    }
+    if validated.repeat_type is not None:
+        body["repeat_type"] = validated.repeat_type
+    if validated.day_of_week is not None:
+        body["day_of_week"] = str(validated.day_of_week)
+    if validated.all_day is not None:
+        body["all_day"] = "true" if validated.all_day else "false"
+    if validated.repeat_until is not None:
+        body["repeat_until"] = validated.repeat_until
+    if validated.span_type is not None:
+        body["type"] = validated.span_type
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_SPAN_TABLE}"
+    try:
+        response = _make_request("POST", url, json=body, headers=headers)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change schedule span created: {record.get('name')}",
+            "span": _format_change_schedule_span(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating change schedule span: {e}")
+        return {"success": False, "message": f"Error creating change schedule span: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
 # Change Conflict tools
 # ---------------------------------------------------------------------------
 
