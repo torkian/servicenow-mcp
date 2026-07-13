@@ -78,6 +78,7 @@ from servicenow_mcp.tools.change_tools import (
     submit_change_for_approval,
     update_change_request,
     update_change_schedule,
+    update_change_schedule_span,
     update_change_task,
 )
 from servicenow_mcp.tools.changeset_tools import (

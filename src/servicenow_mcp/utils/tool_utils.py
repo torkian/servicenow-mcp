@@ -270,6 +270,12 @@ from servicenow_mcp.tools.change_tools import (
     CreateChangeScheduleSpanParams,
 )
 from servicenow_mcp.tools.change_tools import (
+    update_change_schedule_span as update_change_schedule_span_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    UpdateChangeScheduleSpanParams,
+)
+from servicenow_mcp.tools.change_tools import (
     list_change_windows_for_date as list_change_windows_for_date_tool,
 )
 from servicenow_mcp.tools.change_tools import (
@@ -1453,6 +1459,23 @@ def get_tool_definitions(
                 "day_of_week (0=Sunday…6=Saturday, for weekly spans), "
                 "all_day (bool), repeat_until ('YYYY-MM-DD'), span_type. "
                 "Returns success, message, and span details."
+            ),
+            "json",
+        ),
+        "update_change_schedule_span": (
+            update_change_schedule_span_tool,
+            UpdateChangeScheduleSpanParams,
+            str,
+            (
+                "Update an existing cmn_schedule_span record (PATCH cmn_schedule_span/{sys_id}). "
+                "Required: span_id (32-char hex sys_id of the span to update). "
+                "Optional: name, schedule (sys_id or schedule name to re-parent the span), "
+                "start_date_time ('YYYY-MM-DD HH:MM:SS'), end_date_time ('YYYY-MM-DD HH:MM:SS'), "
+                "repeat_type ('none','daily','weekly','monthly','yearly'), "
+                "day_of_week (0=Sunday…6=Saturday), all_day (bool), "
+                "repeat_until ('YYYY-MM-DD'), span_type. "
+                "At least one optional field must be supplied. "
+                "Returns success, message, and updated span details."
             ),
             "json",
         ),

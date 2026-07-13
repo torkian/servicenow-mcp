@@ -2837,6 +2837,160 @@ def create_change_schedule_span(
 
 
 # ---------------------------------------------------------------------------
+# update_change_schedule_span
+# ---------------------------------------------------------------------------
+
+
+class UpdateChangeScheduleSpanParams(BaseModel):
+    """Parameters for updating an existing cmn_schedule_span record."""
+
+    span_id: str = Field(
+        ...,
+        description="The cmn_schedule_span sys_id (32-char hex) to update.",
+    )
+    name: Optional[str] = Field(
+        None,
+        description="New display name for the span.",
+    )
+    schedule: Optional[str] = Field(
+        None,
+        description=(
+            "New parent cmn_schedule sys_id (32-char hex) or exact schedule name. "
+            "Re-parents this span to the specified schedule."
+        ),
+    )
+    start_date_time: Optional[str] = Field(
+        None,
+        description="New start of the time window in ServiceNow datetime format: 'YYYY-MM-DD HH:MM:SS'.",
+    )
+    end_date_time: Optional[str] = Field(
+        None,
+        description="New end of the time window in ServiceNow datetime format: 'YYYY-MM-DD HH:MM:SS'.",
+    )
+    repeat_type: Optional[str] = Field(
+        None,
+        description="New recurrence rule: 'none', 'daily', 'weekly', 'monthly', or 'yearly'.",
+    )
+    day_of_week: Optional[int] = Field(
+        None,
+        ge=0,
+        le=6,
+        description="Day of week for weekly spans: 0=Sunday … 6=Saturday.",
+    )
+    all_day: Optional[bool] = Field(
+        None,
+        description="Set True to mark the span as an all-day window.",
+    )
+    repeat_until: Optional[str] = Field(
+        None,
+        description="Date on which recurrence stops, in 'YYYY-MM-DD' format.",
+    )
+    span_type: Optional[str] = Field(
+        None,
+        description="Span type value (e.g. 'exclude', 'include').",
+    )
+
+    @field_validator("start_date_time", "end_date_time")
+    @classmethod
+    def _validate_datetime(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate_servicenow_datetime(v)
+
+    @field_validator("repeat_until")
+    @classmethod
+    def _validate_date(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate_servicenow_date(v)
+
+
+def update_change_schedule_span(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing cmn_schedule_span record.
+
+    PATCHes ``cmn_schedule_span/{sys_id}``.  At least one optional field must
+    be supplied; an empty-body call is rejected before any HTTP request is
+    made.  If a ``schedule`` name/sys_id is provided it is resolved to a sys_id.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateChangeScheduleSpanParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``span`` on success.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        UpdateChangeScheduleSpanParams,
+        required_fields=["span_id"],
+    )
+    if not result["success"]:
+        return result
+    validated: UpdateChangeScheduleSpanParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: Dict[str, Any] = {}
+    if validated.name is not None:
+        body["name"] = validated.name
+    if validated.start_date_time is not None:
+        body["start_date_time"] = validated.start_date_time
+    if validated.end_date_time is not None:
+        body["end_date_time"] = validated.end_date_time
+    if validated.repeat_type is not None:
+        body["repeat_type"] = validated.repeat_type
+    if validated.day_of_week is not None:
+        body["day_of_week"] = str(validated.day_of_week)
+    if validated.all_day is not None:
+        body["all_day"] = "true" if validated.all_day else "false"
+    if validated.repeat_until is not None:
+        body["repeat_until"] = validated.repeat_until
+    if validated.span_type is not None:
+        body["type"] = validated.span_type
+
+    # Resolve schedule to sys_id if supplied
+    if validated.schedule is not None:
+        schedule_sys_id = _resolve_change_schedule_sys_id(instance_url, headers, validated.schedule)
+        if not schedule_sys_id:
+            return {"success": False, "message": f"Parent schedule not found: {validated.schedule}"}
+        body["schedule"] = schedule_sys_id
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    headers["Content-Type"] = "application/json"
+    url = f"{instance_url}{CHANGE_SCHEDULE_SPAN_TABLE}/{validated.span_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+    try:
+        response = _make_request("PATCH", url, json=body, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change schedule span not found: {validated.span_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Change schedule span updated: {validated.span_id}",
+            "span": _format_change_schedule_span(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating change schedule span: {e}")
+        return {"success": False, "message": f"Error updating change schedule span: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
 # Change Conflict tools
 # ---------------------------------------------------------------------------
 
