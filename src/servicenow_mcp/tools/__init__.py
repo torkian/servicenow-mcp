@@ -75,6 +75,7 @@ from servicenow_mcp.tools.change_tools import (
     reject_change,
     reject_change_approval,
     reopen_change_request,
+    delete_change_schedule_span,
     submit_change_for_approval,
     update_change_request,
     update_change_schedule,
@@ -353,7 +354,9 @@ __all__ = [
     "create_change_schedule",
     "create_change_schedule_span",
     "update_change_schedule",
+    "update_change_schedule_span",
     "delete_change_schedule",
+    "delete_change_schedule_span",
 
     # Workflow management tools
     "list_workflows",

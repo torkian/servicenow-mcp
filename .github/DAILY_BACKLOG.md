@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add delete_change_schedule_span tool (DELETE cmn_schedule_span/{sys_id})
-4. Add get_on_call_rotation_members tool (list cmn_rota_member records for a rotation)
+1. Add get_on_call_rotation_members tool (list cmn_rota_member records for a rotation)
 5. Add create_on_call_rotation tool (POST cmn_rota)
 6. Add update_on_call_rotation tool (PATCH cmn_rota/{sys_id})
 7. Add get_catalog_category tool (GET sc_category/{sys_id} — completes create/list/update set)
@@ -109,3 +108,4 @@
 96. 2026-07-11 — Add get_scheduled_job and get_on_call_rotation tools (sys_id passthrough or name→sys_id resolver; 404/empty-result guards; reference field normalisation; registered in system_administrator and full packages; 34 new tests; 2183 total tests; 93% coverage)
 97. 2026-07-12 — Add create_change_schedule_span tool (POST cmn_schedule_span; required name/schedule/start_date_time/end_date_time; optional repeat_type/day_of_week/all_day/repeat_until/span_type; schedule name→sys_id resolver; datetime+date validation; registered in change_coordinator and full packages; 23 new tests; 2206 total tests; 93% coverage)
 98. 2026-07-13 — Add update_change_schedule_span tool (PATCH cmn_schedule_span/{sys_id}; optional name/schedule/start_date_time/end_date_time/repeat_type/day_of_week/all_day/repeat_until/span_type; schedule name→sys_id resolver; empty-body guard; 404 guard; datetime+date validation; registered in change_coordinator and full packages; 25 new tests; 2231 total tests; 93% coverage)
+99. 2026-07-14 — Add delete_change_schedule_span tool (DELETE cmn_schedule_span/{sys_id}; required span_id; 204/404 guards; network error handling; registered in change_coordinator and full packages; 15 new tests; 2246 total tests; 93% coverage)

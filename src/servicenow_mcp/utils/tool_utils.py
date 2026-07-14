@@ -276,6 +276,12 @@ from servicenow_mcp.tools.change_tools import (
     UpdateChangeScheduleSpanParams,
 )
 from servicenow_mcp.tools.change_tools import (
+    delete_change_schedule_span as delete_change_schedule_span_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    DeleteChangeScheduleSpanParams,
+)
+from servicenow_mcp.tools.change_tools import (
     list_change_windows_for_date as list_change_windows_for_date_tool,
 )
 from servicenow_mcp.tools.change_tools import (
@@ -1476,6 +1482,17 @@ def get_tool_definitions(
                 "repeat_until ('YYYY-MM-DD'), span_type. "
                 "At least one optional field must be supplied. "
                 "Returns success, message, and updated span details."
+            ),
+            "json",
+        ),
+        "delete_change_schedule_span": (
+            delete_change_schedule_span_tool,
+            DeleteChangeScheduleSpanParams,
+            str,
+            (
+                "Delete a cmn_schedule_span record (DELETE cmn_schedule_span/{sys_id}). "
+                "Required: span_id (32-char hex sys_id of the span to delete). "
+                "Returns success and message."
             ),
             "json",
         ),

@@ -2991,6 +2991,64 @@ def update_change_schedule_span(
 
 
 # ---------------------------------------------------------------------------
+# delete_change_schedule_span
+# ---------------------------------------------------------------------------
+
+
+class DeleteChangeScheduleSpanParams(BaseModel):
+    """Parameters for deleting a cmn_schedule_span record."""
+
+    span_id: str = Field(
+        ...,
+        description="The cmn_schedule_span sys_id (32-char hex) to delete.",
+    )
+
+
+def delete_change_schedule_span(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a cmn_schedule_span record.
+
+    Issues DELETE on ``cmn_schedule_span/{sys_id}``.  Returns a 404 guard if
+    the span cannot be found.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteChangeScheduleSpanParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(params, DeleteChangeScheduleSpanParams, required_fields=["span_id"])
+    if not result["success"]:
+        return result
+    validated: DeleteChangeScheduleSpanParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{CHANGE_SCHEDULE_SPAN_TABLE}/{validated.span_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change schedule span not found: {validated.span_id}"}
+        if response.status_code == 204:
+            return {"success": True, "message": f"Change schedule span {validated.span_id} deleted successfully"}
+        response.raise_for_status()
+        return {"success": True, "message": f"Change schedule span {validated.span_id} deleted successfully"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting change schedule span: {e}")
+        return {"success": False, "message": f"Error deleting change schedule span: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
 # Change Conflict tools
 # ---------------------------------------------------------------------------
 

@@ -141,6 +141,7 @@ change_coordinator:
   - get_change_schedule_span
   - create_change_schedule_span
   - update_change_schedule_span
+  - delete_change_schedule_span
   - list_change_windows_for_date
   - list_change_conflicts
   # Problem Management (changes often linked to problems)
@@ -386,6 +387,7 @@ full:
   - get_change_schedule_span
   - create_change_schedule_span
   - update_change_schedule_span
+  - delete_change_schedule_span
   - list_change_windows_for_date
   - list_change_conflicts
   # Workflow
