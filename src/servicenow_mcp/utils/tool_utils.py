@@ -760,10 +760,12 @@ from servicenow_mcp.tools.story_tools import (
 )
 from servicenow_mcp.tools.on_call_tools import (
     GetOnCallRotationParams,
+    ListOnCallRotationMembersParams,
     ListOnCallRotationsParams,
 )
 from servicenow_mcp.tools.on_call_tools import (
     get_on_call_rotation as get_on_call_rotation_tool,
+    list_on_call_rotation_members as list_on_call_rotation_members_tool,
     list_on_call_rotations as list_on_call_rotations_tool,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
@@ -2038,6 +2040,18 @@ def get_tool_definitions(
                 "Retrieve a single on-call rotation record from the ServiceNow cmn_rota table "
                 "by its sys_id or exact name. Returns all rotation fields including group, "
                 "manager, schedule, escalation policy, type, and timestamps."
+            ),
+            "raw_dict",
+        ),
+        "list_on_call_rotation_members": (
+            list_on_call_rotation_members_tool,
+            ListOnCallRotationMembersParams,
+            Dict[str, Any],
+            (
+                "List members of an on-call rotation from the ServiceNow cmn_rota_member table. "
+                "Requires a rotation sys_id or exact name. Optionally filter by active state. "
+                "Returns member user, order, active flag, catch_all, override, and skill fields. "
+                "Results ordered by member order field. Supports pagination."
             ),
             "raw_dict",
         ),

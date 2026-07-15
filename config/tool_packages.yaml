@@ -270,6 +270,7 @@ system_administrator:
   # On-call Rotations
   - list_on_call_rotations
   - get_on_call_rotation
+  - list_on_call_rotation_members
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job
@@ -458,6 +459,7 @@ full:
   # On-call Rotations
   - list_on_call_rotations
   - get_on_call_rotation
+  - list_on_call_rotation_members
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job

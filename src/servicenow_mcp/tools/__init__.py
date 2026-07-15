@@ -229,6 +229,7 @@ from servicenow_mcp.tools.story_tools import (
 )
 from servicenow_mcp.tools.on_call_tools import (
     get_on_call_rotation,
+    list_on_call_rotation_members,
     list_on_call_rotations,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
@@ -565,4 +566,5 @@ __all__ = [
     # On-call rotation tools
     "list_on_call_rotations",
     "get_on_call_rotation",
+    "list_on_call_rotation_members",
 ]

@@ -8,8 +8,10 @@ import requests
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.on_call_tools import (
     _format_on_call_rotation,
+    _format_on_call_rotation_member,
     _resolve_on_call_rotation_sys_id,
     get_on_call_rotation,
+    list_on_call_rotation_members,
     list_on_call_rotations,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -395,6 +397,257 @@ class TestGetOnCallRotation(unittest.TestCase):
         result = get_on_call_rotation(self.auth, self.config, {"rotation_id": FAKE_SYS_ID})
         self.assertEqual(result["rotation"]["group"], "Network Operations")
         self.assertEqual(result["rotation"]["manager"], "Jane Doe")
+
+
+FAKE_MEMBER_SYS_ID = "f" * 32
+FAKE_USER_SYS_ID = "9" * 32
+
+FAKE_ROTA_MEMBER = {
+    "sys_id": FAKE_MEMBER_SYS_ID,
+    "rota": {"display_value": "Network Team On-call", "value": FAKE_SYS_ID},
+    "member": {"display_value": "Alice Smith", "value": FAKE_USER_SYS_ID},
+    "order": "1",
+    "active": "true",
+    "skills": {"display_value": "Network Admin", "value": "0" * 32},
+    "override_on_call_rota": "false",
+    "catch_all": "false",
+    "sys_created_on": "2026-01-10 09:00:00",
+    "sys_updated_on": "2026-06-10 12:00:00",
+    "sys_created_by": "admin",
+}
+
+
+# ---------------------------------------------------------------------------
+# _format_on_call_rotation_member
+# ---------------------------------------------------------------------------
+
+class TestFormatOnCallRotationMember(unittest.TestCase):
+    def test_formats_all_fields(self):
+        result = _format_on_call_rotation_member(FAKE_ROTA_MEMBER)
+        self.assertEqual(result["sys_id"], FAKE_MEMBER_SYS_ID)
+        self.assertEqual(result["order"], "1")
+        self.assertEqual(result["active"], "true")
+        self.assertEqual(result["override_on_call_rota"], "false")
+        self.assertEqual(result["catch_all"], "false")
+        self.assertEqual(result["created_on"], "2026-01-10 09:00:00")
+        self.assertEqual(result["updated_on"], "2026-06-10 12:00:00")
+        self.assertEqual(result["created_by"], "admin")
+
+    def test_normalises_rota_reference(self):
+        result = _format_on_call_rotation_member(FAKE_ROTA_MEMBER)
+        self.assertEqual(result["rota"], "Network Team On-call")
+
+    def test_normalises_member_reference(self):
+        result = _format_on_call_rotation_member(FAKE_ROTA_MEMBER)
+        self.assertEqual(result["member"], "Alice Smith")
+
+    def test_normalises_skills_reference(self):
+        result = _format_on_call_rotation_member(FAKE_ROTA_MEMBER)
+        self.assertEqual(result["skills"], "Network Admin")
+
+    def test_handles_string_fields(self):
+        record = {**FAKE_ROTA_MEMBER, "member": "plain_user", "rota": "plain_rota"}
+        result = _format_on_call_rotation_member(record)
+        self.assertEqual(result["member"], "plain_user")
+        self.assertEqual(result["rota"], "plain_rota")
+
+    def test_value_fallback_when_no_display_value(self):
+        record = {**FAKE_ROTA_MEMBER, "member": {"value": FAKE_USER_SYS_ID}}
+        result = _format_on_call_rotation_member(record)
+        self.assertEqual(result["member"], FAKE_USER_SYS_ID)
+
+    def test_handles_missing_fields(self):
+        result = _format_on_call_rotation_member({})
+        self.assertIsNone(result["sys_id"])
+        self.assertIsNone(result["rota"])
+        self.assertIsNone(result["member"])
+        self.assertIsNone(result["order"])
+        self.assertIsNone(result["skills"])
+
+
+# ---------------------------------------------------------------------------
+# list_on_call_rotation_members
+# ---------------------------------------------------------------------------
+
+class TestListOnCallRotationMembers(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth_manager()
+
+    def _patched_call(self, mock_req, members=None, rotation_result=None):
+        """Helper: first call resolves the rotation, second lists members."""
+        resolve_resp = _make_response(
+            200,
+            {"result": rotation_result if rotation_result is not None else [{"sys_id": FAKE_SYS_ID}]},
+        )
+        member_resp = _make_response(200, {"result": members if members is not None else []})
+        mock_req.side_effect = [resolve_resp, member_resp]
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_success_by_sys_id_skips_resolve(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_ROTA_MEMBER]})
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": FAKE_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(len(result["members"]), 1)
+        self.assertEqual(result["members"][0]["member"], "Alice Smith")
+        self.assertEqual(result["count"], 1)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_success_by_rotation_name(self, mock_req):
+        self._patched_call(mock_req, members=[FAKE_ROTA_MEMBER])
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call"}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(len(result["members"]), 1)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_rotation_not_found_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Unknown Rotation"}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_filter_active_true(self, mock_req):
+        self._patched_call(mock_req, members=[])
+        list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call", "active": True}
+        )
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("active=true", call_params.get("sysparm_query", ""))
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_filter_active_false(self, mock_req):
+        self._patched_call(mock_req, members=[])
+        list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call", "active": False}
+        )
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("active=false", call_params.get("sysparm_query", ""))
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_rotation_sys_id_in_query(self, mock_req):
+        self._patched_call(mock_req, members=[])
+        list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call"}
+        )
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn(f"rota={FAKE_SYS_ID}", call_params.get("sysparm_query", ""))
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_url_targets_cmn_rota_member(self, mock_req):
+        self._patched_call(mock_req, members=[])
+        list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call"}
+        )
+        url = mock_req.call_args[0][1]
+        self.assertIn("cmn_rota_member", url)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_order_by_order_field(self, mock_req):
+        self._patched_call(mock_req, members=[])
+        list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call"}
+        )
+        call_params = mock_req.call_args[1]["params"]
+        self.assertEqual(call_params.get("sysparm_orderby"), "order")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_pagination_params_forwarded(self, mock_req):
+        self._patched_call(mock_req, members=[])
+        list_on_call_rotation_members(
+            self.auth, self.config,
+            {"rotation_id": "Network Team On-call", "limit": 5, "offset": 10},
+        )
+        call_params = mock_req.call_args[1]["params"]
+        self.assertEqual(call_params["sysparm_limit"], 5)
+        self.assertEqual(call_params["sysparm_offset"], 10)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_has_more_when_full_page(self, mock_req):
+        members = [dict(FAKE_ROTA_MEMBER, sys_id=str(i) * 32) for i in range(20)]
+        self._patched_call(mock_req, members=members)
+        result = list_on_call_rotation_members(
+            self.auth, self.config,
+            {"rotation_id": "Network Team On-call", "limit": 20, "offset": 0},
+        )
+        self.assertTrue(result["has_more"])
+        self.assertEqual(result["next_offset"], 20)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_empty_member_list(self, mock_req):
+        self._patched_call(mock_req, members=[])
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call"}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["members"], [])
+        self.assertEqual(result["count"], 0)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        resolve_resp = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]})
+        error_resp = _make_response(500, {})
+        mock_req.side_effect = [resolve_resp, error_resp]
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call"}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing on-call rotation members", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_connection_error_returns_failure(self, mock_req):
+        resolve_resp = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]})
+        mock_req.side_effect = [resolve_resp, requests.exceptions.ConnectionError("timeout")]
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": "Network Team On-call"}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing on-call rotation members", result["message"])
+
+    def test_missing_rotation_id_returns_failure(self):
+        result = list_on_call_rotation_members(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    def test_invalid_params_returns_failure(self):
+        result = list_on_call_rotation_members(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "limit": "not-an-int"},
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_instance_url")
+    def test_missing_instance_url_returns_failure(self, mock_url):
+        mock_url.return_value = None
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_headers")
+    def test_missing_headers_returns_failure(self, mock_headers):
+        mock_headers.return_value = None
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_normalises_member_reference_fields(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_ROTA_MEMBER]})
+        result = list_on_call_rotation_members(
+            self.auth, self.config, {"rotation_id": FAKE_SYS_ID}
+        )
+        self.assertEqual(result["members"][0]["member"], "Alice Smith")
+        self.assertEqual(result["members"][0]["rota"], "Network Team On-call")
+        self.assertEqual(result["members"][0]["skills"], "Network Admin")
 
 
 if __name__ == "__main__":
