@@ -400,6 +400,25 @@ class TestUserTools(unittest.TestCase):
         self.assertIn("Sample und Partners Zuerich", variants)
         self.assertIn("Sample & Partners Zürich", variants)
 
+    def test_build_customer_query_variants_fixes_mojibake_and_separator_forms(self):
+        """Search variants should normalize mojibake and spacing/punctuation differences."""
+        variants = _build_customer_query_variants("Mojibake DÃ¶mo Verwaltungs AG")
+
+        self.assertIn("Mojibake Dömo Verwaltungs AG", variants)
+        self.assertIn("Mojibake Domo Verwaltungs AG", variants)
+
+        variants = _build_customer_query_variants("vnomix")
+        self.assertIn("v nomix", variants)
+        self.assertIn("v-nomix", variants)
+
+        variants = _build_customer_query_variants("novaag")
+        self.assertIn("nova ag", variants)
+        self.assertIn("nova-ag", variants)
+
+        variants = _build_customer_query_variants("alpha-bravo")
+        self.assertIn("alpha bravo", variants)
+        self.assertIn("alphabravo", variants)
+
     def test_build_customer_query_variants_converts_zuerich_but_not_neue(self):
         """'Neue Zuercher' should become 'Neue Zürcher' without corrupting 'Neue'."""
         variants = _build_customer_query_variants("Treue Zuercher Gruppe AG")

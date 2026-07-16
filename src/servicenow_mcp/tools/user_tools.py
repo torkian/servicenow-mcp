@@ -94,7 +94,7 @@ def _build_customer_query_variants(query: str) -> List[str]:
     - Soehne <-> Söhne
     - Sample & Partners <-> Sample und Partners
     """
-    value = (query or "").strip()
+    value = _fix_mojibake_text((query or "").strip())
     if not value:
         return []
 
@@ -104,6 +104,7 @@ def _build_customer_query_variants(query: str) -> List[str]:
         r"\b(?:ag|gmbh|sa|ltd|llc|inc|corp|co\.?|sarl|bv|kg|plc)\b\.?",
         flags=re.IGNORECASE,
     )
+    legal_suffixes = ("ag", "gmbh", "sa", "ltd", "llc", "inc", "corp", "co", "sarl", "bv", "kg", "plc")
 
     # Digraphs to umlauts (commonly used as ASCII fallback in DE names).
     for current in list(variants):
@@ -162,6 +163,34 @@ def _build_customer_query_variants(query: str) -> List[str]:
     # Add ASCII-folded forms to catch accent-insensitive matching.
     for current in list(variants):
         variants.add(_ascii_fold(current))
+
+    # Add separator-aware forms for compact and punctuated company names.
+    for current in list(variants):
+        compact = re.sub(r"[^A-Za-z0-9]+", "", current)
+        if compact:
+            variants.add(compact)
+
+            if re.fullmatch(r"[A-Za-z]\w{2,}", compact):
+                split_single_prefix = f"{compact[0]} {compact[1:]}"
+                variants.add(split_single_prefix)
+                variants.add(split_single_prefix.replace(" ", "-"))
+
+            compact_lower = compact.lower()
+            for suffix in legal_suffixes:
+                if compact_lower.endswith(suffix) and len(compact) > len(suffix):
+                    split_suffix = f"{compact[:-len(suffix)]} {compact[-len(suffix):]}"
+                    variants.add(split_suffix)
+                    variants.add(split_suffix.replace(" ", "-"))
+
+        spaced = re.sub(r"[^A-Za-z0-9]+", " ", current)
+        spaced = re.sub(r"\s+", " ", spaced).strip()
+        if spaced:
+            variants.add(spaced)
+
+        hyphenated = re.sub(r"[^A-Za-z0-9]+", "-", current)
+        hyphenated = re.sub(r"-+", "-", hyphenated).strip("-")
+        if hyphenated:
+            variants.add(hyphenated)
 
     # Normalize spacing and remove empty entries while preserving deterministic order.
     ordered = []
