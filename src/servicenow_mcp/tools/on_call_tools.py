@@ -9,7 +9,7 @@ import logging
 from typing import Any, Dict, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
@@ -257,6 +257,101 @@ def list_on_call_rotations(
             "success": False,
             "message": f"Error listing on-call rotations: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# Create / update on-call rotation tools
+# ---------------------------------------------------------------------------
+
+
+class CreateOnCallRotationParams(BaseModel):
+    """Parameters for creating a new on-call rotation."""
+
+    name: str = Field(..., description="Name of the on-call rotation")
+    group: Optional[str] = Field(
+        None,
+        description="Group name or sys_id that owns this rotation",
+    )
+    active: Optional[bool] = Field(True, description="Whether the rotation is active (default True)")
+    description: Optional[str] = Field(None, description="Description of the rotation")
+    manager: Optional[str] = Field(
+        None,
+        description="User name or sys_id of the rotation manager",
+    )
+    schedule: Optional[str] = Field(
+        None,
+        description="Schedule name or sys_id that defines on-call windows",
+    )
+    escalation: Optional[str] = Field(
+        None,
+        description="Escalation policy name or sys_id",
+    )
+    rotation_type: Optional[str] = Field(
+        None,
+        alias="type",
+        description="Rotation type (e.g. 'primary', 'secondary')",
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+def create_on_call_rotation(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new on-call rotation record in the ServiceNow cmn_rota table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateOnCallRotationParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, and ``rotation`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, CreateOnCallRotationParams, required_fields=["name"])
+    if not result["success"]:
+        return result
+    validated: CreateOnCallRotationParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: Dict[str, Any] = {"name": validated.name}
+    if validated.group is not None:
+        body["group"] = validated.group
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.manager is not None:
+        body["manager"] = validated.manager
+    if validated.schedule is not None:
+        body["schedule"] = validated.schedule
+    if validated.escalation is not None:
+        body["escalation"] = validated.escalation
+    if validated.rotation_type is not None:
+        body["type"] = validated.rotation_type
+
+    url = f"{instance_url}/api/now/table/{ON_CALL_ROTA_TABLE}"
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "On-call rotation created successfully",
+            "sys_id": record.get("sys_id"),
+            "rotation": _format_on_call_rotation(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating on-call rotation: {e}")
+        return {"success": False, "message": f"Error creating on-call rotation: {_format_http_error(e)}"}
 
 
 # ---------------------------------------------------------------------------

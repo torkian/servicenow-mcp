@@ -10,6 +10,7 @@ from servicenow_mcp.tools.on_call_tools import (
     _format_on_call_rotation,
     _format_on_call_rotation_member,
     _resolve_on_call_rotation_sys_id,
+    create_on_call_rotation,
     get_on_call_rotation,
     list_on_call_rotation_members,
     list_on_call_rotations,
@@ -648,6 +649,137 @@ class TestListOnCallRotationMembers(unittest.TestCase):
         self.assertEqual(result["members"][0]["member"], "Alice Smith")
         self.assertEqual(result["members"][0]["rota"], "Network Team On-call")
         self.assertEqual(result["members"][0]["skills"], "Network Admin")
+
+
+# ---------------------------------------------------------------------------
+# create_on_call_rotation
+# ---------------------------------------------------------------------------
+
+FAKE_CREATED_ROTATION = {
+    **FAKE_ROTATION,
+    "sys_id": "f" * 32,
+    "name": "New Primary On-call",
+}
+
+
+class TestCreateOnCallRotation(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth_manager()
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_creates_rotation_minimal(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_CREATED_ROTATION})
+        result = create_on_call_rotation(
+            self.auth, self.config, {"name": "New Primary On-call"}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sys_id"], "f" * 32)
+        self.assertIn("rotation", result)
+        self.assertEqual(result["rotation"]["name"], "New Primary On-call")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_creates_rotation_all_fields(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_CREATED_ROTATION})
+        result = create_on_call_rotation(
+            self.auth,
+            self.config,
+            {
+                "name": "New Primary On-call",
+                "group": "Network Operations",
+                "active": True,
+                "description": "Primary coverage",
+                "manager": "Jane Doe",
+                "schedule": "Business Hours",
+                "escalation": "Escalation Policy A",
+                "type": "primary",
+            },
+        )
+        self.assertTrue(result["success"])
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["name"], "New Primary On-call")
+        self.assertEqual(body["group"], "Network Operations")
+        self.assertEqual(body["active"], "true")
+        self.assertEqual(body["description"], "Primary coverage")
+        self.assertEqual(body["manager"], "Jane Doe")
+        self.assertEqual(body["schedule"], "Business Hours")
+        self.assertEqual(body["escalation"], "Escalation Policy A")
+        self.assertEqual(body["type"], "primary")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_active_false_serialised_as_string(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_CREATED_ROTATION})
+        create_on_call_rotation(
+            self.auth, self.config, {"name": "Inactive Rota", "active": False}
+        )
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["active"], "false")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_posts_to_cmn_rota_table(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_CREATED_ROTATION})
+        create_on_call_rotation(self.auth, self.config, {"name": "Test"})
+        method, url = mock_req.call_args[0]
+        self.assertEqual(method, "POST")
+        self.assertIn("cmn_rota", url)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_optional_fields_omitted_when_none(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_CREATED_ROTATION})
+        create_on_call_rotation(self.auth, self.config, {"name": "Minimal"})
+        body = mock_req.call_args[1]["json"]
+        self.assertNotIn("description", body)
+        self.assertNotIn("manager", body)
+        self.assertNotIn("schedule", body)
+        self.assertNotIn("escalation", body)
+        self.assertNotIn("type", body)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = create_on_call_rotation(self.auth, self.config, {"name": "Test"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error creating on-call rotation", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_connection_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("unreachable")
+        result = create_on_call_rotation(self.auth, self.config, {"name": "Test"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error creating on-call rotation", result["message"])
+
+    def test_missing_name_returns_failure(self):
+        result = create_on_call_rotation(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_instance_url")
+    def test_missing_instance_url_returns_failure(self, mock_url):
+        mock_url.return_value = None
+        result = create_on_call_rotation(self.auth, self.config, {"name": "Test"})
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_headers")
+    def test_missing_headers_returns_failure(self, mock_headers):
+        mock_headers.return_value = None
+        result = create_on_call_rotation(self.auth, self.config, {"name": "Test"})
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_success_message_present(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_CREATED_ROTATION})
+        result = create_on_call_rotation(self.auth, self.config, {"name": "Test"})
+        self.assertIn("created successfully", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_group_as_sys_id(self, mock_req):
+        mock_req.return_value = _make_response(201, {"result": FAKE_CREATED_ROTATION})
+        create_on_call_rotation(
+            self.auth, self.config, {"name": "Test", "group": FAKE_GROUP_SYS_ID}
+        )
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["group"], FAKE_GROUP_SYS_ID)
 
 
 if __name__ == "__main__":

@@ -228,6 +228,7 @@ from servicenow_mcp.tools.story_tools import (
     update_story,
 )
 from servicenow_mcp.tools.on_call_tools import (
+    create_on_call_rotation,
     get_on_call_rotation,
     list_on_call_rotation_members,
     list_on_call_rotations,
@@ -564,6 +565,7 @@ __all__ = [
     "get_notification",
 
     # On-call rotation tools
+    "create_on_call_rotation",
     "list_on_call_rotations",
     "get_on_call_rotation",
     "list_on_call_rotation_members",

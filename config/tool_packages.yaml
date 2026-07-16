@@ -268,6 +268,7 @@ system_administrator:
   - list_syslog_entries
   - get_syslog_entry
   # On-call Rotations
+  - create_on_call_rotation
   - list_on_call_rotations
   - get_on_call_rotation
   - list_on_call_rotation_members
@@ -457,6 +458,7 @@ full:
   - list_syslog_entries
   - get_syslog_entry
   # On-call Rotations
+  - create_on_call_rotation
   - list_on_call_rotations
   - get_on_call_rotation
   - list_on_call_rotation_members

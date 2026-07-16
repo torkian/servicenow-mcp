@@ -759,11 +759,13 @@ from servicenow_mcp.tools.story_tools import (
     update_story as update_story_tool,
 )
 from servicenow_mcp.tools.on_call_tools import (
+    CreateOnCallRotationParams,
     GetOnCallRotationParams,
     ListOnCallRotationMembersParams,
     ListOnCallRotationsParams,
 )
 from servicenow_mcp.tools.on_call_tools import (
+    create_on_call_rotation as create_on_call_rotation_tool,
     get_on_call_rotation as get_on_call_rotation_tool,
     list_on_call_rotation_members as list_on_call_rotation_members_tool,
     list_on_call_rotations as list_on_call_rotations_tool,
@@ -2020,6 +2022,18 @@ def get_tool_definitions(
             "json",
         ),
         # On-call Rotation Tools
+        "create_on_call_rotation": (
+            create_on_call_rotation_tool,
+            CreateOnCallRotationParams,
+            Dict[str, Any],
+            (
+                "Create a new on-call rotation record in the ServiceNow cmn_rota table. "
+                "Requires a rotation name. Optionally specify the owning group, manager, "
+                "schedule, escalation policy, rotation type (primary/secondary), description, "
+                "and active state. Returns the created rotation's sys_id and full record."
+            ),
+            "raw_dict",
+        ),
         "list_on_call_rotations": (
             list_on_call_rotations_tool,
             ListOnCallRotationsParams,
