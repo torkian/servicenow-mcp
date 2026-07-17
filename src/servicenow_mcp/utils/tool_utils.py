@@ -763,12 +763,14 @@ from servicenow_mcp.tools.on_call_tools import (
     GetOnCallRotationParams,
     ListOnCallRotationMembersParams,
     ListOnCallRotationsParams,
+    UpdateOnCallRotationParams,
 )
 from servicenow_mcp.tools.on_call_tools import (
     create_on_call_rotation as create_on_call_rotation_tool,
     get_on_call_rotation as get_on_call_rotation_tool,
     list_on_call_rotation_members as list_on_call_rotation_members_tool,
     list_on_call_rotations as list_on_call_rotations_tool,
+    update_on_call_rotation as update_on_call_rotation_tool,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
     GetScheduledJobParams,
@@ -2066,6 +2068,18 @@ def get_tool_definitions(
                 "Requires a rotation sys_id or exact name. Optionally filter by active state. "
                 "Returns member user, order, active flag, catch_all, override, and skill fields. "
                 "Results ordered by member order field. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "update_on_call_rotation": (
+            update_on_call_rotation_tool,
+            UpdateOnCallRotationParams,
+            Dict[str, Any],
+            (
+                "Update an existing on-call rotation record in the ServiceNow cmn_rota table. "
+                "Accepts the rotation by sys_id or exact name. Optionally update name, group, "
+                "active state, description, manager, schedule, escalation policy, or rotation "
+                "type. At least one field must be provided. Returns the updated rotation record."
             ),
             "raw_dict",
         ),

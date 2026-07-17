@@ -354,6 +354,113 @@ def create_on_call_rotation(
         return {"success": False, "message": f"Error creating on-call rotation: {_format_http_error(e)}"}
 
 
+class UpdateOnCallRotationParams(BaseModel):
+    """Parameters for updating an existing on-call rotation."""
+
+    rotation_id: str = Field(
+        ...,
+        description="The sys_id or exact name of the on-call rotation to update.",
+    )
+    name: Optional[str] = Field(None, description="New name for the rotation")
+    group: Optional[str] = Field(
+        None,
+        description="Group name or sys_id that owns this rotation",
+    )
+    active: Optional[bool] = Field(None, description="Whether the rotation is active")
+    description: Optional[str] = Field(None, description="Description of the rotation")
+    manager: Optional[str] = Field(
+        None,
+        description="User name or sys_id of the rotation manager",
+    )
+    schedule: Optional[str] = Field(
+        None,
+        description="Schedule name or sys_id that defines on-call windows",
+    )
+    escalation: Optional[str] = Field(
+        None,
+        description="Escalation policy name or sys_id",
+    )
+    rotation_type: Optional[str] = Field(
+        None,
+        alias="type",
+        description="Rotation type (e.g. 'primary', 'secondary')",
+    )
+
+    model_config = ConfigDict(populate_by_name=True)
+
+
+def update_on_call_rotation(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing on-call rotation record in the ServiceNow cmn_rota table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateOnCallRotationParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, and ``rotation`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params, UpdateOnCallRotationParams, required_fields=["rotation_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: UpdateOnCallRotationParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_on_call_rotation_sys_id(instance_url, headers, validated.rotation_id)
+    if not sys_id:
+        return {"success": False, "message": f"On-call rotation not found: {validated.rotation_id}"}
+
+    body: Dict[str, Any] = {}
+    if validated.name is not None:
+        body["name"] = validated.name
+    if validated.group is not None:
+        body["group"] = validated.group
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.manager is not None:
+        body["manager"] = validated.manager
+    if validated.schedule is not None:
+        body["schedule"] = validated.schedule
+    if validated.escalation is not None:
+        body["escalation"] = validated.escalation
+    if validated.rotation_type is not None:
+        body["type"] = validated.rotation_type
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{ON_CALL_ROTA_TABLE}/{sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"On-call rotation not found: {validated.rotation_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "On-call rotation updated successfully",
+            "sys_id": sys_id,
+            "rotation": _format_on_call_rotation(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating on-call rotation: {e}")
+        return {"success": False, "message": f"Error updating on-call rotation: {_format_http_error(e)}"}
+
+
 # ---------------------------------------------------------------------------
 # On-call rotation member tools
 # ---------------------------------------------------------------------------
