@@ -76,9 +76,15 @@ class CreateCatalogCategoryParams(BaseModel):
     order: Optional[int] = Field(None, description="Order of the category")
 
 
+class GetCatalogCategoryParams(BaseModel):
+    """Parameters for getting a specific service catalog category."""
+
+    category_id: str = Field(..., description="Category sys_id or title")
+
+
 class UpdateCatalogCategoryParams(BaseModel):
     """Parameters for updating a service catalog category."""
-    
+
     category_id: str = Field(..., description="Category ID or sys_id")
     title: Optional[str] = Field(None, description="Title of the category")
     description: Optional[str] = Field(None, description="Description of the category")
@@ -610,6 +616,69 @@ def list_catalog_categories(
             "limit": params.limit,
             "offset": params.offset,
         }
+
+
+def get_catalog_category(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: GetCatalogCategoryParams,
+) -> CatalogResponse:
+    """Get a specific service catalog category by sys_id."""
+    logger.info(f"Getting service catalog category: {params.category_id}")
+
+    url = f"{config.instance_url}/api/now/table/sc_category/{params.category_id}"
+    query_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    headers = auth_manager.get_headers()
+    headers["Accept"] = "application/json"
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+
+        if response.status_code == 404:
+            return CatalogResponse(
+                success=False,
+                message=f"Catalog category not found: {params.category_id}",
+                data=None,
+            )
+
+        response.raise_for_status()
+
+        category = response.json().get("result", {})
+        if not category:
+            return CatalogResponse(
+                success=False,
+                message=f"Catalog category not found: {params.category_id}",
+                data=None,
+            )
+
+        return CatalogResponse(
+            success=True,
+            message=f"Retrieved catalog category: {category.get('title', '')}",
+            data={
+                "sys_id": category.get("sys_id", ""),
+                "title": category.get("title", ""),
+                "description": category.get("description", ""),
+                "parent": category.get("parent", ""),
+                "icon": category.get("icon", ""),
+                "active": category.get("active", ""),
+                "order": category.get("order", ""),
+                "full_description": category.get("full_description", ""),
+                "header_icon": category.get("header_icon", ""),
+                "homepage_renderer": category.get("homepage_renderer", ""),
+            },
+        )
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error getting catalog category: {_format_http_error(e)}")
+        return CatalogResponse(
+            success=False,
+            message=f"Error getting catalog category: {_format_http_error(e)}",
+            data=None,
+        )
 
 
 def create_catalog_category(

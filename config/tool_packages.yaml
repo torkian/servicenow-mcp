@@ -90,6 +90,7 @@ catalog_builder:
   - update_catalog_item
   # Categories
   - list_catalog_categories
+  - get_catalog_category
   - create_catalog_category
   - update_catalog_category
   - move_catalog_items
@@ -348,6 +349,7 @@ full:
   - update_catalog_item
   # Catalog (Categories)
   - list_catalog_categories
+  - get_catalog_category
   - create_catalog_category
   - update_catalog_category
   - move_catalog_items

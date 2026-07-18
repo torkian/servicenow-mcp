@@ -78,6 +78,7 @@ from servicenow_mcp.tools.catalog_optimization import (
 from servicenow_mcp.tools.catalog_tools import (
     CreateCatalogCategoryParams,
     CreateCatalogItemParams,
+    GetCatalogCategoryParams,
     GetCatalogItemParams,
     GetCatalogParams,
     ListCatalogCategoriesParams,
@@ -94,6 +95,9 @@ from servicenow_mcp.tools.catalog_tools import (
 )
 from servicenow_mcp.tools.catalog_tools import (
     get_catalog as get_catalog_tool,
+)
+from servicenow_mcp.tools.catalog_tools import (
+    get_catalog_category as get_catalog_category_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     get_catalog_item as get_catalog_item_tool,
@@ -1120,6 +1124,13 @@ def get_tool_definitions(
             str,  # Expects JSON string
             "List service catalog categories.",
             "json",  # Tool returns list/dict
+        ),
+        "get_catalog_category": (
+            get_catalog_category_tool,
+            GetCatalogCategoryParams,
+            str,  # Expects JSON string
+            "Get a specific service catalog category by sys_id.",
+            "json_dict",  # Tool returns Pydantic model
         ),
         "create_catalog_category": (
             create_catalog_category_tool,

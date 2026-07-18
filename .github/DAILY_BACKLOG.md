@@ -1,10 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_catalog_category tool (GET sc_category/{sys_id} — completes create/list/update set)
-2. Add create_request_item_task tool (sc_task linked to RITM)
-3. Add list_cmdb_audit_log tool (sys_audit for cmdb_ci table; filters for ci/field/user/date range)
-4. Add close_request tool (PATCH sc_request state=3 Closed Complete; number/sys_id resolver)
+1. Add create_request_item_task tool (sc_task linked to RITM)
+2. Add list_cmdb_audit_log tool (sys_audit for cmdb_ci table; filters for ci/field/user/date range)
+3. Add close_request tool (PATCH sc_request state=3 Closed Complete; number/sys_id resolver)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -110,3 +109,4 @@
 101. 2026-07-16 — Add create_on_call_rotation tool (POST cmn_rota; name/group/active/description/manager/schedule/escalation/type fields; active serialised as string; registered in system_administrator and full packages; 13 new tests; 2283 total tests; 100% on_call_tools.py coverage) (cmn_rota_member table; rotation sys_id/name resolver; active filter; ordered by member order field; reference fields normalised; registered in system_administrator and full packages; 25 new tests; 2271 total tests; 93% coverage)
 
 102. 2026-07-17 — Add update_on_call_rotation tool (PATCH cmn_rota/{sys_id}; rotation sys_id/name resolver; optional name/group/active/description/manager/schedule/escalation/type fields; empty-body guard; 404 guard; active serialised as string; registered in system_administrator and full packages; 13 new tests; 2299 total tests; 100% on_call_tools.py coverage)
+103. 2026-07-18 — Add get_catalog_category tool (GET sc_category/{sys_id}; 404/empty-result guards; extra fields full_description/header_icon/homepage_renderer; completes create/list/update/get set for catalog categories; registered in catalog_builder and full packages; 12 new tests; 2311 total tests; 93% coverage)
