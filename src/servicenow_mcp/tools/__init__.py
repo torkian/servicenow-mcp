@@ -179,6 +179,11 @@ from servicenow_mcp.tools.project_tools import (
     list_projects,
     update_project,
 )
+from servicenow_mcp.tools.request_item_task_tools import (
+    close_request_item_task,
+    create_request_item_task,
+    list_request_item_tasks,
+)
 from servicenow_mcp.tools.request_tools import (
     create_request,
     get_request,
@@ -549,6 +554,11 @@ __all__ = [
     "list_request_items",
     "get_request_item",
     "update_request_item",
+
+    # Request Item Task tools
+    "create_request_item_task",
+    "list_request_item_tasks",
+    "close_request_item_task",
 
     # User Group tools
     "list_user_groups",

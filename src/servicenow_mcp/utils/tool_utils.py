@@ -616,6 +616,20 @@ from servicenow_mcp.tools.request_tools import (
     UpdateRequestItemParams,
     UpdateRequestParams,
 )
+from servicenow_mcp.tools.request_item_task_tools import (
+    CloseRequestItemTaskParams,
+    CreateRequestItemTaskParams,
+    ListRequestItemTasksParams,
+)
+from servicenow_mcp.tools.request_item_task_tools import (
+    close_request_item_task as close_request_item_task_tool,
+)
+from servicenow_mcp.tools.request_item_task_tools import (
+    create_request_item_task as create_request_item_task_tool,
+)
+from servicenow_mcp.tools.request_item_task_tools import (
+    list_request_item_tasks as list_request_item_tasks_tool,
+)
 from servicenow_mcp.tools.request_tools import (
     create_request as create_request_tool,
 )
@@ -2669,6 +2683,41 @@ def get_tool_definitions(
                 "ServiceNow by RITM number or sys_id. Supports updating state, stage, "
                 "assigned_to, assignment_group, work_notes, and close_notes. "
                 "Guards against empty-body calls and 404 errors."
+            ),
+            "raw_dict",
+        ),
+        # Request Item Task Tools
+        "create_request_item_task": (
+            create_request_item_task_tool,
+            CreateRequestItemTaskParams,
+            Dict[str, Any],
+            (
+                "Create an sc_task record linked to a requested item (RITM) via the "
+                "request_item field in ServiceNow. Accepts a RITM number (e.g. RITM0010001) "
+                "or sys_id. Supports short_description, description, assigned_to, "
+                "assignment_group, priority, state, and work_notes."
+            ),
+            "raw_dict",
+        ),
+        "list_request_item_tasks": (
+            list_request_item_tasks_tool,
+            ListRequestItemTasksParams,
+            Dict[str, Any],
+            (
+                "List sc_task records linked to a specific requested item (RITM) in "
+                "ServiceNow. Accepts a RITM number or sys_id. Optional state filter and "
+                "pagination support."
+            ),
+            "raw_dict",
+        ),
+        "close_request_item_task": (
+            close_request_item_task_tool,
+            CloseRequestItemTaskParams,
+            Dict[str, Any],
+            (
+                "Close a request item task (sc_task) by setting its state to Closed "
+                "Complete (3). Accepts an sc_task number (e.g. SCTASK0010001) or sys_id. "
+                "Optionally include close_notes and work_notes."
             ),
             "raw_dict",
         ),
