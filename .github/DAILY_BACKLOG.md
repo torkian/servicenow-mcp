@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_cmdb_audit_log tool (sys_audit for cmdb_ci table; filters for ci/field/user/date range)
-2. Add close_request tool (PATCH sc_request state=3 Closed Complete; number/sys_id resolver)
+1. Add close_request tool (PATCH sc_request state=3 Closed Complete; number/sys_id resolver)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -110,3 +109,4 @@
 102. 2026-07-17 — Add update_on_call_rotation tool (PATCH cmn_rota/{sys_id}; rotation sys_id/name resolver; optional name/group/active/description/manager/schedule/escalation/type fields; empty-body guard; 404 guard; active serialised as string; registered in system_administrator and full packages; 13 new tests; 2299 total tests; 100% on_call_tools.py coverage)
 103. 2026-07-18 — Add get_catalog_category tool
 104. 2026-07-19 — Add create_request_item_task, list_request_item_tasks, close_request_item_task tools (sc_task linked to RITM via request_item field; RITM number/sys_id resolver; state filter + pagination for list; 28 new tests; 2339 total tests; 93% coverage) (GET sc_category/{sys_id}; 404/empty-result guards; extra fields full_description/header_icon/homepage_renderer; completes create/list/update/get set for catalog categories; registered in catalog_builder and full packages; 12 new tests; 2311 total tests; 93% coverage)
+105. 2026-07-20 — Add list_cmdb_audit_log tool (sys_audit table; field-level CI change history; filters for ci_table/ci_sys_id/field_name/changed_by/changed_after/changed_before; newest-first ordering; pagination; registered in system_administrator and full packages; 23 new tests; 93% coverage)

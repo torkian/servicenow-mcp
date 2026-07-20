@@ -285,6 +285,7 @@ system_administrator:
   - list_notifications
   - get_notification
   # CMDB
+  - list_cmdb_audit_log
   - list_cmdb_classes
   - list_cis
   - get_ci
@@ -484,6 +485,7 @@ full:
   - create_ui_policy
   - create_ui_policy_action
   # CMDB
+  - list_cmdb_audit_log
   - list_cmdb_classes
   - list_cis
   - get_ci

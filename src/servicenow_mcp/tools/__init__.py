@@ -109,6 +109,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     get_ci_class_schema as get_ci_class_schema,
     get_ci_outage,
     list_cis,
+    list_cmdb_audit_log,
     list_cmdb_ci_outages,
     list_cmdb_classes,
     update_ci,
@@ -482,6 +483,7 @@ __all__ = [
     "bulk_update_problem_tasks",
 
     # CMDB tools
+    "list_cmdb_audit_log",
     "list_cmdb_classes",
     "list_cis",
     "get_ci",

@@ -362,6 +362,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     GetCIOutageParams,
     GetCIParams,
     ListCIsParams,
+    ListCMDBAuditLogParams,
     ListCMDBCIOutagesParams,
     ListCMDBClassesParams,
     UpdateCIOutageParams,
@@ -402,6 +403,9 @@ from servicenow_mcp.tools.cmdb_tools import (
 )
 from servicenow_mcp.tools.cmdb_tools import (
     update_ci_outage as update_ci_outage_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    list_cmdb_audit_log as list_cmdb_audit_log_tool,
 )
 from servicenow_mcp.tools.contract_tools import (
     CreateAssetContractParams,
@@ -2281,6 +2285,18 @@ def get_tool_definitions(
             "raw_dict",
         ),
         # CMDB Tools
+        "list_cmdb_audit_log": (
+            list_cmdb_audit_log_tool,
+            ListCMDBAuditLogParams,
+            Dict[str, Any],
+            (
+                "List field-level change history for CMDB configuration items from the "
+                "sys_audit table. Filters: ci_table (default cmdb_ci), ci_sys_id "
+                "(documentkey of the CI), field_name, changed_by (username), "
+                "changed_after/changed_before (date range). Results ordered newest-first."
+            ),
+            "raw_dict",
+        ),
         "list_cmdb_classes": (
             list_cmdb_classes_tool,
             ListCMDBClassesParams,

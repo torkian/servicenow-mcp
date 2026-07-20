@@ -1116,3 +1116,143 @@ def get_ci_class_schema(
             "success": False,
             "message": f"Error retrieving CI class schema: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# CMDB Audit Log
+# ---------------------------------------------------------------------------
+
+SYS_AUDIT_TABLE = "sys_audit"
+
+SYS_AUDIT_FIELDS = [
+    "sys_id",
+    "tablename",
+    "fieldname",
+    "oldvalue",
+    "newvalue",
+    "documentkey",
+    "record_checkpoint",
+    "sys_created_on",
+    "sys_created_by",
+    "reason",
+]
+
+
+class ListCMDBAuditLogParams(BaseModel):
+    """Parameters for listing CMDB audit log entries from sys_audit."""
+
+    ci_table: Optional[str] = Field(
+        "cmdb_ci",
+        description=(
+            "Table name to filter audit entries by (default: cmdb_ci). "
+            "Use a specific subclass such as cmdb_ci_server to narrow results."
+        ),
+    )
+    ci_sys_id: Optional[str] = Field(
+        None,
+        description="sys_id of the CI record to retrieve audit history for (matches documentkey field).",
+    )
+    field_name: Optional[str] = Field(
+        None,
+        description="Filter audit entries to a specific field name that was changed.",
+    )
+    changed_by: Optional[str] = Field(
+        None,
+        description="Username (sys_created_by) of the person who made the change.",
+    )
+    changed_after: Optional[str] = Field(
+        None,
+        description="Return entries created after this datetime (format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD).",
+    )
+    changed_before: Optional[str] = Field(
+        None,
+        description="Return entries created before this datetime (format: YYYY-MM-DD HH:MM:SS or YYYY-MM-DD).",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of entries to return (default 20).")
+    offset: Optional[int] = Field(0, description="Pagination offset.")
+
+    @field_validator("changed_after", "changed_before", mode="before")
+    @classmethod
+    def _validate_datetime_fields(cls, v):
+        return validate_servicenow_datetime(v)
+
+
+def _format_audit_entry(entry: Dict) -> Dict:
+    """Extract and normalise relevant fields from a raw sys_audit record."""
+    return {
+        "sys_id": entry.get("sys_id"),
+        "table": entry.get("tablename"),
+        "field_name": entry.get("fieldname"),
+        "old_value": entry.get("oldvalue"),
+        "new_value": entry.get("newvalue"),
+        "ci_sys_id": entry.get("documentkey"),
+        "checkpoint": entry.get("record_checkpoint"),
+        "changed_on": entry.get("sys_created_on"),
+        "changed_by": entry.get("sys_created_by"),
+        "reason": entry.get("reason"),
+    }
+
+
+def list_cmdb_audit_log(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List CMDB audit log entries from the ServiceNow sys_audit table.
+
+    Returns field-level change history for CI records. Supports filtering by
+    CI table, CI sys_id, field name, user, and date range. Results are ordered
+    newest-first by default.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListCMDBAuditLogParams.
+
+    Returns:
+        Dictionary with ``success``, ``entries`` (list), and pagination keys.
+    """
+    result = _unwrap_and_validate_params(params, ListCMDBAuditLogParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts = []
+    if validated.ci_table:
+        query_parts.append(f"tablename={validated.ci_table}")
+    if validated.ci_sys_id:
+        query_parts.append(f"documentkey={validated.ci_sys_id}")
+    if validated.field_name:
+        query_parts.append(f"fieldname={validated.field_name}")
+    if validated.changed_by:
+        query_parts.append(f"sys_created_by={validated.changed_by}")
+    if validated.changed_after:
+        query_parts.append(f"sys_created_on>={validated.changed_after}")
+    if validated.changed_before:
+        query_parts.append(f"sys_created_on<={validated.changed_before}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        order_by="DESCsys_created_on",
+        fields=",".join(SYS_AUDIT_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{SYS_AUDIT_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        entries = [_format_audit_entry(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(entries, validated.limit, validated.offset, "entries")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing CMDB audit log: {e}")
+        return {"success": False, "message": f"Error listing CMDB audit log: {_format_http_error(e)}"}
