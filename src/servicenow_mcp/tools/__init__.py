@@ -186,6 +186,7 @@ from servicenow_mcp.tools.request_item_task_tools import (
     list_request_item_tasks,
 )
 from servicenow_mcp.tools.request_tools import (
+    close_request,
     create_request,
     get_request,
     get_request_item,
@@ -553,6 +554,7 @@ __all__ = [
     "get_request",
     "create_request",
     "update_request",
+    "close_request",
     "list_request_items",
     "get_request_item",
     "update_request_item",

@@ -9,6 +9,7 @@ from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.request_tools import (
     _format_request,
     _resolve_request_sys_id,
+    close_request,
     create_request,
     get_request,
     list_requests,
@@ -417,6 +418,123 @@ class TestUpdateRequest(unittest.TestCase):
         )
         self.assertFalse(result["success"])
         self.assertIn("not found", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# close_request
+# ---------------------------------------------------------------------------
+
+class TestCloseRequest(unittest.TestCase):
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_success_by_sys_id(self, mock_req):
+        closed = dict(FAKE_REQUEST, state="4", closed_at="2026-07-21 10:00:00")
+        mock_req.return_value = _make_response(200, {"result": closed})
+        result = close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
+        self.assertTrue(result["success"])
+        self.assertIn("closed", result["message"].lower())
+        self.assertEqual(result["sys_id"], FAKE_SYS_ID)
+        self.assertEqual(result["request"]["state"], "4")
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_success_by_number(self, mock_req):
+        closed = dict(FAKE_REQUEST, state="4")
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(200, {"result": closed}),
+        ]
+        result = close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_NUMBER})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["number"], FAKE_NUMBER)
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_state_4_sent_in_body(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_REQUEST})
+        close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("state"), "4")
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_close_notes_included_when_provided(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_REQUEST})
+        close_request(
+            _make_auth_manager(), _make_config(),
+            {"request_id": FAKE_SYS_ID, "close_notes": "Request fulfilled"},
+        )
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("close_notes"), "Request fulfilled")
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_work_notes_included_when_provided(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_REQUEST})
+        close_request(
+            _make_auth_manager(), _make_config(),
+            {"request_id": FAKE_SYS_ID, "work_notes": "All items delivered"},
+        )
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("work_notes"), "All items delivered")
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_optional_fields_omitted_when_not_provided(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_REQUEST})
+        close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertNotIn("close_notes", body)
+        self.assertNotIn("work_notes", body)
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_404_returns_not_found(self, mock_req):
+        response_404 = _make_response(404, {})
+        response_404.raise_for_status = MagicMock()
+        mock_req.return_value = response_404
+        result = close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_request_not_found_by_number(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_NUMBER})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_missing_request_id_returns_error(self):
+        result = close_request(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_network_error_handled(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("unreachable")
+        result = close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
+        self.assertFalse(result["success"])
+        self.assertIn("Error closing request", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_sys_id_fallback_in_response(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = close_request(_make_auth_manager(), _make_config(), {"request_id": FAKE_SYS_ID})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sys_id"], FAKE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_both_close_and_work_notes(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_REQUEST})
+        close_request(
+            _make_auth_manager(), _make_config(),
+            {
+                "request_id": FAKE_SYS_ID,
+                "close_notes": "Completed",
+                "work_notes": "Verified all items",
+            },
+        )
+        patch_call = mock_req.call_args_list[-1]
+        body = patch_call[1].get("json", {})
+        self.assertEqual(body.get("state"), "4")
+        self.assertEqual(body.get("close_notes"), "Completed")
+        self.assertEqual(body.get("work_notes"), "Verified all items")
 
 
 if __name__ == "__main__":

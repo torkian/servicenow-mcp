@@ -691,6 +691,87 @@ def list_request_items(
 
 
 # ---------------------------------------------------------------------------
+# close_request
+# ---------------------------------------------------------------------------
+
+
+class CloseRequestParams(BaseModel):
+    """Parameters for closing a service request."""
+
+    request_id: str = Field(
+        ...,
+        description="Request number (e.g. REQ0010001) or sys_id (32-char hex)",
+    )
+    close_notes: Optional[str] = Field(
+        None,
+        description="Closure notes explaining why the request is being closed",
+    )
+    work_notes: Optional[str] = Field(
+        None,
+        description="Additional work notes to append on closure",
+    )
+
+
+def close_request(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Close a service request by setting its state to Closed Complete (4).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CloseRequestParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, ``number``, and ``request`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, CloseRequestParams, required_fields=["request_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    resolve = _resolve_request_sys_id(validated.request_id, instance_url, headers)
+    if not resolve["success"]:
+        return resolve
+    sys_id = resolve["sys_id"]
+
+    body: Dict[str, Any] = {"state": "4"}
+    if validated.close_notes is not None:
+        body["close_notes"] = validated.close_notes
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}{REQUEST_TABLE}/{sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Request not found: {validated.request_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "Request closed successfully",
+            "sys_id": record.get("sys_id") or sys_id,
+            "number": record.get("number"),
+            "request": _format_request(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error closing request: {e}")
+        return {"success": False, "message": f"Error closing request: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
 # update_request_item
 # ---------------------------------------------------------------------------
 

@@ -61,6 +61,7 @@ service_desk:
   - list_requests
   - get_request
   - create_request
+  - close_request
   - list_request_items
   - get_request_item
   # Request Item Tasks
@@ -565,6 +566,7 @@ full:
   - get_request
   - create_request
   - update_request
+  - close_request
   - list_request_items
   - get_request_item
   - update_request_item

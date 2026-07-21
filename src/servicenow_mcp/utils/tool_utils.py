@@ -612,6 +612,7 @@ from servicenow_mcp.tools.project_tools import (
     update_project as update_project_tool,
 )
 from servicenow_mcp.tools.request_tools import (
+    CloseRequestParams,
     CreateRequestParams,
     GetRequestItemParams,
     GetRequestParams,
@@ -633,6 +634,9 @@ from servicenow_mcp.tools.request_item_task_tools import (
 )
 from servicenow_mcp.tools.request_item_task_tools import (
     list_request_item_tasks as list_request_item_tasks_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    close_request as close_request_tool,
 )
 from servicenow_mcp.tools.request_tools import (
     create_request as create_request_tool,
@@ -2665,6 +2669,17 @@ def get_tool_definitions(
                 "Update an existing service request in the sc_request table by number or "
                 "sys_id. Supply only the fields that need to change. Guards against "
                 "empty-body calls."
+            ),
+            "raw_dict",
+        ),
+        "close_request": (
+            close_request_tool,
+            CloseRequestParams,
+            Dict[str, Any],
+            (
+                "Close a service request by setting its state to Closed Complete (4). "
+                "Accepts a request number (e.g. REQ0010001) or 32-character sys_id. "
+                "Optionally include close_notes and work_notes. 404 guard included."
             ),
             "raw_dict",
         ),
