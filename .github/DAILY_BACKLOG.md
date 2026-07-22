@@ -1,7 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add update_request and update_request_item to service_desk package (currently missing); also consider adding delete_catalog_item_variable to catalog_builder package (still marked TODO)
+1. Add delete_request_item tool (DELETE sc_req_item/{sys_id}; number/sys_id resolver; 404 guard; registered in service_desk and full packages)
+2. Add update_problem and create_problem to service_desk package (currently only in change_coordinator/full)
+3. Add delete_asset_contract tool (DELETE alm_contract/{sys_id}; 404 guard; registered in system_administrator and full packages)
+4. Add list_cmdb_ci_outages to service_desk package for outage awareness
+5. Add get_problem to change_coordinator read-only pair (list_problems already there, get is missing)
+6. Add list_ci_dependencies to change_coordinator package
+7. Add bulk_update_incidents to change_coordinator package
+8. Add create_scheduled_job and update_scheduled_job tools (POST/PATCH sysauto_script)
+9. Add delete_scheduled_job tool (DELETE sysauto_script/{sys_id})
+10. Add list_workflow_activities tool (GET sys_hub_action_type_base scoped to a workflow)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -111,3 +120,4 @@
 104. 2026-07-19 — Add create_request_item_task, list_request_item_tasks, close_request_item_task tools (sc_task linked to RITM via request_item field; RITM number/sys_id resolver; state filter + pagination for list; 28 new tests; 2339 total tests; 93% coverage) (GET sc_category/{sys_id}; 404/empty-result guards; extra fields full_description/header_icon/homepage_renderer; completes create/list/update/get set for catalog categories; registered in catalog_builder and full packages; 12 new tests; 2311 total tests; 93% coverage)
 105. 2026-07-20 — Add list_cmdb_audit_log tool (sys_audit table; field-level CI change history; filters for ci_table/ci_sys_id/field_name/changed_by/changed_after/changed_before; newest-first ordering; pagination; registered in system_administrator and full packages; 23 new tests; 93% coverage)
 106. 2026-07-21 — Add close_request tool (PATCH sc_request state=4 Closed Complete; number/sys_id resolver; optional close_notes/work_notes; 404 guard; registered in service_desk and full packages; 12 new tests; 2374 total tests; 93% coverage)
+107. 2026-07-22 — Add update_request + update_request_item to service_desk package and activate delete_catalog_item_variable in catalog_builder and full packages (tools existed since prior sessions but were absent from these packages)

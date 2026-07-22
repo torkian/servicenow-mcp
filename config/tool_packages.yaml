@@ -61,9 +61,11 @@ service_desk:
   - list_requests
   - get_request
   - create_request
+  - update_request
   - close_request
   - list_request_items
   - get_request_item
+  - update_request_item
   # Request Item Tasks
   - create_request_item_task
   - list_request_item_tasks
@@ -104,7 +106,7 @@ catalog_builder:
   - create_catalog_item_variable_set
   - list_catalog_item_variables
   - update_catalog_item_variable
-  # - delete_catalog_item_variable  # TODO: not yet implemented
+  - delete_catalog_item_variable
   - create_catalog_variable_choice
   # Basic Scripting (UI Policy & User Criteria)
   - create_ui_policy
@@ -366,7 +368,7 @@ full:
   - create_catalog_item_variable_set
   - list_catalog_item_variables
   - update_catalog_item_variable
-  # - delete_catalog_item_variable  # TODO: not yet implemented
+  - delete_catalog_item_variable
   - create_catalog_variable_choice
   # Change Management
   - create_change_request
