@@ -900,3 +900,68 @@ def update_request_item(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating request item: {e}")
         return {"success": False, "message": f"Error updating request item: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# delete_request_item
+# ---------------------------------------------------------------------------
+
+
+class DeleteRequestItemParams(BaseModel):
+    """Parameters for deleting a requested item (sc_req_item / RITM record)."""
+
+    item_id: str = Field(
+        ...,
+        description="RITM number (e.g. RITM0010001) or sys_id (32-char hex)",
+    )
+
+
+def delete_request_item(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Permanently delete a requested item (sc_req_item / RITM record) from ServiceNow.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteRequestItemParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, DeleteRequestItemParams, required_fields=["item_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    resolve = _resolve_request_item_sys_id(validated.item_id, instance_url, headers)
+    if not resolve["success"]:
+        return resolve
+    sys_id = resolve["sys_id"]
+
+    url = f"{instance_url}{REQUEST_ITEM_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Request item not found: {validated.item_id}"}
+        if response.status_code == 204:
+            return {
+                "success": True,
+                "message": f"Request item {validated.item_id} deleted successfully",
+            }
+        response.raise_for_status()
+        return {"success": True, "message": f"Request item {validated.item_id} deleted successfully"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting request item: {e}")
+        return {"success": False, "message": f"Error deleting request item: {_format_http_error(e)}"}

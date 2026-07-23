@@ -11,6 +11,7 @@ from servicenow_mcp.tools.request_tools import (
     _resolve_request_sys_id,
     close_request,
     create_request,
+    delete_request_item,
     get_request,
     list_requests,
     update_request,
@@ -535,6 +536,114 @@ class TestCloseRequest(unittest.TestCase):
         self.assertEqual(body.get("state"), "4")
         self.assertEqual(body.get("close_notes"), "Completed")
         self.assertEqual(body.get("work_notes"), "Verified all items")
+
+
+# ---------------------------------------------------------------------------
+# delete_request_item
+# ---------------------------------------------------------------------------
+
+FAKE_RITM_SYS_ID = "c" * 32
+FAKE_RITM_NUMBER = "RITM0010001"
+
+
+class TestDeleteRequestItem(unittest.TestCase):
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_delete_by_sys_id_204(self, mock_req):
+        mock_req.return_value = _make_response(status_code=204)
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("deleted", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_delete_by_sys_id_200(self, mock_req):
+        mock_req.return_value = _make_response(status_code=200)
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("deleted", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_delete_by_ritm_number_resolves_and_deletes(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(json_body={"result": [{"sys_id": FAKE_RITM_SYS_ID}]}),
+            _make_response(status_code=204),
+        ]
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_NUMBER}
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("deleted", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_delete_404_returns_not_found(self, mock_req):
+        not_found = _make_response(status_code=404)
+        not_found.raise_for_status = MagicMock()
+        mock_req.return_value = not_found
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_ritm_number_not_found_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(json_body={"result": []})
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_NUMBER}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_missing_item_id_returns_failure(self):
+        result = delete_request_item(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_network_error_during_delete_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("unreachable")
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting request item", result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_network_error_during_resolve_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_NUMBER}
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_correct_delete_url_called(self, mock_req):
+        mock_req.return_value = _make_response(status_code=204)
+        delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_SYS_ID}
+        )
+        call_url = mock_req.call_args[0][1]
+        self.assertIn(FAKE_RITM_SYS_ID, call_url)
+        self.assertIn("sc_req_item", call_url)
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_message_includes_item_id(self, mock_req):
+        mock_req.return_value = _make_response(status_code=204)
+        result = delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_SYS_ID}
+        )
+        self.assertIn(FAKE_RITM_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.request_tools._make_request")
+    def test_delete_uses_delete_http_method(self, mock_req):
+        mock_req.return_value = _make_response(status_code=204)
+        delete_request_item(
+            _make_auth_manager(), _make_config(), {"item_id": FAKE_RITM_SYS_ID}
+        )
+        call_method = mock_req.call_args[0][0]
+        self.assertEqual(call_method, "DELETE")
 
 
 if __name__ == "__main__":

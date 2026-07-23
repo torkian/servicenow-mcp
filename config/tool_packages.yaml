@@ -66,6 +66,7 @@ service_desk:
   - list_request_items
   - get_request_item
   - update_request_item
+  - delete_request_item
   # Request Item Tasks
   - create_request_item_task
   - list_request_item_tasks
@@ -572,6 +573,7 @@ full:
   - list_request_items
   - get_request_item
   - update_request_item
+  - delete_request_item
   # Request Item Tasks
   - create_request_item_task
   - list_request_item_tasks

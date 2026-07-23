@@ -614,6 +614,7 @@ from servicenow_mcp.tools.project_tools import (
 from servicenow_mcp.tools.request_tools import (
     CloseRequestParams,
     CreateRequestParams,
+    DeleteRequestItemParams,
     GetRequestItemParams,
     GetRequestParams,
     ListRequestItemsParams,
@@ -658,6 +659,9 @@ from servicenow_mcp.tools.request_tools import (
 )
 from servicenow_mcp.tools.request_tools import (
     update_request_item as update_request_item_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    delete_request_item as delete_request_item_tool,
 )
 from servicenow_mcp.tools.role_tools import (
     AssignRoleToGroupParams,
@@ -2714,6 +2718,18 @@ def get_tool_definitions(
                 "ServiceNow by RITM number or sys_id. Supports updating state, stage, "
                 "assigned_to, assignment_group, work_notes, and close_notes. "
                 "Guards against empty-body calls and 404 errors."
+            ),
+            "raw_dict",
+        ),
+        "delete_request_item": (
+            delete_request_item_tool,
+            DeleteRequestItemParams,
+            Dict[str, Any],
+            (
+                "Permanently delete a requested item (sc_req_item / RITM record) from "
+                "ServiceNow by RITM number (e.g. RITM0010001) or 32-character sys_id. "
+                "Resolves RITM number to sys_id automatically. Returns success on 204, "
+                "failure on 404 or network errors."
             ),
             "raw_dict",
         ),
