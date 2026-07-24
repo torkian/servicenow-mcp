@@ -27,6 +27,8 @@ service_desk:
   # Problem Management
   - list_problems
   - get_problem
+  - create_problem
+  - update_problem
   - close_problem
   # Problem Tasks
   - create_problem_task
@@ -322,6 +324,7 @@ system_administrator:
   - get_asset_contract
   - create_asset_contract
   - update_asset_contract
+  - delete_asset_contract
   - expire_asset_contract
   - list_contract_assets
   # SLA Tools
@@ -520,6 +523,7 @@ full:
   - get_asset_contract
   - create_asset_contract
   - update_asset_contract
+  - delete_asset_contract
   - expire_asset_contract
   - list_contract_assets
   # Attachment Management

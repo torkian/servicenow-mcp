@@ -10,6 +10,7 @@ from servicenow_mcp.tools.contract_tools import (
     _format_contract,
     _format_contract_asset,
     create_asset_contract,
+    delete_asset_contract,
     expire_asset_contract,
     get_asset_contract,
     list_asset_contracts,
@@ -846,6 +847,95 @@ class TestExpireAssetContract(unittest.TestCase):
         config = MagicMock(spec=ServerConfig)
         config.instance_url = "https://dev.service-now.com"
         result = expire_asset_contract(auth, config, {"sys_id": "con001"})
+        self.assertFalse(result["success"])
+
+
+class TestDeleteAssetContract(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.config = _make_config()
+
+    def _mock_response(self, data, status_code=204):
+        resp = MagicMock()
+        resp.status_code = status_code
+        resp.json.return_value = data if isinstance(data, dict) else {}
+        if status_code >= 400:
+            resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+                f"{status_code} Error"
+            )
+        else:
+            resp.raise_for_status.return_value = None
+        return resp
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_delete_success_204(self, mock_req):
+        mock_req.return_value = self._mock_response({}, status_code=204)
+        result = delete_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        self.assertTrue(result["success"])
+        self.assertIn("con001", result["message"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_delete_success_200(self, mock_req):
+        mock_req.return_value = self._mock_response({}, status_code=200)
+        result = delete_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_delete_uses_delete_method(self, mock_req):
+        mock_req.return_value = self._mock_response({}, status_code=204)
+        delete_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        call_args = mock_req.call_args
+        self.assertEqual(call_args[0][0], "DELETE")
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_delete_url_contains_sys_id(self, mock_req):
+        mock_req.return_value = self._mock_response({}, status_code=204)
+        delete_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        url = mock_req.call_args[0][1]
+        self.assertIn("alm_contract", url)
+        self.assertIn("con001", url)
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_delete_404_returns_not_found(self, mock_req):
+        mock_req.return_value = self._mock_response({}, status_code=404)
+        result = delete_asset_contract(self.auth, self.config, {"sys_id": "missing001"})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"].lower())
+        self.assertIn("missing001", result["message"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_delete_http_error_returns_error_message(self, mock_req):
+        mock_req.return_value = self._mock_response({}, status_code=500)
+        result = delete_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting asset contract", result["message"])
+
+    @patch("servicenow_mcp.tools.contract_tools._make_request")
+    def test_delete_connection_error_returns_error_message(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = delete_asset_contract(self.auth, self.config, {"sys_id": "con001"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting asset contract", result["message"])
+
+    def test_delete_missing_sys_id_returns_failure(self):
+        result = delete_asset_contract(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    def test_delete_no_instance_url(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.instance_url = None
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = None
+        result = delete_asset_contract(auth, config, {"sys_id": "con001"})
+        self.assertFalse(result["success"])
+
+    def test_delete_no_headers(self):
+        auth = MagicMock(spec=AuthManager)
+        auth.instance_url = "https://dev.service-now.com"
+        auth.get_headers = MagicMock(return_value=None)
+        config = MagicMock(spec=ServerConfig)
+        config.instance_url = "https://dev.service-now.com"
+        result = delete_asset_contract(auth, config, {"sys_id": "con001"})
         self.assertFalse(result["success"])
 
 

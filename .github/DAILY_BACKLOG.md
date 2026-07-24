@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add update_problem and create_problem to service_desk package (currently only in change_coordinator/full)
-3. Add delete_asset_contract tool (DELETE alm_contract/{sys_id}; 404 guard; registered in system_administrator and full packages)
+4. Add list_cmdb_ci_outages to service_desk package for outage awareness
 4. Add list_cmdb_ci_outages to service_desk package for outage awareness
 5. Add get_problem to change_coordinator read-only pair (list_problems already there, get is missing)
 6. Add list_ci_dependencies to change_coordinator package
@@ -121,3 +120,4 @@
 106. 2026-07-21 — Add close_request tool (PATCH sc_request state=4 Closed Complete; number/sys_id resolver; optional close_notes/work_notes; 404 guard; registered in service_desk and full packages; 12 new tests; 2374 total tests; 93% coverage)
 107. 2026-07-22 — Add update_request + update_request_item to service_desk package and activate delete_catalog_item_variable in catalog_builder and full packages (tools existed since prior sessions but were absent from these packages)
 108. 2026-07-23 — Add delete_request_item tool (DELETE sc_req_item/{sys_id}; RITM number/sys_id resolver; 404 guard; registered in service_desk and full packages; 11 new tests; 2385 total tests; 93% coverage)
+109. 2026-07-24 — Add create_problem + update_problem to service_desk package; implement delete_asset_contract tool (DELETE alm_contract/{sys_id}; 404 guard; registered in system_administrator + full packages; 10 new tests; 2395 total tests)

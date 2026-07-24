@@ -117,6 +117,7 @@ from servicenow_mcp.tools.cmdb_tools import (
 )
 from servicenow_mcp.tools.contract_tools import (
     create_asset_contract,
+    delete_asset_contract,
     expire_asset_contract,
     get_asset_contract,
     list_asset_contracts,
@@ -518,6 +519,7 @@ __all__ = [
     "get_asset_contract",
     "create_asset_contract",
     "update_asset_contract",
+    "delete_asset_contract",
     "expire_asset_contract",
     "list_contract_assets",
 

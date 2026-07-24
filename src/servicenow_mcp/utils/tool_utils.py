@@ -409,6 +409,7 @@ from servicenow_mcp.tools.cmdb_tools import (
 )
 from servicenow_mcp.tools.contract_tools import (
     CreateAssetContractParams,
+    DeleteAssetContractParams,
     ExpireAssetContractParams,
     GetAssetContractParams,
     ListAssetContractsParams,
@@ -417,6 +418,9 @@ from servicenow_mcp.tools.contract_tools import (
 )
 from servicenow_mcp.tools.contract_tools import (
     create_asset_contract as create_asset_contract_tool,
+)
+from servicenow_mcp.tools.contract_tools import (
+    delete_asset_contract as delete_asset_contract_tool,
 )
 from servicenow_mcp.tools.contract_tools import (
     expire_asset_contract as expire_asset_contract_tool,
@@ -2603,6 +2607,16 @@ def get_tool_definitions(
                 "Transition an alm_contract record to the 'expired' state. "
                 "Requires sys_id; optionally accepts notes to record alongside "
                 "the state change."
+            ),
+            "raw_dict",
+        ),
+        "delete_asset_contract": (
+            delete_asset_contract_tool,
+            DeleteAssetContractParams,
+            Dict[str, Any],
+            (
+                "Permanently delete a contract record from the alm_contract table by its sys_id. "
+                "Returns 404 if the contract does not exist. This action is irreversible."
             ),
             "raw_dict",
         ),

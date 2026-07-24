@@ -516,6 +516,58 @@ def _format_contract_asset(record: Dict) -> Dict:
     }
 
 
+class DeleteAssetContractParams(BaseModel):
+    """Parameters for deleting an asset contract."""
+
+    sys_id: str = Field(..., description="sys_id of the contract to delete")
+
+
+def delete_asset_contract(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a contract record from the alm_contract table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteAssetContractParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, DeleteAssetContractParams, required_fields=["sys_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{CONTRACT_TABLE}/{validated.sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Contract not found: {validated.sys_id}"}
+        if response.status_code in (200, 204):
+            return {"success": True, "message": f"Contract {validated.sys_id} deleted"}
+        response.raise_for_status()
+        return {"success": True, "message": f"Contract {validated.sys_id} deleted"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting asset contract: {e}")
+        return {
+            "success": False,
+            "message": f"Error deleting asset contract: {_format_http_error(e)}",
+        }
+
+
 class ListContractAssetsParams(BaseModel):
     """Parameters for listing assets linked to a contract."""
 
