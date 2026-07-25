@@ -287,6 +287,9 @@ system_administrator:
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job
+  - create_scheduled_job
+  - update_scheduled_job
+  - delete_scheduled_job
   # Notifications
   - list_notifications
   - get_notification
@@ -481,6 +484,9 @@ full:
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job
+  - create_scheduled_job
+  - update_scheduled_job
+  - delete_scheduled_job
   # Notifications
   - list_notifications
   - get_notification

@@ -245,8 +245,11 @@ from servicenow_mcp.tools.on_call_tools import (
     update_on_call_rotation,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
+    create_scheduled_job,
+    delete_scheduled_job,
     get_scheduled_job,
     list_scheduled_jobs,
+    update_scheduled_job,
 )
 from servicenow_mcp.tools.syslog_tools import (
     get_syslog_entry,
@@ -463,6 +466,9 @@ __all__ = [
     # Scheduled Job tools
     "list_scheduled_jobs",
     "get_scheduled_job",
+    "create_scheduled_job",
+    "update_scheduled_job",
+    "delete_scheduled_job",
 
     # Syslog tools
     "list_syslog_entries",

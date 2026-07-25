@@ -807,12 +807,18 @@ from servicenow_mcp.tools.on_call_tools import (
     update_on_call_rotation as update_on_call_rotation_tool,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
+    CreateScheduledJobParams,
+    DeleteScheduledJobParams,
     GetScheduledJobParams,
     ListScheduledJobsParams,
+    UpdateScheduledJobParams,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
+    create_scheduled_job as create_scheduled_job_tool,
+    delete_scheduled_job as delete_scheduled_job_tool,
     get_scheduled_job as get_scheduled_job_tool,
     list_scheduled_jobs as list_scheduled_jobs_tool,
+    update_scheduled_job as update_scheduled_job_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
@@ -2146,6 +2152,43 @@ def get_tool_definitions(
                 "sysauto_script table by its sys_id or exact name. Returns job name, active "
                 "state, run schedule settings (type/period/time/day), script body, and "
                 "run_as account."
+            ),
+            "raw_dict",
+        ),
+        "create_scheduled_job": (
+            create_scheduled_job_tool,
+            CreateScheduledJobParams,
+            Dict[str, Any],
+            (
+                "Create a new scheduled script execution job in the ServiceNow sysauto_script "
+                "table. Requires a unique job name and the JavaScript script body. Optionally "
+                "specify run_type (daily/weekly/monthly/once/periodically), run_time, run_at, "
+                "run_period, run_dayofweek, run_dayofmonth, run_start, run_as user, and "
+                "active flag. Returns the created job record with its sys_id."
+            ),
+            "raw_dict",
+        ),
+        "update_scheduled_job": (
+            update_scheduled_job_tool,
+            UpdateScheduledJobParams,
+            Dict[str, Any],
+            (
+                "Update an existing scheduled script execution job in the ServiceNow "
+                "sysauto_script table. Identify the job by sys_id or exact name. Optionally "
+                "update the name, script body, active state, run_type, schedule timing fields "
+                "(run_time/run_at/run_period/run_dayofweek/run_dayofmonth/run_start), or "
+                "run_as user. At least one field must be provided. Returns the updated job record."
+            ),
+            "raw_dict",
+        ),
+        "delete_scheduled_job": (
+            delete_scheduled_job_tool,
+            DeleteScheduledJobParams,
+            Dict[str, Any],
+            (
+                "Permanently delete a scheduled script execution job from the ServiceNow "
+                "sysauto_script table. Identify the job by its sys_id or exact name. "
+                "Returns success confirmation. This operation cannot be undone."
             ),
             "raw_dict",
         ),

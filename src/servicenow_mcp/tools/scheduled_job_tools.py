@@ -1,8 +1,8 @@
 """
 Scheduled Job tools for the ServiceNow MCP server.
 
-Provides tools for querying scheduled script execution jobs from the
-sysauto_script table.
+Provides tools for querying and managing scheduled script execution jobs
+from the sysauto_script table.
 """
 
 import logging
@@ -249,3 +249,274 @@ def list_scheduled_jobs(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing scheduled jobs: {e}")
         return {"success": False, "message": f"Error listing scheduled jobs: {_format_http_error(e)}"}
+
+
+_SCHEDULED_JOB_WRITE_FIELDS = [
+    "name",
+    "script",
+    "active",
+    "run_type",
+    "run_time",
+    "run_at",
+    "run_period",
+    "run_dayofweek",
+    "run_dayofmonth",
+    "run_start",
+    "run_as",
+]
+
+RUN_TYPE_VALUES = "daily, weekly, monthly, once, periodically"
+
+
+class CreateScheduledJobParams(BaseModel):
+    """Parameters for creating a new scheduled job."""
+
+    name: str = Field(..., description="Unique name for the scheduled job")
+    script: str = Field(..., description="JavaScript to execute when the job runs")
+    active: Optional[bool] = Field(True, description="Whether the job is active (default True)")
+    run_type: Optional[str] = Field(
+        None,
+        description=f"How often the job runs: {RUN_TYPE_VALUES}",
+    )
+    run_time: Optional[str] = Field(
+        None,
+        description="Time of day to run in HH:MM:SS format (for daily/weekly/monthly types)",
+    )
+    run_at: Optional[str] = Field(
+        None,
+        description="Datetime for a one-time run (YYYY-MM-DD HH:MM:SS, for run_type=once)",
+    )
+    run_period: Optional[str] = Field(
+        None,
+        description="Interval in seconds between runs (for run_type=periodically)",
+    )
+    run_dayofweek: Optional[str] = Field(
+        None,
+        description="Day of week to run (1=Sunday through 7=Saturday, for run_type=weekly)",
+    )
+    run_dayofmonth: Optional[str] = Field(
+        None,
+        description="Day of month to run (1-28, for run_type=monthly)",
+    )
+    run_start: Optional[str] = Field(
+        None,
+        description="Date from which the schedule becomes effective (YYYY-MM-DD HH:MM:SS)",
+    )
+    run_as: Optional[str] = Field(
+        None,
+        description="sys_id or username of the user to impersonate when running the script",
+    )
+
+
+class UpdateScheduledJobParams(BaseModel):
+    """Parameters for updating an existing scheduled job."""
+
+    job_id: str = Field(
+        ...,
+        description="sys_id or exact name of the scheduled job to update",
+    )
+    name: Optional[str] = Field(None, description="New name for the scheduled job")
+    script: Optional[str] = Field(None, description="Updated JavaScript to execute")
+    active: Optional[bool] = Field(None, description="Enable or disable the job")
+    run_type: Optional[str] = Field(
+        None,
+        description=f"Updated execution frequency: {RUN_TYPE_VALUES}",
+    )
+    run_time: Optional[str] = Field(None, description="Updated time of day (HH:MM:SS)")
+    run_at: Optional[str] = Field(
+        None,
+        description="Updated one-time run datetime (YYYY-MM-DD HH:MM:SS)",
+    )
+    run_period: Optional[str] = Field(
+        None, description="Updated interval in seconds (for run_type=periodically)"
+    )
+    run_dayofweek: Optional[str] = Field(
+        None, description="Updated day of week (1-7)"
+    )
+    run_dayofmonth: Optional[str] = Field(
+        None, description="Updated day of month (1-28)"
+    )
+    run_start: Optional[str] = Field(
+        None, description="Updated effective start date (YYYY-MM-DD HH:MM:SS)"
+    )
+    run_as: Optional[str] = Field(
+        None, description="Updated run-as user sys_id or username"
+    )
+
+
+class DeleteScheduledJobParams(BaseModel):
+    """Parameters for deleting a scheduled job."""
+
+    job_id: str = Field(
+        ...,
+        description="sys_id or exact name of the scheduled job to delete",
+    )
+
+
+def create_scheduled_job(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new scheduled script job in the sysauto_script table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateScheduledJobParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, and ``job`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params, CreateScheduledJobParams, required_fields=["name", "script"]
+    )
+    if not result["success"]:
+        return result
+    validated: CreateScheduledJobParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: Dict[str, Any] = {}
+    for field in _SCHEDULED_JOB_WRITE_FIELDS:
+        value = getattr(validated, field, None)
+        if value is None:
+            continue
+        if field == "active":
+            body[field] = "true" if value else "false"
+        else:
+            body[field] = value
+
+    url = f"{instance_url}/api/now/table/{SCHEDULED_JOB_TABLE}"
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "sys_id": record.get("sys_id"),
+            "job": _format_scheduled_job(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating scheduled job: {e}")
+        return {
+            "success": False,
+            "message": f"Error creating scheduled job: {_format_http_error(e)}",
+        }
+
+
+def update_scheduled_job(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing scheduled script job in the sysauto_script table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateScheduledJobParams.
+
+    Returns:
+        Dictionary with ``success`` and ``job`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params, UpdateScheduledJobParams, required_fields=["job_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: UpdateScheduledJobParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_scheduled_job_sys_id(instance_url, headers, validated.job_id)
+    if not sys_id:
+        return {"success": False, "message": f"Scheduled job not found: {validated.job_id}"}
+
+    body: Dict[str, Any] = {}
+    for field in _SCHEDULED_JOB_WRITE_FIELDS:
+        value = getattr(validated, field, None)
+        if value is None:
+            continue
+        if field == "active":
+            body[field] = "true" if value else "false"
+        else:
+            body[field] = value
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{SCHEDULED_JOB_TABLE}/{sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Scheduled job not found: {validated.job_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "job": _format_scheduled_job(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating scheduled job: {e}")
+        return {
+            "success": False,
+            "message": f"Error updating scheduled job: {_format_http_error(e)}",
+        }
+
+
+def delete_scheduled_job(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a scheduled script job from the sysauto_script table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteScheduledJobParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, DeleteScheduledJobParams, required_fields=["job_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: DeleteScheduledJobParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_scheduled_job_sys_id(instance_url, headers, validated.job_id)
+    if not sys_id:
+        return {"success": False, "message": f"Scheduled job not found: {validated.job_id}"}
+
+    url = f"{instance_url}/api/now/table/{SCHEDULED_JOB_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Scheduled job not found: {validated.job_id}"}
+        if response.status_code in (200, 204):
+            return {"success": True, "message": f"Scheduled job {validated.job_id} deleted"}
+        response.raise_for_status()
+        return {"success": True, "message": f"Scheduled job {validated.job_id} deleted"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting scheduled job: {e}")
+        return {
+            "success": False,
+            "message": f"Error deleting scheduled job: {_format_http_error(e)}",
+        }

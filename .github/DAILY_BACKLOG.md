@@ -1,14 +1,10 @@
 # Daily Improvement Backlog
 
 ## Queue
-4. Add list_cmdb_ci_outages to service_desk package for outage awareness
-4. Add list_cmdb_ci_outages to service_desk package for outage awareness
-5. Add get_problem to change_coordinator read-only pair (list_problems already there, get is missing)
-6. Add list_ci_dependencies to change_coordinator package
-7. Add bulk_update_incidents to change_coordinator package
-8. Add create_scheduled_job and update_scheduled_job tools (POST/PATCH sysauto_script)
-9. Add delete_scheduled_job tool (DELETE sysauto_script/{sys_id})
-10. Add list_workflow_activities tool (GET sys_hub_action_type_base scoped to a workflow)
+1. Add list_cmdb_ci_outages and get_ci_outage to service_desk package for outage awareness
+2. Add list_ci_dependencies to change_coordinator package
+3. Add bulk_update_incidents to change_coordinator package
+4. Add list_workflow_activities tool (GET sys_hub_action_type_base scoped to a workflow)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -121,3 +117,4 @@
 107. 2026-07-22 — Add update_request + update_request_item to service_desk package and activate delete_catalog_item_variable in catalog_builder and full packages (tools existed since prior sessions but were absent from these packages)
 108. 2026-07-23 — Add delete_request_item tool (DELETE sc_req_item/{sys_id}; RITM number/sys_id resolver; 404 guard; registered in service_desk and full packages; 11 new tests; 2385 total tests; 93% coverage)
 109. 2026-07-24 — Add create_problem + update_problem to service_desk package; implement delete_asset_contract tool (DELETE alm_contract/{sys_id}; 404 guard; registered in system_administrator + full packages; 10 new tests; 2395 total tests)
+110. 2026-07-25 — Add create_scheduled_job, update_scheduled_job, delete_scheduled_job tools (POST/PATCH/DELETE sysauto_script; name/sys_id resolver on update/delete; empty-body guard; 404 guards; active serialised as string; registered in system_administrator + full packages; 44 new tests; 2439 total tests; 99% scheduled_job_tools.py coverage)
