@@ -89,6 +89,9 @@ service_desk:
   # Change Approval (read-only)
   - list_change_approvals
   - get_change_approval
+  # CMDB / Outage Awareness
+  - list_cmdb_ci_outages
+  - get_ci_outage
 
 catalog_builder:
   # Core Catalog
@@ -162,10 +165,13 @@ change_coordinator:
   - update_problem
   - close_problem
   # Bulk Operations
+  - bulk_update_incidents
   - bulk_update_change_requests
   - bulk_update_change_tasks
   - bulk_update_problems
   - bulk_update_problem_tasks
+  # CI Relationships (changes often affect CIs)
+  - list_ci_dependencies
 
 knowledge_author:
   # KB Management
