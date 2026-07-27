@@ -932,6 +932,10 @@ from servicenow_mcp.tools.user_tools import (
 from servicenow_mcp.tools.user_tools import (
     update_user as update_user_tool,
 )
+from servicenow_mcp.tools.workflow_activity_tools import (
+    ListWorkflowActivitiesParams,
+    list_workflow_activities as list_workflow_activities_tool,
+)
 from servicenow_mcp.tools.workflow_tools import (
     ActivateWorkflowParams,
     AddWorkflowActivityParams,
@@ -1659,6 +1663,13 @@ def get_tool_definitions(
             str,
             "Reorder activities in a workflow",
             "str",  # Tool returns simple message
+        ),
+        "list_workflow_activities": (
+            list_workflow_activities_tool,
+            ListWorkflowActivitiesParams,
+            str,
+            "List Flow Designer action type definitions, optionally scoped to a workflow's application",
+            "json",
         ),
         # Changeset Management Tools
         "list_changesets": (
