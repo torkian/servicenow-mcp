@@ -104,6 +104,112 @@ def _resolve_flow_scope(instance_url: str, headers: Dict, flow_id: str) -> Optio
         return None
 
 
+def _resolve_action_type_sys_id(
+    instance_url: str,
+    headers: Dict,
+    activity_id: str,
+) -> Optional[str]:
+    """Return the sys_id for an action type name or pass through if already a sys_id."""
+    if len(activity_id) == 32 and all(c in "0123456789abcdef" for c in activity_id):
+        return activity_id
+    url = f"{instance_url}/api/now/table/{_ACTION_TYPE_TABLE}"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"name={activity_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+class GetWorkflowActivityParams(BaseModel):
+    """Parameters for retrieving a single Flow Designer action type."""
+
+    activity_id: str = Field(
+        ...,
+        description=(
+            "The sys_id or exact name of the action type (sys_hub_action_type_base) "
+            "to retrieve."
+        ),
+    )
+
+
+def get_workflow_activity(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single Flow Designer action type by sys_id or exact name.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetWorkflowActivityParams.
+
+    Returns:
+        Dictionary with ``success`` and ``activity`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params, GetWorkflowActivityParams, required_fields=["activity_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: GetWorkflowActivityParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_action_type_sys_id(instance_url, headers, validated.activity_id)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"Workflow activity not found: {validated.activity_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{_ACTION_TYPE_TABLE}/{sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(_ACTION_TYPE_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Workflow activity not found: {validated.activity_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {
+                "success": False,
+                "message": f"Workflow activity not found: {validated.activity_id}",
+            }
+        return {"success": True, "activity": _format_action_type(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving workflow activity: {e}")
+        return {
+            "success": False,
+            "message": f"Error retrieving workflow activity: {_format_http_error(e)}",
+        }
+
+
 class ListWorkflowActivitiesParams(BaseModel):
     """Parameters for listing Flow Designer action type definitions."""
 

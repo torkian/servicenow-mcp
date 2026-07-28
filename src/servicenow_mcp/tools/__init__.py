@@ -289,6 +289,7 @@ from servicenow_mcp.tools.user_tools import (
     update_user,
 )
 from servicenow_mcp.tools.workflow_activity_tools import (
+    get_workflow_activity,
     list_workflow_activities,
 )
 from servicenow_mcp.tools.workflow_tools import (
@@ -384,6 +385,7 @@ __all__ = [
     "list_workflow_versions",
     "get_workflow_activities",
     "list_workflow_activities",
+    "get_workflow_activity",
     "create_workflow",
     "update_workflow",
     "activate_workflow",

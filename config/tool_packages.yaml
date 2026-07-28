@@ -212,6 +212,7 @@ platform_developer:
   - reorder_workflow_activities
   - get_workflow_activities
   - list_workflow_activities
+  - get_workflow_activity
   # General UI Policies
   - create_ui_policy
   - create_ui_policy_action
@@ -423,6 +424,7 @@ full:
   - list_workflow_versions
   - get_workflow_activities
   - list_workflow_activities
+  - get_workflow_activity
   - create_workflow
   - update_workflow
   - activate_workflow

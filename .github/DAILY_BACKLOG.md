@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_workflow_activity tool (GET sys_hub_action_type_base/{sys_id}; name/sys_id resolver; 404/empty-result guards; registered in platform_developer and full packages)
+(none — extend as needed)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -117,3 +117,4 @@
 110. 2026-07-25 — Add create_scheduled_job, update_scheduled_job, delete_scheduled_job tools (POST/PATCH/DELETE sysauto_script; name/sys_id resolver on update/delete; empty-body guard; 404 guards; active serialised as string; registered in system_administrator + full packages; 44 new tests; 2439 total tests; 99% scheduled_job_tools.py coverage)
 111. 2026-07-26 — Add list_cmdb_ci_outages+get_ci_outage to service_desk package; add list_ci_dependencies+bulk_update_incidents to change_coordinator package; 2439 total tests; 93% coverage
 112. 2026-07-27 — Add list_workflow_activities tool (GET sys_hub_action_type_base; optional flow_id scopes results to flow's application; name/category/active filters; pagination; registered in platform_developer and full packages; 27 new tests; 99% workflow_activity_tools.py coverage; 2466 total tests; 93% coverage)
+113. 2026-07-28 — Add get_workflow_activity tool (GET sys_hub_action_type_base/{sys_id}; name/sys_id resolver; 404/empty-result guards; registered in platform_developer and full packages; 15 new tests; 99% workflow_activity_tools.py coverage; 2481 total tests; 93% coverage)

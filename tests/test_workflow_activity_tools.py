@@ -8,7 +8,9 @@ import requests
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.workflow_activity_tools import (
     _format_action_type,
+    _resolve_action_type_sys_id,
     _resolve_flow_scope,
+    get_workflow_activity,
     list_workflow_activities,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -338,6 +340,154 @@ class TestListWorkflowActivitiesConfigFailures(unittest.TestCase):
         config.instance_url = "https://dev99999.service-now.com"
 
         result = list_workflow_activities(auth_manager, config, {})
+        self.assertFalse(result["success"])
+
+
+# ---------------------------------------------------------------------------
+# _resolve_action_type_sys_id
+# ---------------------------------------------------------------------------
+
+class TestResolveActionTypeSysId(unittest.TestCase):
+    def test_passthrough_for_sys_id(self):
+        result = _resolve_action_type_sys_id("https://dev.service-now.com", {}, FAKE_SYS_ID)
+        self.assertEqual(result, FAKE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_resolves_by_name(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]})
+        result = _resolve_action_type_sys_id(
+            "https://dev.service-now.com", {}, "create_record"
+        )
+        self.assertEqual(result, FAKE_SYS_ID)
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("name=create_record", call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_returns_none_when_not_found(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = _resolve_action_type_sys_id(
+            "https://dev.service-now.com", {}, "nonexistent"
+        )
+        self.assertIsNone(result)
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_returns_none_on_network_error(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("refused")
+        result = _resolve_action_type_sys_id(
+            "https://dev.service-now.com", {}, "any_name"
+        )
+        self.assertIsNone(result)
+
+
+# ---------------------------------------------------------------------------
+# get_workflow_activity
+# ---------------------------------------------------------------------------
+
+class TestGetWorkflowActivitySuccess(unittest.TestCase):
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_get_by_sys_id_returns_activity(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_ACTION_TYPE})
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": FAKE_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("activity", result)
+        self.assertEqual(result["activity"]["name"], "create_record")
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_get_by_name_resolves_then_fetches(self, mock_req):
+        lookup_resp = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]})
+        get_resp = _make_response(200, {"result": FAKE_ACTION_TYPE})
+        mock_req.side_effect = [lookup_resp, get_resp]
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": "create_record"}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["activity"]["sys_id"], FAKE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_formats_scope_as_display_value(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_ACTION_TYPE})
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": FAKE_SYS_ID}
+        )
+        self.assertEqual(result["activity"]["scope"], "global")
+
+
+class TestGetWorkflowActivityNotFound(unittest.TestCase):
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_name_not_found_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": "missing_action"}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_404_response_returns_failure(self, mock_req):
+        # First call: sys_id passthrough, second call: 404
+        resp_404 = _make_response(404, {})
+        resp_404.raise_for_status = MagicMock()  # don't raise, let status_code check handle
+        mock_req.return_value = resp_404
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_empty_result_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.workflow_activity_tools._make_request")
+    def test_network_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("refused")
+        result = get_workflow_activity(
+            _make_auth_manager(), _make_config(), {"activity_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("message", result)
+
+
+class TestGetWorkflowActivityValidation(unittest.TestCase):
+    def test_missing_activity_id_returns_failure(self):
+        result = get_workflow_activity(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    def test_missing_instance_url(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.get_headers.return_value = {}
+        auth_manager.instance_url = None
+        config = MagicMock()
+        config.instance_url = None
+        result = get_workflow_activity(
+            auth_manager, config, {"activity_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+
+    def test_missing_headers(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.get_headers.return_value = None
+        auth_manager.instance_url = "https://dev99999.service-now.com"
+        config = MagicMock()
+        config.instance_url = "https://dev99999.service-now.com"
+        result = get_workflow_activity(
+            auth_manager, config, {"activity_id": FAKE_SYS_ID}
+        )
         self.assertFalse(result["success"])
 
 
