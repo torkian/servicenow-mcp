@@ -288,6 +288,10 @@ from servicenow_mcp.tools.user_tools import (
     update_group,
     update_user,
 )
+from servicenow_mcp.tools.flow_tools import (
+    get_flow,
+    list_flows,
+)
 from servicenow_mcp.tools.workflow_activity_tools import (
     get_workflow_activity,
     list_workflow_activities,
@@ -378,6 +382,10 @@ __all__ = [
     "update_change_schedule_span",
     "delete_change_schedule",
     "delete_change_schedule_span",
+
+    # Flow Designer flow tools
+    "list_flows",
+    "get_flow",
 
     # Workflow management tools
     "list_workflows",

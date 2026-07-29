@@ -932,6 +932,12 @@ from servicenow_mcp.tools.user_tools import (
 from servicenow_mcp.tools.user_tools import (
     update_user as update_user_tool,
 )
+from servicenow_mcp.tools.flow_tools import (
+    GetFlowParams,
+    ListFlowsParams,
+    get_flow as get_flow_tool,
+    list_flows as list_flows_tool,
+)
 from servicenow_mcp.tools.workflow_activity_tools import (
     GetWorkflowActivityParams,
     ListWorkflowActivitiesParams,
@@ -1678,6 +1684,21 @@ def get_tool_definitions(
             GetWorkflowActivityParams,
             str,
             "Retrieve a single Flow Designer action type by sys_id or exact name",
+            "json",
+        ),
+        # Flow Designer Flow Tools
+        "list_flows": (
+            list_flows_tool,
+            ListFlowsParams,
+            str,
+            "List Flow Designer flows (sys_hub_flow) with optional name/status/category/scope filters",
+            "json",
+        ),
+        "get_flow": (
+            get_flow_tool,
+            GetFlowParams,
+            str,
+            "Retrieve a single Flow Designer flow by sys_id or exact name",
             "json",
         ),
         # Changeset Management Tools

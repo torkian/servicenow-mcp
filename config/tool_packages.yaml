@@ -213,6 +213,9 @@ platform_developer:
   - get_workflow_activities
   - list_workflow_activities
   - get_workflow_activity
+  # Flow Designer Flows
+  - list_flows
+  - get_flow
   # General UI Policies
   - create_ui_policy
   - create_ui_policy_action
@@ -425,6 +428,8 @@ full:
   - get_workflow_activities
   - list_workflow_activities
   - get_workflow_activity
+  - list_flows
+  - get_flow
   - create_workflow
   - update_workflow
   - activate_workflow
