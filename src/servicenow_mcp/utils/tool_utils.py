@@ -934,9 +934,13 @@ from servicenow_mcp.tools.user_tools import (
 )
 from servicenow_mcp.tools.flow_tools import (
     GetFlowParams,
+    ListFlowExecutionsParams,
     ListFlowsParams,
+    TriggerFlowParams,
     get_flow as get_flow_tool,
+    list_flow_executions as list_flow_executions_tool,
     list_flows as list_flows_tool,
+    trigger_flow as trigger_flow_tool,
 )
 from servicenow_mcp.tools.workflow_activity_tools import (
     GetWorkflowActivityParams,
@@ -1699,6 +1703,20 @@ def get_tool_definitions(
             GetFlowParams,
             str,
             "Retrieve a single Flow Designer flow by sys_id or exact name",
+            "json",
+        ),
+        "trigger_flow": (
+            trigger_flow_tool,
+            TriggerFlowParams,
+            str,
+            "Trigger a Flow Designer flow on demand via the v2 Flow API",
+            "json",
+        ),
+        "list_flow_executions": (
+            list_flow_executions_tool,
+            ListFlowExecutionsParams,
+            str,
+            "List Flow Designer execution history from sys_flow_context with optional flow/state/date filters",
             "json",
         ),
         # Changeset Management Tools

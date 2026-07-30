@@ -290,7 +290,9 @@ from servicenow_mcp.tools.user_tools import (
 )
 from servicenow_mcp.tools.flow_tools import (
     get_flow,
+    list_flow_executions,
     list_flows,
+    trigger_flow,
 )
 from servicenow_mcp.tools.workflow_activity_tools import (
     get_workflow_activity,
@@ -386,6 +388,8 @@ __all__ = [
     # Flow Designer flow tools
     "list_flows",
     "get_flow",
+    "trigger_flow",
+    "list_flow_executions",
 
     # Workflow management tools
     "list_workflows",

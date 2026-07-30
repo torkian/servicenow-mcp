@@ -216,6 +216,8 @@ platform_developer:
   # Flow Designer Flows
   - list_flows
   - get_flow
+  - trigger_flow
+  - list_flow_executions
   # General UI Policies
   - create_ui_policy
   - create_ui_policy_action
@@ -430,6 +432,8 @@ full:
   - get_workflow_activity
   - list_flows
   - get_flow
+  - trigger_flow
+  - list_flow_executions
   - create_workflow
   - update_workflow
   - activate_workflow

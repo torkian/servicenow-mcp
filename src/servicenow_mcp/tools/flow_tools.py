@@ -1,13 +1,14 @@
 """
 Flow Designer flow tools for the ServiceNow MCP server.
 
-Provides tools for listing and retrieving Flow Designer flows
-(sys_hub_flow table).  Complements workflow_activity_tools.py which
-covers action type definitions (sys_hub_action_type_base).
+Provides tools for listing, retrieving, and executing Flow Designer flows
+(sys_hub_flow table) and inspecting their execution history (sys_flow_context).
+Complements workflow_activity_tools.py which covers action type definitions
+(sys_hub_action_type_base).
 """
 
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -28,6 +29,8 @@ from servicenow_mcp.utils.helpers import (
 logger = logging.getLogger(__name__)
 
 _FLOW_TABLE = "sys_hub_flow"
+_FLOW_CONTEXT_TABLE = "sys_flow_context"
+_FLOW_API_BASE = "/api/now/v2/flow_api/flows"
 
 _FLOW_FIELDS = [
     "sys_id",
@@ -271,4 +274,247 @@ def get_flow(
         return {
             "success": False,
             "message": f"Error retrieving flow: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# trigger_flow
+# ---------------------------------------------------------------------------
+
+_EXECUTION_CONTEXT_FIELDS = [
+    "sys_id",
+    "name",
+    "state",
+    "flow",
+    "started_on",
+    "ended_on",
+    "error",
+    "run_as",
+]
+
+
+def _format_execution(record: Dict) -> Dict:
+    """Normalise a sys_flow_context record."""
+
+    def _ref(value):
+        if isinstance(value, dict):
+            return value.get("display_value") or value.get("value")
+        return value
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "name": record.get("name"),
+        "state": record.get("state"),
+        "flow": _ref(record.get("flow")),
+        "started_on": record.get("started_on"),
+        "ended_on": record.get("ended_on"),
+        "error": record.get("error"),
+        "run_as": _ref(record.get("run_as")),
+    }
+
+
+class TriggerFlowParams(BaseModel):
+    """Parameters for triggering a Flow Designer flow on demand."""
+
+    flow_id: str = Field(
+        ...,
+        description=(
+            "The sys_id or exact name of the flow (sys_hub_flow) to execute."
+        ),
+    )
+    inputs: Optional[Dict[str, Any]] = Field(
+        None,
+        description=(
+            "Optional key-value map of flow input variables.  Keys must match "
+            "the flow's defined input variable names."
+        ),
+    )
+
+
+def trigger_flow(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Trigger a Flow Designer flow on demand via the v2 Flow API.
+
+    Resolves the flow by sys_id or exact name, then POSTs to
+    ``/api/now/v2/flow_api/flows/{sys_id}/executions`` to start an
+    asynchronous execution.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching TriggerFlowParams.
+
+    Returns:
+        Dictionary with ``success``, ``execution_id``, and ``status`` keys
+        on success, or ``success=False`` and ``message`` on failure.
+    """
+    result = _unwrap_and_validate_params(
+        params, TriggerFlowParams, required_fields=["flow_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: TriggerFlowParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_flow_sys_id(instance_url, headers, validated.flow_id)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"Flow not found: {validated.flow_id}",
+        }
+
+    url = f"{instance_url}{_FLOW_API_BASE}/{sys_id}/executions"
+    body: Dict[str, Any] = {}
+    if validated.inputs:
+        body["inputs"] = validated.inputs
+
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Flow not found or not executable: {validated.flow_id}",
+            }
+        response.raise_for_status()
+        payload = response.json()
+        execution_detail = payload.get("result", payload) or {}
+        execution_id = (
+            execution_detail.get("executionId")
+            or execution_detail.get("sys_id")
+            or execution_detail.get("id")
+        )
+        status = execution_detail.get("status") or "started"
+        return {
+            "success": True,
+            "execution_id": execution_id,
+            "status": status,
+            "message": f"Flow '{validated.flow_id}' triggered successfully.",
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error triggering flow: {e}")
+        return {
+            "success": False,
+            "message": f"Error triggering flow: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# list_flow_executions
+# ---------------------------------------------------------------------------
+
+
+class ListFlowExecutionsParams(BaseModel):
+    """Parameters for listing Flow Designer execution history."""
+
+    flow_id: Optional[str] = Field(
+        None,
+        description=(
+            "Filter executions by flow sys_id or exact name.  "
+            "When omitted, executions across all flows are returned."
+        ),
+    )
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by execution state.  "
+            "Common values: 'running', 'complete', 'error', 'cancelled', 'waiting'."
+        ),
+    )
+    started_after: Optional[str] = Field(
+        None,
+        description=(
+            "Return executions started on or after this datetime "
+            "(format: YYYY-MM-DD HH:MM:SS)."
+        ),
+    )
+    started_before: Optional[str] = Field(
+        None,
+        description=(
+            "Return executions started on or before this datetime "
+            "(format: YYYY-MM-DD HH:MM:SS)."
+        ),
+    )
+    limit: Optional[int] = Field(20, description="Maximum records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Offset for pagination")
+
+
+def list_flow_executions(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List Flow Designer execution history from the sys_flow_context table.
+
+    Supports filtering by flow, state, and start-time range.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListFlowExecutionsParams.
+
+    Returns:
+        Dictionary with ``success``, ``executions`` (list), ``count``,
+        ``has_more``, and ``next_offset`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, ListFlowExecutionsParams)
+    if not result["success"]:
+        return result
+    validated: ListFlowExecutionsParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts: List[str] = []
+
+    if validated.flow_id:
+        flow_sys_id = _resolve_flow_sys_id(instance_url, headers, validated.flow_id)
+        if not flow_sys_id:
+            return {
+                "success": False,
+                "message": f"Flow not found: {validated.flow_id}",
+            }
+        query_parts.append(f"flow={flow_sys_id}")
+
+    if validated.state:
+        query_parts.append(f"state={validated.state}")
+    if validated.started_after:
+        query_parts.append(f"started_on>={validated.started_after}")
+    if validated.started_before:
+        query_parts.append(f"started_on<={validated.started_before}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        order_by="started_on",
+        fields=",".join(_EXECUTION_CONTEXT_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{_FLOW_CONTEXT_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        executions = [_format_execution(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(
+            executions, validated.limit, validated.offset, "executions"
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing flow executions: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing flow executions: {_format_http_error(e)}",
         }
