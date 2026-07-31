@@ -78,6 +78,7 @@ from servicenow_mcp.tools.catalog_optimization import (
 from servicenow_mcp.tools.catalog_tools import (
     CreateCatalogCategoryParams,
     CreateCatalogItemParams,
+    DeleteCatalogItemParams,
     GetCatalogCategoryParams,
     GetCatalogItemParams,
     GetCatalogParams,
@@ -92,6 +93,9 @@ from servicenow_mcp.tools.catalog_tools import (
 )
 from servicenow_mcp.tools.catalog_tools import (
     create_catalog_item as create_catalog_item_tool,
+)
+from servicenow_mcp.tools.catalog_tools import (
+    delete_catalog_item as delete_catalog_item_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     get_catalog as get_catalog_tool,
@@ -1224,6 +1228,13 @@ def get_tool_definitions(
             CreateCatalogItemParams,
             str,
             "Create a new service catalog item in ServiceNow",
+            "json_dict",
+        ),
+        "delete_catalog_item": (
+            delete_catalog_item_tool,
+            DeleteCatalogItemParams,
+            str,
+            "Permanently delete a service catalog item from ServiceNow by name or sys_id",
             "json_dict",
         ),
         # Catalog Variables

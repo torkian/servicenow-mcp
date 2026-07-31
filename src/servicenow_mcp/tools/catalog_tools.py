@@ -106,9 +106,15 @@ class CreateCatalogItemParams(BaseModel):
     order: Optional[int] = Field(None, description="Display order of the catalog item")
 
 
+class DeleteCatalogItemParams(BaseModel):
+    """Parameters for deleting a service catalog item."""
+
+    item_id: str = Field(..., description="Catalog item name (exact), sys_id, or internal item number to delete")
+
+
 class MoveCatalogItemsParams(BaseModel):
     """Parameters for moving catalog items between categories."""
-    
+
     item_ids: List[str] = Field(..., description="List of catalog item IDs to move")
     target_category_id: str = Field(..., description="Target category ID to move items to")
 
@@ -828,6 +834,76 @@ def update_catalog_category(
         return CatalogResponse(
             success=False,
             message=f"Error updating catalog category: {_format_http_error(e)}",
+            data=None,
+        )
+
+
+def delete_catalog_item(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: DeleteCatalogItemParams,
+) -> CatalogResponse:
+    """Permanently delete a catalog item from ServiceNow (sc_cat_item table).
+
+    Resolves a name to sys_id when the item_id is not a 32-hex sys_id.
+    Returns success on 204, failure on 404 or any HTTP/network error.
+    """
+    logger.info(f"Deleting catalog item: {params.item_id}")
+
+    headers = auth_manager.get_headers()
+    headers["Accept"] = "application/json"
+
+    # Determine whether item_id is already a sys_id (32 hex chars) or a name.
+    if len(params.item_id) == 32 and all(c in "0123456789abcdef" for c in params.item_id):
+        resolved_sys_id = params.item_id
+    else:
+        try:
+            lookup_url = f"{config.instance_url}/api/now/table/sc_cat_item"
+            lookup_params = {
+                "sysparm_query": f"name={params.item_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id,name",
+                "sysparm_display_value": "false",
+            }
+            resp = _make_request("GET", lookup_url, headers=headers, params=lookup_params)
+            resp.raise_for_status()
+            results = resp.json().get("result", [])
+            if not results:
+                return CatalogResponse(
+                    success=False,
+                    message=f"Catalog item not found: {params.item_id}",
+                    data=None,
+                )
+            resolved_sys_id = results[0]["sys_id"]
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error resolving catalog item: {_format_http_error(e)}")
+            return CatalogResponse(
+                success=False,
+                message=f"Error resolving catalog item: {_format_http_error(e)}",
+                data=None,
+            )
+
+    url = f"{config.instance_url}/api/now/table/sc_cat_item/{resolved_sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return CatalogResponse(
+                success=False,
+                message=f"Catalog item not found: {params.item_id}",
+                data=None,
+            )
+        if response.status_code not in (200, 204):
+            response.raise_for_status()
+        return CatalogResponse(
+            success=True,
+            message=f"Catalog item {params.item_id} deleted successfully",
+            data={"sys_id": resolved_sys_id},
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting catalog item: {_format_http_error(e)}")
+        return CatalogResponse(
+            success=False,
+            message=f"Error deleting catalog item: {_format_http_error(e)}",
             data=None,
         )
 
