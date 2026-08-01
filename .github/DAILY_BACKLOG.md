@@ -1,7 +1,6 @@
 # Daily Improvement Backlog
 
 ## Queue
-4. Add update_on_call_rotation_member and delete_on_call_rotation tools
 5. Add list_change_request_tasks shortcut (wraps list_change_tasks filtered by change_id)
 6. Add close_problem_task shortcut (complete PTASK lifecycle)
 7. Add list_ci_audit_history shortcut (deduplicated view over list_cmdb_audit_log)
@@ -124,3 +123,4 @@
 114. 2026-07-29 — Add list_flows and get_flow tools (sys_hub_flow table; list supports name/active/status/category/scope filters; get_flow has sys_id/name resolver and 404/empty-result guards; registered in platform_developer and full packages; 28 new tests; 2509 total tests; 93% coverage)
 115. 2026-07-30 — Add trigger_flow and list_flow_executions tools (trigger_flow POSTs to /api/now/v2/flow_api/flows/{sys_id}/executions with optional inputs; list_flow_executions queries sys_flow_context with flow/state/date-range filters; name/sys_id resolvers on both; pagination on list; 26 new tests; 2535 total tests; 93% coverage)
 116. 2026-07-31 — Add delete_catalog_item tool (DELETE sc_cat_item/{sys_id}; name→sys_id resolver for non-hex inputs; 404 guard on both lookup and delete steps; registered in catalog_builder and full packages; 13 new tests; 2548 total tests; 93% coverage)
+117. 2026-08-01 — Add update_on_call_rotation_member and delete_on_call_rotation tools (PATCH cmn_rota_member/{sys_id} with 6 optional fields; DELETE cmn_rota by sys_id or name; 404/empty-body guards; registered in system_administrator and full packages; 27 new tests; 2575 total tests; 100% on_call_tools.py coverage; 94% total coverage)

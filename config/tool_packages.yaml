@@ -298,6 +298,8 @@ system_administrator:
   - get_on_call_rotation
   - list_on_call_rotation_members
   - update_on_call_rotation
+  - update_on_call_rotation_member
+  - delete_on_call_rotation
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job
@@ -502,6 +504,8 @@ full:
   - get_on_call_rotation
   - list_on_call_rotation_members
   - update_on_call_rotation
+  - update_on_call_rotation_member
+  - delete_on_call_rotation
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job

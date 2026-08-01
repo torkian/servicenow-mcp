@@ -240,10 +240,12 @@ from servicenow_mcp.tools.story_tools import (
 )
 from servicenow_mcp.tools.on_call_tools import (
     create_on_call_rotation,
+    delete_on_call_rotation,
     get_on_call_rotation,
     list_on_call_rotation_members,
     list_on_call_rotations,
     update_on_call_rotation,
+    update_on_call_rotation_member,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
     create_scheduled_job,
@@ -613,8 +615,10 @@ __all__ = [
 
     # On-call rotation tools
     "create_on_call_rotation",
-    "list_on_call_rotations",
+    "delete_on_call_rotation",
     "get_on_call_rotation",
     "list_on_call_rotation_members",
+    "list_on_call_rotations",
     "update_on_call_rotation",
+    "update_on_call_rotation_member",
 ]

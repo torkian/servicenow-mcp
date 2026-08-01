@@ -798,17 +798,21 @@ from servicenow_mcp.tools.story_tools import (
 )
 from servicenow_mcp.tools.on_call_tools import (
     CreateOnCallRotationParams,
+    DeleteOnCallRotationParams,
     GetOnCallRotationParams,
     ListOnCallRotationMembersParams,
     ListOnCallRotationsParams,
+    UpdateOnCallRotationMemberParams,
     UpdateOnCallRotationParams,
 )
 from servicenow_mcp.tools.on_call_tools import (
     create_on_call_rotation as create_on_call_rotation_tool,
+    delete_on_call_rotation as delete_on_call_rotation_tool,
     get_on_call_rotation as get_on_call_rotation_tool,
     list_on_call_rotation_members as list_on_call_rotation_members_tool,
     list_on_call_rotations as list_on_call_rotations_tool,
     update_on_call_rotation as update_on_call_rotation_tool,
+    update_on_call_rotation_member as update_on_call_rotation_member_tool,
 )
 from servicenow_mcp.tools.scheduled_job_tools import (
     CreateScheduledJobParams,
@@ -2197,6 +2201,30 @@ def get_tool_definitions(
                 "Accepts the rotation by sys_id or exact name. Optionally update name, group, "
                 "active state, description, manager, schedule, escalation policy, or rotation "
                 "type. At least one field must be provided. Returns the updated rotation record."
+            ),
+            "raw_dict",
+        ),
+        "update_on_call_rotation_member": (
+            update_on_call_rotation_member_tool,
+            UpdateOnCallRotationMemberParams,
+            Dict[str, Any],
+            (
+                "Update an existing on-call rotation member record in the ServiceNow "
+                "cmn_rota_member table. Requires the member's sys_id. Optionally update "
+                "the assigned user, order position, active flag, catch_all flag, "
+                "override_on_call_rota reference, or skills. At least one field must be "
+                "provided. Returns the updated member record."
+            ),
+            "raw_dict",
+        ),
+        "delete_on_call_rotation": (
+            delete_on_call_rotation_tool,
+            DeleteOnCallRotationParams,
+            Dict[str, Any],
+            (
+                "Delete an on-call rotation record from the ServiceNow cmn_rota table. "
+                "Accepts the rotation by sys_id or exact name. Permanently removes the "
+                "rotation and returns a success message."
             ),
             "raw_dict",
         ),
