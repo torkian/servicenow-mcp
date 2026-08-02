@@ -165,6 +165,7 @@ from servicenow_mcp.tools.change_tools import (
     ListChangeRiskAssessmentsParams,
     ListChangeSchedulesParams,
     ListChangeTasksParams,
+    ListChangeRequestTasksParams,
     RejectChangeApprovalParams,
     RejectChangeParams,
     ReopenChangeRequestParams,
@@ -210,6 +211,9 @@ from servicenow_mcp.tools.change_tools import (
 )
 from servicenow_mcp.tools.change_tools import (
     list_change_tasks as list_change_tasks_tool,
+)
+from servicenow_mcp.tools.change_tools import (
+    list_change_request_tasks as list_change_request_tasks_tool,
 )
 from servicenow_mcp.tools.change_tools import (
     reject_change as reject_change_tool,
@@ -1332,6 +1336,13 @@ def get_tool_definitions(
             ListChangeTasksParams,
             str,
             "List tasks linked to a specific change request in ServiceNow",
+            "json",
+        ),
+        "list_change_request_tasks": (
+            list_change_request_tasks_tool,
+            ListChangeRequestTasksParams,
+            str,
+            "List tasks for a change request with formatted output; supports state/priority/assigned_to filters",
             "json",
         ),
         "create_change_task": (

@@ -3321,3 +3321,107 @@ def list_change_windows_for_date(
         "next_offset": offset + limit if has_more else None,
         "windows": page,
     }
+
+
+# ---------------------------------------------------------------------------
+# list_change_request_tasks  (shortcut wrapping list_change_tasks)
+# ---------------------------------------------------------------------------
+
+
+class ListChangeRequestTasksParams(BaseModel):
+    """Parameters for the list_change_request_tasks shortcut."""
+
+    change_id: str = Field(
+        ...,
+        description=(
+            "Change request sys_id (32-char hex) or number (e.g. CHG0001234) "
+            "whose tasks should be listed"
+        ),
+    )
+    limit: int = Field(20, description="Maximum number of tasks to return (default 20)")
+    offset: int = Field(0, description="Pagination offset")
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by task state: -5=Pending, 1=Open, 2=Work In Progress, "
+            "3=Closed Complete, 4=Closed Incomplete, 7=Closed Skipped"
+        ),
+    )
+    priority: Optional[str] = Field(
+        None,
+        description="Filter by task priority (e.g. '1'=Critical, '2'=High, '3'=Moderate, '4'=Low)",
+    )
+    assigned_to: Optional[str] = Field(
+        None,
+        description="Filter by assigned user name or sys_id",
+    )
+
+
+def list_change_request_tasks(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List change tasks for a specific change request, with formatted output.
+
+    A focused shortcut over the change_task table scoped to a single change
+    request.  Unlike list_change_tasks, results are returned through
+    _format_change_task so reference fields are normalised to display values
+    and the response shape is consistent with get_change_task.
+
+    Extra filters for ``priority`` and ``assigned_to`` are also supported.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListChangeRequestTasksParams.
+
+    Returns:
+        Dictionary with ``success``, ``tasks`` (formatted list), ``count``,
+        ``has_more``, and ``next_offset``.
+    """
+    result = _unwrap_and_validate_params(
+        params, ListChangeRequestTasksParams, required_fields=["change_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: ListChangeRequestTasksParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    change_sys_id = _resolve_change_request_sys_id(instance_url, headers, validated.change_id)
+    if not change_sys_id:
+        return {"success": False, "message": f"Change request not found: {validated.change_id}"}
+
+    query_parts = [f"change_request={change_sys_id}"]
+    if validated.state is not None:
+        query_parts.append(f"state={validated.state}")
+    if validated.priority is not None:
+        query_parts.append(f"priority={validated.priority}")
+    if validated.assigned_to is not None:
+        query_parts.append(f"assigned_to={validated.assigned_to}")
+
+    api_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        fields=",".join(CHANGE_TASK_FIELDS),
+        exclude_reference_link=True,
+    )
+    api_params["sysparm_display_value"] = "true"
+    api_params["sysparm_orderby"] = "order"
+
+    url = f"{instance_url}/api/now/table/change_task"
+    try:
+        resp = _make_request("GET", url, headers=headers, params=api_params)
+        resp.raise_for_status()
+        tasks = [_format_change_task(r) for r in resp.json().get("result", [])]
+        return _paginated_list_response(tasks, validated.limit, validated.offset, "tasks")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing change request tasks: {e}")
+        return {"success": False, "message": f"Error listing change request tasks: {_format_http_error(e)}"}

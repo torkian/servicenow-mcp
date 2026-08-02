@@ -134,6 +134,7 @@ change_coordinator:
   - add_change_task
   - get_change_task
   - list_change_tasks
+  - list_change_request_tasks
   - create_change_task
   - update_change_task
   - close_change_task
@@ -402,6 +403,7 @@ full:
   - add_change_task
   - get_change_task
   - list_change_tasks
+  - list_change_request_tasks
   - create_change_task
   - update_change_task
   - close_change_task
