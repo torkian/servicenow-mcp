@@ -169,7 +169,9 @@ from servicenow_mcp.tools.notification_tools import (
 from servicenow_mcp.tools.problem_task_tools import (
     close_problem_task,
     create_problem_task,
+    get_problem_task,
     list_problem_tasks,
+    update_problem_task,
 )
 from servicenow_mcp.tools.problem_tools import (
     close_problem,
@@ -569,6 +571,8 @@ __all__ = [
     # Problem Task tools
     "create_problem_task",
     "list_problem_tasks",
+    "get_problem_task",
+    "update_problem_task",
     "close_problem_task",
 
     # SLA management tools

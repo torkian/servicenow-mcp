@@ -33,6 +33,8 @@ service_desk:
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks
+  - get_problem_task
+  - update_problem_task
   - close_problem_task
   # Service Catalog Tasks
   - get_sctask
@@ -573,6 +575,8 @@ full:
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks
+  - get_problem_task
+  - update_problem_task
   - close_problem_task
   # Story Management
   - create_story

@@ -1,4 +1,4 @@
-"""Tests for problem_task_tools (create_problem_task, list_problem_tasks, close_problem_task)."""
+"""Tests for problem_task_tools."""
 
 import unittest
 from unittest.mock import MagicMock, patch
@@ -9,7 +9,9 @@ from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.problem_task_tools import (
     close_problem_task,
     create_problem_task,
+    get_problem_task,
     list_problem_tasks,
+    update_problem_task,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
@@ -529,6 +531,306 @@ class TestCloseProblemTask(unittest.TestCase):
         self.assertEqual(task["state"], "3")
         self.assertEqual(task["close_notes"], "Fixed by updating the driver")
         self.assertEqual(task["assigned_to"], "jane.doe")
+
+
+# ============================================================= #
+# get_problem_task                                               #
+# ============================================================= #
+
+class TestGetProblemTask(unittest.TestCase):
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_get_by_sys_id_skips_lookup(self, mock_req):
+        """Supplying a 32-char hex sys_id skips the number lookup GET."""
+        mock_req.return_value = _make_response(200, {"result": SAMPLE_TASK_RECORD})
+
+        result = get_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["task"]["sys_id"], TASK_SYS_ID)
+        self.assertEqual(result["task"]["number"], "PTASK0010001")
+        mock_req.assert_called_once()
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_get_by_task_number(self, mock_req):
+        """Get a task using its PTASK number; lookup resolves to sys_id first."""
+        lookup_resp = _make_response(200, {"result": [{"sys_id": TASK_SYS_ID}]})
+        get_resp = _make_response(200, {"result": SAMPLE_TASK_RECORD})
+        mock_req.side_effect = [lookup_resp, get_resp]
+
+        result = get_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": "PTASK0010001"},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["task"]["number"], "PTASK0010001")
+        self.assertEqual(mock_req.call_count, 2)
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_get_normalises_reference_fields(self, mock_req):
+        """assigned_to, assignment_group, and problem are normalised to display values."""
+        mock_req.return_value = _make_response(200, {"result": SAMPLE_TASK_RECORD})
+
+        result = get_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID},
+        )
+
+        task = result["task"]
+        self.assertEqual(task["assigned_to"], "jane.doe")
+        self.assertEqual(task["assignment_group"], "Platform Ops")
+        self.assertEqual(task["problem"], "PRB0001234")
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_get_task_not_found_by_number(self, mock_req):
+        """Return failure when the PTASK number resolves to nothing."""
+        mock_req.return_value = _make_response(200, {"result": []})
+
+        result = get_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": "PTASK9999999"},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_get_404_response(self, mock_req):
+        """404 from the GET returns a not-found failure."""
+        mock_req.return_value = _make_response(404)
+
+        result = get_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_get_empty_result(self, mock_req):
+        """Empty result dict returns not-found failure."""
+        mock_req.return_value = _make_response(200, {"result": None})
+
+        result = get_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_get_missing_task_id(self):
+        """Missing task_id should fail validation."""
+        result = get_problem_task(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+        self.assertIn("task_id", result["message"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_get_api_error(self, mock_req):
+        """HTTP error on GET returns failure with message."""
+        err_resp = _make_response(500)
+        err_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=err_resp)
+        mock_req.return_value = err_resp
+
+        result = get_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving problem task", result["message"])
+
+
+# ============================================================= #
+# update_problem_task                                            #
+# ============================================================= #
+
+class TestUpdateProblemTask(unittest.TestCase):
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_state_by_sys_id(self, mock_req):
+        """Update state when task_id is a sys_id (no lookup needed)."""
+        updated = {**SAMPLE_TASK_RECORD, "state": "2"}
+        mock_req.return_value = _make_response(200, {"result": updated})
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID, "state": "2"},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertIn("updated successfully", result["message"])
+        self.assertEqual(result["task"]["state"], "2")
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["state"], "2")
+        mock_req.assert_called_once()
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_by_task_number(self, mock_req):
+        """Update a task using its PTASK number; lookup resolves to sys_id first."""
+        lookup_resp = _make_response(200, {"result": [{"sys_id": TASK_SYS_ID}]})
+        patch_resp = _make_response(200, {"result": SAMPLE_TASK_RECORD})
+        mock_req.side_effect = [lookup_resp, patch_resp]
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": "PTASK0010001", "short_description": "Updated desc"},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(mock_req.call_count, 2)
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["short_description"], "Updated desc")
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_all_optional_fields(self, mock_req):
+        """All optional update fields are forwarded in the PATCH body."""
+        mock_req.return_value = _make_response(200, {"result": SAMPLE_TASK_RECORD})
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "task_id": TASK_SYS_ID,
+                "short_description": "New desc",
+                "description": "Long desc",
+                "state": "2",
+                "assigned_to": "bob.smith",
+                "assignment_group": "NetOps",
+                "priority": "1",
+                "work_notes": "In progress",
+                "close_notes": "Done",
+            },
+        )
+
+        self.assertTrue(result["success"])
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["short_description"], "New desc")
+        self.assertEqual(body["description"], "Long desc")
+        self.assertEqual(body["state"], "2")
+        self.assertEqual(body["assigned_to"], "bob.smith")
+        self.assertEqual(body["assignment_group"], "NetOps")
+        self.assertEqual(body["priority"], "1")
+        self.assertEqual(body["work_notes"], "In progress")
+        self.assertEqual(body["close_notes"], "Done")
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_with_planned_dates(self, mock_req):
+        """planned_start_date and planned_end_date are forwarded in the PATCH body."""
+        mock_req.return_value = _make_response(200, {"result": SAMPLE_TASK_RECORD})
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "task_id": TASK_SYS_ID,
+                "planned_start_date": "2026-08-10 09:00:00",
+                "planned_end_date": "2026-08-11 17:00:00",
+            },
+        )
+
+        self.assertTrue(result["success"])
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["planned_start_date"], "2026-08-10 09:00:00")
+        self.assertEqual(body["planned_end_date"], "2026-08-11 17:00:00")
+
+    def test_update_empty_body_rejected(self):
+        """Providing only task_id with no optional fields returns failure."""
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("No fields provided", result["message"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_task_not_found_by_number(self, mock_req):
+        """Return failure when the PTASK number resolves to nothing."""
+        mock_req.return_value = _make_response(200, {"result": []})
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": "PTASK9999999", "state": "2"},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_404_response(self, mock_req):
+        """404 from the PATCH returns a not-found failure."""
+        mock_req.return_value = _make_response(404)
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID, "state": "2"},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_update_missing_task_id(self):
+        """Missing task_id should fail validation."""
+        result = update_problem_task(_make_auth_manager(), _make_config(), {"state": "2"})
+        self.assertFalse(result["success"])
+        self.assertIn("task_id", result["message"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_api_error(self, mock_req):
+        """HTTP error on PATCH returns failure with message."""
+        err_resp = _make_response(500)
+        err_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=err_resp)
+        mock_req.return_value = err_resp
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID, "state": "2"},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error updating problem task", result["message"])
+
+    def test_update_invalid_planned_date(self):
+        """Invalid planned_start_date format should fail validation."""
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID, "planned_start_date": "not-a-date"},
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_update_returns_sys_id_and_number(self, mock_req):
+        """Response includes sys_id and number fields."""
+        mock_req.return_value = _make_response(200, {"result": SAMPLE_TASK_RECORD})
+
+        result = update_problem_task(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_id": TASK_SYS_ID, "state": "2"},
+        )
+
+        self.assertEqual(result["sys_id"], TASK_SYS_ID)
+        self.assertEqual(result["number"], "PTASK0010001")
 
 
 if __name__ == "__main__":

@@ -8,7 +8,7 @@ import logging
 from typing import Any, Dict, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
@@ -20,6 +20,7 @@ from servicenow_mcp.utils.helpers import (
     _make_request,
     _paginated_list_response,
     _unwrap_and_validate_params,
+    validate_servicenow_datetime,
 )
 
 logger = logging.getLogger(__name__)
@@ -89,6 +90,51 @@ class CloseProblemTaskParams(BaseModel):
     )
     close_notes: Optional[str] = Field(None, description="Closure notes")
     work_notes: Optional[str] = Field(None, description="Work notes to add when closing")
+
+
+class GetProblemTaskParams(BaseModel):
+    """Parameters for retrieving a single problem task."""
+
+    task_id: str = Field(
+        ...,
+        description="Problem task number (e.g. PTASK0010001) or 32-character sys_id",
+    )
+
+
+class UpdateProblemTaskParams(BaseModel):
+    """Parameters for updating an existing problem task."""
+
+    task_id: str = Field(
+        ...,
+        description="Problem task number (e.g. PTASK0010001) or 32-character sys_id",
+    )
+    short_description: Optional[str] = Field(None, description="Updated short description")
+    description: Optional[str] = Field(None, description="Updated detailed description")
+    state: Optional[str] = Field(
+        None,
+        description="New state (1=Open, 2=Work In Progress, 3=Closed Complete, 4=Closed Incomplete)",
+    )
+    assigned_to: Optional[str] = Field(None, description="Username or sys_id of the new assignee")
+    assignment_group: Optional[str] = Field(
+        None, description="Name or sys_id of the new assignment group"
+    )
+    priority: Optional[str] = Field(
+        None,
+        description="New priority (1=Critical, 2=High, 3=Moderate, 4=Low)",
+    )
+    planned_start_date: Optional[str] = Field(
+        None, description="Planned start date (YYYY-MM-DD HH:MM:SS)"
+    )
+    planned_end_date: Optional[str] = Field(
+        None, description="Planned end date (YYYY-MM-DD HH:MM:SS)"
+    )
+    work_notes: Optional[str] = Field(None, description="Work notes to append")
+    close_notes: Optional[str] = Field(None, description="Closure notes")
+
+    @field_validator("planned_start_date", "planned_end_date", mode="before")
+    @classmethod
+    def _validate_dates(cls, v):
+        return validate_servicenow_datetime(v)
 
 
 def _format_problem_task(record: Dict) -> Dict:
@@ -366,3 +412,137 @@ def close_problem_task(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error closing problem task: {e}")
         return {"success": False, "message": f"Error closing problem task: {_format_http_error(e)}"}
+
+
+def get_problem_task(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single problem_task record by its sys_id or PTASK number.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetProblemTaskParams.
+
+    Returns:
+        Dictionary with ``success`` and ``task`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, GetProblemTaskParams, required_fields=["task_id"])
+    if not result["success"]:
+        return result
+    validated: GetProblemTaskParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    task_sys_id = _resolve_problem_task_sys_id(instance_url, headers, validated.task_id)
+    if not task_sys_id:
+        return {"success": False, "message": f"Problem task not found: {validated.task_id}"}
+
+    url = f"{instance_url}{PROBLEM_TASK_TABLE}/{task_sys_id}"
+    query_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PROBLEM_TASK_FIELDS),
+    }
+    try:
+        resp = _make_request("GET", url, headers=headers, params=query_params)
+        if resp.status_code == 404:
+            return {"success": False, "message": f"Problem task not found: {validated.task_id}"}
+        resp.raise_for_status()
+        record = resp.json().get("result")
+        if not record:
+            return {"success": False, "message": f"Problem task not found: {validated.task_id}"}
+        return {"success": True, "task": _format_problem_task(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving problem task: {e}")
+        return {"success": False, "message": f"Error retrieving problem task: {_format_http_error(e)}"}
+
+
+def update_problem_task(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing problem_task record (state, assignee, notes, dates, etc.).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateProblemTaskParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``task`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params, UpdateProblemTaskParams, required_fields=["task_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: UpdateProblemTaskParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    task_sys_id = _resolve_problem_task_sys_id(instance_url, headers, validated.task_id)
+    if not task_sys_id:
+        return {"success": False, "message": f"Problem task not found: {validated.task_id}"}
+
+    body: Dict[str, Any] = {}
+    if validated.short_description is not None:
+        body["short_description"] = validated.short_description
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.state is not None:
+        body["state"] = validated.state
+    if validated.assigned_to is not None:
+        body["assigned_to"] = validated.assigned_to
+    if validated.assignment_group is not None:
+        body["assignment_group"] = validated.assignment_group
+    if validated.priority is not None:
+        body["priority"] = validated.priority
+    if validated.planned_start_date is not None:
+        body["planned_start_date"] = validated.planned_start_date
+    if validated.planned_end_date is not None:
+        body["planned_end_date"] = validated.planned_end_date
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+    if validated.close_notes is not None:
+        body["close_notes"] = validated.close_notes
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    headers["Content-Type"] = "application/json"
+    url = f"{instance_url}{PROBLEM_TASK_TABLE}/{task_sys_id}"
+    query_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PROBLEM_TASK_FIELDS),
+    }
+    try:
+        resp = _make_request("PATCH", url, json=body, headers=headers, params=query_params)
+        if resp.status_code == 404:
+            return {"success": False, "message": f"Problem task not found: {validated.task_id}"}
+        resp.raise_for_status()
+        task = resp.json().get("result", {})
+        return {
+            "success": True,
+            "message": f"Problem task {validated.task_id} updated successfully",
+            "sys_id": task_sys_id,
+            "number": task.get("number", validated.task_id),
+            "task": _format_problem_task(task),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating problem task: {e}")
+        return {"success": False, "message": f"Error updating problem task: {_format_http_error(e)}"}

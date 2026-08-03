@@ -576,7 +576,9 @@ from servicenow_mcp.tools.notification_tools import (
 from servicenow_mcp.tools.problem_task_tools import (
     CloseProblemTaskParams,
     CreateProblemTaskParams,
+    GetProblemTaskParams,
     ListProblemTasksParams,
+    UpdateProblemTaskParams,
 )
 from servicenow_mcp.tools.problem_task_tools import (
     close_problem_task as close_problem_task_tool,
@@ -585,7 +587,13 @@ from servicenow_mcp.tools.problem_task_tools import (
     create_problem_task as create_problem_task_tool,
 )
 from servicenow_mcp.tools.problem_task_tools import (
+    get_problem_task as get_problem_task_tool,
+)
+from servicenow_mcp.tools.problem_task_tools import (
     list_problem_tasks as list_problem_tasks_tool,
+)
+from servicenow_mcp.tools.problem_task_tools import (
+    update_problem_task as update_problem_task_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
     CloseProblemParams,
@@ -3094,6 +3102,29 @@ def get_tool_definitions(
                 "Close a problem task by setting its state to Closed Complete (3). "
                 "Accepts a problem task number (e.g. PTASK0010001) or sys_id as task_id. "
                 "Optionally include close_notes and work_notes."
+            ),
+            "raw_dict",
+        ),
+        "get_problem_task": (
+            get_problem_task_tool,
+            GetProblemTaskParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single problem_task record by its sys_id or PTASK number "
+                "(e.g. PTASK0010001). Returns normalised fields including state, priority, "
+                "assigned_to, assignment_group, and problem reference."
+            ),
+            "raw_dict",
+        ),
+        "update_problem_task": (
+            update_problem_task_tool,
+            UpdateProblemTaskParams,
+            Dict[str, Any],
+            (
+                "Update an existing problem_task record. Accepts a PTASK number "
+                "(e.g. PTASK0010001) or sys_id as task_id. Optional fields: "
+                "state, short_description, description, assigned_to, assignment_group, "
+                "priority, planned_start_date, planned_end_date, work_notes, close_notes."
             ),
             "raw_dict",
         ),
