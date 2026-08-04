@@ -369,6 +369,7 @@ from servicenow_mcp.tools.cmdb_tools import (
     GetCIClassSchemaParams,
     GetCIOutageParams,
     GetCIParams,
+    ListCIAuditHistoryParams,
     ListCIsParams,
     ListCMDBAuditLogParams,
     ListCMDBCIOutagesParams,
@@ -411,6 +412,9 @@ from servicenow_mcp.tools.cmdb_tools import (
 )
 from servicenow_mcp.tools.cmdb_tools import (
     update_ci_outage as update_ci_outage_tool,
+)
+from servicenow_mcp.tools.cmdb_tools import (
+    list_ci_audit_history as list_ci_audit_history_tool,
 )
 from servicenow_mcp.tools.cmdb_tools import (
     list_cmdb_audit_log as list_cmdb_audit_log_tool,
@@ -2457,6 +2461,19 @@ def get_tool_definitions(
             "raw_dict",
         ),
         # CMDB Tools
+        "list_ci_audit_history": (
+            list_ci_audit_history_tool,
+            ListCIAuditHistoryParams,
+            Dict[str, Any],
+            (
+                "Return a deduplicated change history for a single CI. Fetches audit "
+                "entries from sys_audit for the given ci_sys_id and returns only the "
+                "most recent change per field, giving a concise snapshot of every field "
+                "that has changed and its current audited value. Filters: ci_table "
+                "(default cmdb_ci), field_name, changed_by, changed_after/changed_before."
+            ),
+            "raw_dict",
+        ),
         "list_cmdb_audit_log": (
             list_cmdb_audit_log_tool,
             ListCMDBAuditLogParams,
