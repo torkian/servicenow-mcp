@@ -297,12 +297,14 @@ system_administrator:
   - get_syslog_entry
   # On-call Rotations
   - create_on_call_rotation
+  - create_on_call_rotation_member
   - list_on_call_rotations
   - get_on_call_rotation
   - list_on_call_rotation_members
   - update_on_call_rotation
   - update_on_call_rotation_member
   - delete_on_call_rotation
+  - delete_on_call_rotation_member
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job
@@ -505,12 +507,14 @@ full:
   - get_syslog_entry
   # On-call Rotations
   - create_on_call_rotation
+  - create_on_call_rotation_member
   - list_on_call_rotations
   - get_on_call_rotation
   - list_on_call_rotation_members
   - update_on_call_rotation
   - update_on_call_rotation_member
   - delete_on_call_rotation
+  - delete_on_call_rotation_member
   # Scheduled Jobs
   - list_scheduled_jobs
   - get_scheduled_job

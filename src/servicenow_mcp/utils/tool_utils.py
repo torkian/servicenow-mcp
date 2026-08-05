@@ -813,7 +813,9 @@ from servicenow_mcp.tools.story_tools import (
     update_story as update_story_tool,
 )
 from servicenow_mcp.tools.on_call_tools import (
+    CreateOnCallRotationMemberParams,
     CreateOnCallRotationParams,
+    DeleteOnCallRotationMemberParams,
     DeleteOnCallRotationParams,
     GetOnCallRotationParams,
     ListOnCallRotationMembersParams,
@@ -823,7 +825,9 @@ from servicenow_mcp.tools.on_call_tools import (
 )
 from servicenow_mcp.tools.on_call_tools import (
     create_on_call_rotation as create_on_call_rotation_tool,
+    create_on_call_rotation_member as create_on_call_rotation_member_tool,
     delete_on_call_rotation as delete_on_call_rotation_tool,
+    delete_on_call_rotation_member as delete_on_call_rotation_member_tool,
     get_on_call_rotation as get_on_call_rotation_tool,
     list_on_call_rotation_members as list_on_call_rotation_members_tool,
     list_on_call_rotations as list_on_call_rotations_tool,
@@ -2248,6 +2252,30 @@ def get_tool_definitions(
                 "Delete an on-call rotation record from the ServiceNow cmn_rota table. "
                 "Accepts the rotation by sys_id or exact name. Permanently removes the "
                 "rotation and returns a success message."
+            ),
+            "raw_dict",
+        ),
+        "create_on_call_rotation_member": (
+            create_on_call_rotation_member_tool,
+            CreateOnCallRotationMemberParams,
+            Dict[str, Any],
+            (
+                "Add a user to an on-call rotation in the ServiceNow cmn_rota_member table. "
+                "Requires the rotation sys_id or exact name and the member user sys_id or name. "
+                "Optionally specify the member's order position, active state, catch_all flag, "
+                "override rotation reference, and associated skill. Returns the created member "
+                "record sys_id and full member details."
+            ),
+            "raw_dict",
+        ),
+        "delete_on_call_rotation_member": (
+            delete_on_call_rotation_member_tool,
+            DeleteOnCallRotationMemberParams,
+            Dict[str, Any],
+            (
+                "Remove a member from an on-call rotation by deleting the cmn_rota_member record. "
+                "Requires the sys_id of the cmn_rota_member record to delete. Returns a success "
+                "message on removal or a descriptive error if the record is not found."
             ),
             "raw_dict",
         ),

@@ -1,7 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-(empty — add new items here)
+1. Add get_flow_execution tool (GET sys_flow_context/{sys_id}; 404/empty-result guards; normalised execution fields)
+2. Add cancel_flow_execution tool (PATCH/DELETE sys_flow_context/{sys_id} to cancel a running flow)
+3. Add get_on_call_rotation_member tool (GET cmn_rota_member/{sys_id}; 404/empty-result guards)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -125,3 +127,4 @@
 118. 2026-08-02 — Add list_change_request_tasks shortcut (wraps list_change_tasks with change_id param; state/priority/assigned_to filters; _format_change_task normalisation; sysparm_orderby=order; registered in change_coordinator and full packages; 18 new tests; 2593 total tests; 94% coverage)
 119. 2026-08-03 — Add get_problem_task and update_problem_task tools to complete PTASK lifecycle (GET problem_task/{sys_id} with 404/empty-result guards; PATCH with 10 optional fields including planned dates with datetime validation; empty-body guard; registered in service_desk and full packages; 19 new tests; 2612 total tests; 95% problem_task_tools coverage; 94% total coverage)
 120. 2026-08-04 — Add list_ci_audit_history shortcut (deduplicated view over list_cmdb_audit_log; required ci_sys_id; keeps newest change per field_name; filters for ci_table/field_name/changed_by/date-range; 24 new tests; 2636 total tests; 94% coverage)
+121. 2026-08-05 — Add create_on_call_rotation_member and delete_on_call_rotation_member tools (POST/DELETE cmn_rota_member; rotation name→sys_id resolver on create; boolean active/catch_all serialised as strings; 404 guard on delete; registered in system_administrator and full packages; 25 new tests; 2661 total tests; 99% on_call_tools.py coverage)

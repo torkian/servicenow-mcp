@@ -738,3 +738,190 @@ def list_on_call_rotation_members(
             "success": False,
             "message": f"Error listing on-call rotation members: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# create_on_call_rotation_member
+# ---------------------------------------------------------------------------
+
+
+class CreateOnCallRotationMemberParams(BaseModel):
+    """Parameters for adding a member to an on-call rotation."""
+
+    rotation_id: str = Field(
+        ...,
+        description="The sys_id or exact name of the on-call rotation to add the member to.",
+    )
+    member: str = Field(
+        ...,
+        description="User sys_id or user name of the person being added to the rotation.",
+    )
+    order: Optional[int] = Field(
+        None,
+        description="Integer position of this member within the rotation order.",
+    )
+    active: Optional[bool] = Field(
+        True,
+        description="Whether this member is active in the rotation (default True).",
+    )
+    catch_all: Optional[bool] = Field(
+        None,
+        description="Whether this member receives notifications not handled by other members.",
+    )
+    override_on_call_rota: Optional[str] = Field(
+        None,
+        description="sys_id of an alternate rotation this member can override.",
+    )
+    skills: Optional[str] = Field(
+        None,
+        description="sys_id or name of the skill associated with this member slot.",
+    )
+
+
+def create_on_call_rotation_member(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Add a member to an on-call rotation (POST cmn_rota_member).
+
+    Resolves the rotation by sys_id or exact name, then creates a
+    cmn_rota_member record linking the user to the rotation.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateOnCallRotationMemberParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, and ``member`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        CreateOnCallRotationMemberParams,
+        required_fields=["rotation_id", "member"],
+    )
+    if not result["success"]:
+        return result
+    validated: CreateOnCallRotationMemberParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    rotation_sys_id = _resolve_on_call_rotation_sys_id(
+        instance_url, headers, validated.rotation_id
+    )
+    if not rotation_sys_id:
+        return {
+            "success": False,
+            "message": f"On-call rotation not found: {validated.rotation_id}",
+        }
+
+    body: Dict[str, Any] = {
+        "rota": rotation_sys_id,
+        "member": validated.member,
+    }
+    if validated.order is not None:
+        body["order"] = validated.order
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.catch_all is not None:
+        body["catch_all"] = "true" if validated.catch_all else "false"
+    if validated.override_on_call_rota is not None:
+        body["override_on_call_rota"] = validated.override_on_call_rota
+    if validated.skills is not None:
+        body["skills"] = validated.skills
+
+    url = f"{instance_url}/api/now/table/{ON_CALL_ROTA_MEMBER_TABLE}"
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        new_sys_id = record.get("sys_id", "")
+        return {
+            "success": True,
+            "message": "On-call rotation member created successfully",
+            "sys_id": new_sys_id,
+            "member": _format_on_call_rotation_member(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating on-call rotation member: {e}")
+        return {
+            "success": False,
+            "message": f"Error creating on-call rotation member: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# delete_on_call_rotation_member
+# ---------------------------------------------------------------------------
+
+
+class DeleteOnCallRotationMemberParams(BaseModel):
+    """Parameters for removing a member from an on-call rotation."""
+
+    member_id: str = Field(
+        ...,
+        description="The sys_id of the cmn_rota_member record to delete.",
+    )
+
+
+def delete_on_call_rotation_member(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Remove a member from an on-call rotation (DELETE cmn_rota_member/{sys_id}).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteOnCallRotationMemberParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        DeleteOnCallRotationMemberParams,
+        required_fields=["member_id"],
+    )
+    if not result["success"]:
+        return result
+    validated: DeleteOnCallRotationMemberParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{ON_CALL_ROTA_MEMBER_TABLE}/{validated.member_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"On-call rotation member not found: {validated.member_id}",
+            }
+        if response.status_code == 204:
+            return {
+                "success": True,
+                "message": f"On-call rotation member {validated.member_id} deleted successfully",
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"On-call rotation member {validated.member_id} deleted successfully",
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting on-call rotation member: {e}")
+        return {
+            "success": False,
+            "message": f"Error deleting on-call rotation member: {_format_http_error(e)}",
+        }

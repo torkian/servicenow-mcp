@@ -11,7 +11,9 @@ from servicenow_mcp.tools.on_call_tools import (
     _format_on_call_rotation_member,
     _resolve_on_call_rotation_sys_id,
     create_on_call_rotation,
+    create_on_call_rotation_member,
     delete_on_call_rotation,
+    delete_on_call_rotation_member,
     get_on_call_rotation,
     list_on_call_rotation_members,
     list_on_call_rotations,
@@ -1265,6 +1267,292 @@ class TestDeleteOnCallRotation(unittest.TestCase):
             self.auth, self.config, {"rotation_id": "Network Team On-call"}
         )
         self.assertIn("Network Team On-call", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# create_on_call_rotation_member
+# ---------------------------------------------------------------------------
+
+class TestCreateOnCallRotationMember(unittest.TestCase):
+    """Tests for create_on_call_rotation_member.
+
+    Note: _resolve_on_call_rotation_sys_id returns FAKE_SYS_ID ("a"*32)
+    directly (32 hex chars) without calling _make_request, so tests using
+    FAKE_SYS_ID as rotation_id only need one mock response — the POST itself.
+    Tests using a name-based rotation_id need two: a GET resolve + POST create.
+    """
+
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth_manager()
+
+    def _make_create_resp(self, data=None):
+        resp = _make_response(201, {"result": data or FAKE_ROTA_MEMBER})
+        resp.raise_for_status = MagicMock()
+        return resp
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_creates_member_with_required_fields(self, mock_req):
+        mock_req.return_value = self._make_create_resp()
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("sys_id", result)
+        self.assertIn("member", result)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_posts_to_correct_table(self, mock_req):
+        mock_req.return_value = self._make_create_resp()
+        create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        call_args = mock_req.call_args
+        self.assertEqual(call_args[0][0], "POST")
+        self.assertIn("cmn_rota_member", call_args[0][1])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_sends_rotation_sys_id_in_body(self, mock_req):
+        mock_req.return_value = self._make_create_resp()
+        create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["rota"], FAKE_SYS_ID)
+        self.assertEqual(body["member"], FAKE_USER_SYS_ID)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_sends_optional_order_and_active(self, mock_req):
+        mock_req.return_value = self._make_create_resp()
+        create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID, "order": 3, "active": False},
+        )
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["order"], 3)
+        self.assertEqual(body["active"], "false")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_sends_catch_all_and_skills(self, mock_req):
+        mock_req.return_value = self._make_create_resp()
+        create_on_call_rotation_member(
+            self.auth, self.config,
+            {
+                "rotation_id": FAKE_SYS_ID,
+                "member": FAKE_USER_SYS_ID,
+                "catch_all": True,
+                "skills": "0" * 32,
+            },
+        )
+        body = mock_req.call_args[1]["json"]
+        self.assertEqual(body["catch_all"], "true")
+        self.assertEqual(body["skills"], "0" * 32)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_resolves_rotation_by_name(self, mock_req):
+        # Name-based lookup: first call = GET resolve, second = POST create
+        resolve_resp = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]})
+        create_resp = self._make_create_resp()
+        mock_req.side_effect = [resolve_resp, create_resp]
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": "Network Team On-call", "member": FAKE_USER_SYS_ID},
+        )
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_rotation_not_found_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": "No Such Rotation", "member": FAKE_USER_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_missing_rotation_id_returns_failure(self):
+        result = create_on_call_rotation_member(
+            self.auth, self.config, {"member": FAKE_USER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+
+    def test_missing_member_returns_failure(self):
+        result = create_on_call_rotation_member(
+            self.auth, self.config, {"rotation_id": FAKE_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error creating on-call rotation member", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_connection_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error creating on-call rotation member", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_instance_url")
+    def test_missing_instance_url_returns_failure(self, mock_url):
+        mock_url.return_value = None
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_headers")
+    @patch("servicenow_mcp.tools.on_call_tools._get_instance_url")
+    def test_missing_headers_returns_failure(self, mock_url, mock_headers):
+        mock_url.return_value = "https://dev99999.service-now.com"
+        mock_headers.return_value = None
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_normalises_member_reference_in_response(self, mock_req):
+        mock_req.return_value = self._make_create_resp()
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["member"]["member"], "Alice Smith")
+        self.assertEqual(result["member"]["rota"], "Network Team On-call")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_success_message_present(self, mock_req):
+        mock_req.return_value = self._make_create_resp()
+        result = create_on_call_rotation_member(
+            self.auth, self.config,
+            {"rotation_id": FAKE_SYS_ID, "member": FAKE_USER_SYS_ID},
+        )
+        self.assertIn("created successfully", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# delete_on_call_rotation_member
+# ---------------------------------------------------------------------------
+
+class TestDeleteOnCallRotationMember(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth = _make_auth_manager()
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_deletes_by_sys_id_204(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 204
+        mock_req.return_value = resp
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertIn(FAKE_MEMBER_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_deletes_by_sys_id_200(self, mock_req):
+        resp = _make_response(200, {})
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_uses_delete_method(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 204
+        mock_req.return_value = resp
+        delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        call_args = mock_req.call_args
+        self.assertEqual(call_args[0][0], "DELETE")
+        self.assertIn("cmn_rota_member", call_args[0][1])
+        self.assertIn(FAKE_MEMBER_SYS_ID, call_args[0][1])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_404_returns_failure(self, mock_req):
+        resp = _make_response(404, {})
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting on-call rotation member", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_connection_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting on-call rotation member", result["message"])
+
+    def test_missing_member_id_returns_failure(self):
+        result = delete_on_call_rotation_member(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_instance_url")
+    def test_missing_instance_url_returns_failure(self, mock_url):
+        mock_url.return_value = None
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_headers")
+    @patch("servicenow_mcp.tools.on_call_tools._get_instance_url")
+    def test_missing_headers_returns_failure(self, mock_url, mock_headers):
+        mock_url.return_value = "https://dev99999.service-now.com"
+        mock_headers.return_value = None
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_sys_id_in_success_message(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 204
+        mock_req.return_value = resp
+        result = delete_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertIn(FAKE_MEMBER_SYS_ID, result["message"])
 
 
 if __name__ == "__main__":
