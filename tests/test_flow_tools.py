@@ -11,6 +11,7 @@ from servicenow_mcp.tools.flow_tools import (
     _format_flow,
     _resolve_flow_sys_id,
     get_flow,
+    get_flow_execution,
     list_flow_executions,
     list_flows,
     trigger_flow,
@@ -565,6 +566,183 @@ class TestListFlowExecutions(unittest.TestCase):
         self.assertIn(f"flow={FAKE_SYS_ID}", query)
         self.assertIn("state=running", query)
         self.assertIn("started_on>=2026-07-01 00:00:00", query)
+
+
+if __name__ == "__main__":
+    unittest.main()
+
+
+# ---------------------------------------------------------------------------
+# get_flow_execution
+# ---------------------------------------------------------------------------
+
+FAKE_EXECUTION_DETAIL_RECORD = {
+    "sys_id": FAKE_EXECUTION_SYS_ID,
+    "name": "Incident Auto-Resolve",
+    "state": "complete",
+    "flow": {"display_value": "Incident Auto-Resolve", "value": FAKE_SYS_ID},
+    "started_on": "2026-07-30 08:00:00",
+    "ended_on": "2026-07-30 08:00:05",
+    "error": "",
+    "run_as": {"display_value": "admin", "value": "a" * 32},
+    "trigger_type": "manual",
+    "trigger": "Now Platform",
+    "context_parameters": '{"assignment_group": "IT"}',
+    "sys_created_on": "2026-07-30 07:59:55",
+    "sys_updated_on": "2026-07-30 08:00:06",
+}
+
+
+class TestGetFlowExecution(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.cfg = _make_config()
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success(self, mock_req):
+        mock_req.return_value = _make_response(
+            200, {"result": FAKE_EXECUTION_DETAIL_RECORD}
+        )
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        ex = result["execution"]
+        self.assertEqual(ex["sys_id"], FAKE_EXECUTION_SYS_ID)
+        self.assertEqual(ex["name"], "Incident Auto-Resolve")
+        self.assertEqual(ex["state"], "complete")
+        self.assertEqual(ex["flow"], "Incident Auto-Resolve")
+        self.assertEqual(ex["started_on"], "2026-07-30 08:00:00")
+        self.assertEqual(ex["ended_on"], "2026-07-30 08:00:05")
+        self.assertEqual(ex["error"], "")
+        self.assertEqual(ex["run_as"], "admin")
+        self.assertEqual(ex["trigger_type"], "manual")
+        self.assertEqual(ex["trigger"], "Now Platform")
+        self.assertEqual(ex["context_parameters"], '{"assignment_group": "IT"}')
+        self.assertEqual(ex["created_on"], "2026-07-30 07:59:55")
+        self.assertEqual(ex["updated_on"], "2026-07-30 08:00:06")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_hits_correct_url(self, mock_req):
+        mock_req.return_value = _make_response(
+            200, {"result": FAKE_EXECUTION_DETAIL_RECORD}
+        )
+        get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        call_url = mock_req.call_args[0][1]
+        self.assertIn(f"/sys_flow_context/{FAKE_EXECUTION_SYS_ID}", call_url)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_display_value_param_set(self, mock_req):
+        mock_req.return_value = _make_response(
+            200, {"result": FAKE_EXECUTION_DETAIL_RECORD}
+        )
+        get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        call_params = mock_req.call_args[1]["params"]
+        self.assertEqual(call_params["sysparm_display_value"], "true")
+        self.assertEqual(call_params["sysparm_exclude_reference_link"], "true")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_404_returns_not_found(self, mock_req):
+        mock_req.return_value = _make_response(404, {})
+        mock_req.return_value.raise_for_status = MagicMock()
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn(FAKE_EXECUTION_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_empty_result_returns_not_found(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_missing_execution_id_returns_error(self):
+        result = get_flow_execution(self.auth, self.cfg, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_network_error(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving flow execution", result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_run_as_as_string(self, mock_req):
+        record = {**FAKE_EXECUTION_DETAIL_RECORD, "run_as": "svc_account"}
+        mock_req.return_value = _make_response(200, {"result": record})
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution"]["run_as"], "svc_account")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_flow_ref_dict_fallback_to_value(self, mock_req):
+        record = {
+            **FAKE_EXECUTION_DETAIL_RECORD,
+            "flow": {"value": FAKE_SYS_ID},
+        }
+        mock_req.return_value = _make_response(200, {"result": record})
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution"]["flow"], FAKE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_missing_optional_fields_none(self, mock_req):
+        minimal = {
+            "sys_id": FAKE_EXECUTION_SYS_ID,
+            "state": "running",
+        }
+        mock_req.return_value = _make_response(200, {"result": minimal})
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        ex = result["execution"]
+        self.assertIsNone(ex["name"])
+        self.assertIsNone(ex["trigger_type"])
+        self.assertIsNone(ex["trigger"])
+        self.assertIsNone(ex["context_parameters"])
+        self.assertIsNone(ex["created_on"])
+        self.assertIsNone(ex["updated_on"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_error_state_returned(self, mock_req):
+        record = {
+            **FAKE_EXECUTION_DETAIL_RECORD,
+            "state": "error",
+            "error": "Script failed at step 3",
+        }
+        mock_req.return_value = _make_response(200, {"result": record})
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution"]["state"], "error")
+        self.assertEqual(result["execution"]["error"], "Script failed at step 3")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_http_500_returns_error(self, mock_req):
+        mock_req.return_value = _make_response(500, {"error": {"message": "Server error"}})
+        result = get_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving flow execution", result["message"])
 
 
 if __name__ == "__main__":

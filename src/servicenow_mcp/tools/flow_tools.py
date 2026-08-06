@@ -518,3 +518,112 @@ def list_flow_executions(
             "success": False,
             "message": f"Error listing flow executions: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# get_flow_execution
+# ---------------------------------------------------------------------------
+
+
+_EXECUTION_CONTEXT_DETAIL_FIELDS = _EXECUTION_CONTEXT_FIELDS + [
+    "trigger_type",
+    "trigger",
+    "context_parameters",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+class GetFlowExecutionParams(BaseModel):
+    """Parameters for retrieving a single Flow Designer execution record."""
+
+    execution_id: str = Field(
+        ...,
+        description=(
+            "The sys_id of the flow execution (sys_flow_context record) to retrieve."
+        ),
+    )
+
+
+def get_flow_execution(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single Flow Designer execution record by sys_id.
+
+    Fetches the sys_flow_context record for the given execution, returning
+    normalised state, timing, error, trigger, and run-as fields.  Returns a
+    404-style error message when the record does not exist.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetFlowExecutionParams.
+
+    Returns:
+        Dictionary with ``success`` and ``execution`` keys on success, or
+        ``success=False`` and ``message`` on failure.
+    """
+    result = _unwrap_and_validate_params(
+        params, GetFlowExecutionParams, required_fields=["execution_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: GetFlowExecutionParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{_FLOW_CONTEXT_TABLE}/{validated.execution_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(_EXECUTION_CONTEXT_DETAIL_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Flow execution not found: {validated.execution_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {
+                "success": False,
+                "message": f"Flow execution not found: {validated.execution_id}",
+            }
+
+        def _ref(value):
+            if isinstance(value, dict):
+                return value.get("display_value") or value.get("value")
+            return value
+
+        execution = {
+            "sys_id": record.get("sys_id"),
+            "name": record.get("name"),
+            "state": record.get("state"),
+            "flow": _ref(record.get("flow")),
+            "started_on": record.get("started_on"),
+            "ended_on": record.get("ended_on"),
+            "error": record.get("error"),
+            "run_as": _ref(record.get("run_as")),
+            "trigger_type": record.get("trigger_type"),
+            "trigger": record.get("trigger"),
+            "context_parameters": record.get("context_parameters"),
+            "created_on": record.get("sys_created_on"),
+            "updated_on": record.get("sys_updated_on"),
+        }
+        return {"success": True, "execution": execution}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving flow execution: {e}")
+        return {
+            "success": False,
+            "message": f"Error retrieving flow execution: {_format_http_error(e)}",
+        }

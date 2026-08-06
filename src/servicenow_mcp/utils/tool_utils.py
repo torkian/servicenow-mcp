@@ -961,11 +961,13 @@ from servicenow_mcp.tools.user_tools import (
     update_user as update_user_tool,
 )
 from servicenow_mcp.tools.flow_tools import (
+    GetFlowExecutionParams,
     GetFlowParams,
     ListFlowExecutionsParams,
     ListFlowsParams,
     TriggerFlowParams,
     get_flow as get_flow_tool,
+    get_flow_execution as get_flow_execution_tool,
     list_flow_executions as list_flow_executions_tool,
     list_flows as list_flows_tool,
     trigger_flow as trigger_flow_tool,
@@ -1759,6 +1761,13 @@ def get_tool_definitions(
             ListFlowExecutionsParams,
             str,
             "List Flow Designer execution history from sys_flow_context with optional flow/state/date filters",
+            "json",
+        ),
+        "get_flow_execution": (
+            get_flow_execution_tool,
+            GetFlowExecutionParams,
+            str,
+            "Retrieve a single Flow Designer execution record (sys_flow_context) by sys_id",
             "json",
         ),
         # Changeset Management Tools
