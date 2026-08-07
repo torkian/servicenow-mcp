@@ -223,6 +223,7 @@ platform_developer:
   - trigger_flow
   - list_flow_executions
   - get_flow_execution
+  - cancel_flow_execution
   # General UI Policies
   - create_ui_policy
   - create_ui_policy_action
@@ -447,6 +448,7 @@ full:
   - trigger_flow
   - list_flow_executions
   - get_flow_execution
+  - cancel_flow_execution
   - create_workflow
   - update_workflow
   - activate_workflow

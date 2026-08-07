@@ -298,6 +298,7 @@ from servicenow_mcp.tools.user_tools import (
     update_user,
 )
 from servicenow_mcp.tools.flow_tools import (
+    cancel_flow_execution,
     get_flow,
     get_flow_execution,
     list_flow_executions,
@@ -403,6 +404,7 @@ __all__ = [
     "trigger_flow",
     "list_flow_executions",
     "get_flow_execution",
+    "cancel_flow_execution",
 
     # Workflow management tools
     "list_workflows",

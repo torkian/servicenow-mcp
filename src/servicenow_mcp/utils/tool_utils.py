@@ -961,11 +961,13 @@ from servicenow_mcp.tools.user_tools import (
     update_user as update_user_tool,
 )
 from servicenow_mcp.tools.flow_tools import (
+    CancelFlowExecutionParams,
     GetFlowExecutionParams,
     GetFlowParams,
     ListFlowExecutionsParams,
     ListFlowsParams,
     TriggerFlowParams,
+    cancel_flow_execution as cancel_flow_execution_tool,
     get_flow as get_flow_tool,
     get_flow_execution as get_flow_execution_tool,
     list_flow_executions as list_flow_executions_tool,
@@ -1768,6 +1770,13 @@ def get_tool_definitions(
             GetFlowExecutionParams,
             str,
             "Retrieve a single Flow Designer execution record (sys_flow_context) by sys_id",
+            "json",
+        ),
+        "cancel_flow_execution": (
+            cancel_flow_execution_tool,
+            CancelFlowExecutionParams,
+            str,
+            "Cancel a running Flow Designer execution by setting its state to cancelled",
             "json",
         ),
         # Changeset Management Tools

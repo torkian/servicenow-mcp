@@ -10,6 +10,7 @@ from servicenow_mcp.tools.flow_tools import (
     _format_execution,
     _format_flow,
     _resolve_flow_sys_id,
+    cancel_flow_execution,
     get_flow,
     get_flow_execution,
     list_flow_executions,
@@ -743,6 +744,141 @@ class TestGetFlowExecution(unittest.TestCase):
         )
         self.assertFalse(result["success"])
         self.assertIn("Error retrieving flow execution", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# cancel_flow_execution
+# ---------------------------------------------------------------------------
+
+
+class TestCancelFlowExecution(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.cfg = _make_config()
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_cancel_success(self, mock_req):
+        mock_req.return_value = _make_response(
+            200, {"result": {"sys_id": FAKE_EXECUTION_SYS_ID, "state": "cancelled"}}
+        )
+        result = cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_id"], FAKE_EXECUTION_SYS_ID)
+        self.assertIn("cancelled", result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_patches_correct_url(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        call_method = mock_req.call_args[0][0]
+        call_url = mock_req.call_args[0][1]
+        self.assertEqual(call_method, "PATCH")
+        self.assertIn(f"/sys_flow_context/{FAKE_EXECUTION_SYS_ID}", call_url)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_state_cancelled_in_body(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertEqual(call_json.get("state"), "cancelled")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_cancel_reason_included_as_work_notes(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        cancel_flow_execution(
+            self.auth,
+            self.cfg,
+            {
+                "execution_id": FAKE_EXECUTION_SYS_ID,
+                "cancel_reason": "Duplicate trigger",
+            },
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertEqual(call_json.get("work_notes"), "Duplicate trigger")
+        self.assertEqual(call_json.get("state"), "cancelled")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_no_cancel_reason_omits_work_notes(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertNotIn("work_notes", call_json)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_404_returns_not_found(self, mock_req):
+        mock_req.return_value = _make_response(404, {})
+        mock_req.return_value.raise_for_status = MagicMock()
+        result = cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn(FAKE_EXECUTION_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_http_500_returns_error(self, mock_req):
+        mock_req.return_value = _make_response(
+            500, {"error": {"message": "Internal Server Error"}}
+        )
+        result = cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error cancelling flow execution", result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_network_error(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error cancelling flow execution", result["message"])
+
+    def test_missing_execution_id_returns_error(self):
+        result = cancel_flow_execution(self.auth, self.cfg, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_response_contains_execution_id(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_id"], FAKE_EXECUTION_SYS_ID)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_204_response_succeeds(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 204
+        resp.json.return_value = {}
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+        result = cancel_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_cancel_reason_with_newline(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        reason = "Step 1 failed\nRetrying with new inputs"
+        cancel_flow_execution(
+            self.auth,
+            self.cfg,
+            {"execution_id": FAKE_EXECUTION_SYS_ID, "cancel_reason": reason},
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertEqual(call_json.get("work_notes"), reason)
 
 
 if __name__ == "__main__":

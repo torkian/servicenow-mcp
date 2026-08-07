@@ -521,6 +521,89 @@ def list_flow_executions(
 
 
 # ---------------------------------------------------------------------------
+# cancel_flow_execution
+# ---------------------------------------------------------------------------
+
+
+class CancelFlowExecutionParams(BaseModel):
+    """Parameters for cancelling a running Flow Designer execution."""
+
+    execution_id: str = Field(
+        ...,
+        description=(
+            "The sys_id of the flow execution (sys_flow_context record) to cancel."
+        ),
+    )
+    cancel_reason: Optional[str] = Field(
+        None,
+        description=(
+            "Optional reason for cancellation.  When provided it is stored in the "
+            "record's work_notes field for audit purposes."
+        ),
+    )
+
+
+def cancel_flow_execution(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Cancel a running Flow Designer execution by setting its state to 'cancelled'.
+
+    PATCHes the sys_flow_context record for the given execution_id.  Returns a
+    404-style error message when the record does not exist or is already in a
+    terminal state that ServiceNow will not allow to be cancelled.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CancelFlowExecutionParams.
+
+    Returns:
+        Dictionary with ``success``, ``execution_id``, and ``message`` keys on
+        success, or ``success=False`` and ``message`` on failure.
+    """
+    result = _unwrap_and_validate_params(
+        params, CancelFlowExecutionParams, required_fields=["execution_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: CancelFlowExecutionParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{_FLOW_CONTEXT_TABLE}/{validated.execution_id}"
+    body: Dict[str, Any] = {"state": "cancelled"}
+    if validated.cancel_reason:
+        body["work_notes"] = validated.cancel_reason
+
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Flow execution not found: {validated.execution_id}",
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "execution_id": validated.execution_id,
+            "message": "Flow execution cancelled successfully.",
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error cancelling flow execution: {e}")
+        return {
+            "success": False,
+            "message": f"Error cancelling flow execution: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
 # get_flow_execution
 # ---------------------------------------------------------------------------
 
