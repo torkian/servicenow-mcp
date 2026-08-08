@@ -817,6 +817,7 @@ from servicenow_mcp.tools.on_call_tools import (
     CreateOnCallRotationParams,
     DeleteOnCallRotationMemberParams,
     DeleteOnCallRotationParams,
+    GetOnCallRotationMemberParams,
     GetOnCallRotationParams,
     ListOnCallRotationMembersParams,
     ListOnCallRotationsParams,
@@ -829,6 +830,7 @@ from servicenow_mcp.tools.on_call_tools import (
     delete_on_call_rotation as delete_on_call_rotation_tool,
     delete_on_call_rotation_member as delete_on_call_rotation_member_tool,
     get_on_call_rotation as get_on_call_rotation_tool,
+    get_on_call_rotation_member as get_on_call_rotation_member_tool,
     list_on_call_rotation_members as list_on_call_rotation_members_tool,
     list_on_call_rotations as list_on_call_rotations_tool,
     update_on_call_rotation as update_on_call_rotation_tool,
@@ -2234,6 +2236,19 @@ def get_tool_definitions(
                 "Requires a rotation sys_id or exact name. Optionally filter by active state. "
                 "Returns member user, order, active flag, catch_all, override, and skill fields. "
                 "Results ordered by member order field. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_on_call_rotation_member": (
+            get_on_call_rotation_member_tool,
+            GetOnCallRotationMemberParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single on-call rotation member record from the ServiceNow "
+                "cmn_rota_member table by its sys_id. Returns all member fields including "
+                "the linked rotation, member user, order position, active flag, catch_all, "
+                "override rotation reference, skills, and timestamps. Returns a clear error "
+                "on 404 or empty-result responses."
             ),
             "raw_dict",
         ),

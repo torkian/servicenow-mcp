@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_on_call_rotation_member tool (GET cmn_rota_member/{sys_id}; 404/empty-result guards)
+(empty — replenishment needed)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -128,3 +128,4 @@
 121. 2026-08-05 — Add create_on_call_rotation_member and delete_on_call_rotation_member tools (POST/DELETE cmn_rota_member; rotation name→sys_id resolver on create; boolean active/catch_all serialised as strings; 404 guard on delete; registered in system_administrator and full packages; 25 new tests; 2661 total tests; 99% on_call_tools.py coverage)
 122. 2026-08-06 — Add get_flow_execution tool (GET sys_flow_context/{sys_id}; 404/empty-result guards; normalised execution fields including trigger_type/trigger/context_parameters; registered in platform_developer and full packages; 12 new tests; 2673 total tests; 94% total coverage)
 123. 2026-08-07 — Add cancel_flow_execution tool (PATCH sys_flow_context/{sys_id} with state=cancelled; optional cancel_reason stored as work_notes; 404 guard; registered in platform_developer and full packages; 12 new tests; 2685 total tests; 94% total coverage)
+124. 2026-08-08 — Add get_on_call_rotation_member tool (GET cmn_rota_member/{sys_id}; 404/empty-result guards; reference fields normalised; registered in system_administrator and full packages; 13 new tests; 2698 total tests; 99% on_call_tools.py coverage; 94% total coverage)

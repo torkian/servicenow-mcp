@@ -302,6 +302,7 @@ system_administrator:
   - create_on_call_rotation_member
   - list_on_call_rotations
   - get_on_call_rotation
+  - get_on_call_rotation_member
   - list_on_call_rotation_members
   - update_on_call_rotation
   - update_on_call_rotation_member
@@ -514,6 +515,7 @@ full:
   - create_on_call_rotation_member
   - list_on_call_rotations
   - get_on_call_rotation
+  - get_on_call_rotation_member
   - list_on_call_rotation_members
   - update_on_call_rotation
   - update_on_call_rotation_member

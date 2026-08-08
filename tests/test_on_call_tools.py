@@ -15,6 +15,7 @@ from servicenow_mcp.tools.on_call_tools import (
     delete_on_call_rotation,
     delete_on_call_rotation_member,
     get_on_call_rotation,
+    get_on_call_rotation_member,
     list_on_call_rotation_members,
     list_on_call_rotations,
     update_on_call_rotation,
@@ -1553,6 +1554,134 @@ class TestDeleteOnCallRotationMember(unittest.TestCase):
             self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
         )
         self.assertIn(FAKE_MEMBER_SYS_ID, result["message"])
+
+
+# ---------------------------------------------------------------------------
+# get_on_call_rotation_member
+# ---------------------------------------------------------------------------
+
+class TestGetOnCallRotationMember(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.config = _make_config()
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_success_returns_member(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_ROTA_MEMBER})
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("member", result)
+        self.assertEqual(result["member"]["sys_id"], FAKE_MEMBER_SYS_ID)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_normalises_member_reference(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_ROTA_MEMBER})
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertEqual(result["member"]["member"], "Alice Smith")
+        self.assertEqual(result["member"]["rota"], "Network Team On-call")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_404_returns_failure(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 404
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn(FAKE_MEMBER_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_empty_result_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_none_result_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": None})
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_request_exception_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving", result["message"])
+
+    def test_missing_member_id_returns_failure(self):
+        result = get_on_call_rotation_member(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_instance_url")
+    def test_no_instance_url_returns_failure(self, mock_url):
+        mock_url.return_value = None
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._get_headers")
+    def test_no_headers_returns_failure(self, mock_headers):
+        mock_headers.return_value = None
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_correct_url_constructed(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_ROTA_MEMBER})
+        get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        call_url = mock_req.call_args[0][1]
+        self.assertIn(FAKE_MEMBER_SYS_ID, call_url)
+        self.assertIn("cmn_rota_member", call_url)
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_display_value_requested(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_ROTA_MEMBER})
+        get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        call_params = mock_req.call_args[1].get("params", {})
+        self.assertEqual(call_params.get("sysparm_display_value"), "true")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_skills_normalised(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_ROTA_MEMBER})
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertEqual(result["member"]["skills"], "Network Admin")
+
+    @patch("servicenow_mcp.tools.on_call_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 500
+        http_err = requests.exceptions.HTTPError(response=resp)
+        resp.raise_for_status.side_effect = http_err
+        mock_req.return_value = resp
+        result = get_on_call_rotation_member(
+            self.auth, self.config, {"member_id": FAKE_MEMBER_SYS_ID}
+        )
+        self.assertFalse(result["success"])
 
 
 if __name__ == "__main__":
