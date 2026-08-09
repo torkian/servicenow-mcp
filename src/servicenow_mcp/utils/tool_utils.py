@@ -967,12 +967,14 @@ from servicenow_mcp.tools.flow_tools import (
     GetFlowExecutionParams,
     GetFlowParams,
     ListFlowExecutionsParams,
+    ListFlowLogsParams,
     ListFlowsParams,
     TriggerFlowParams,
     cancel_flow_execution as cancel_flow_execution_tool,
     get_flow as get_flow_tool,
     get_flow_execution as get_flow_execution_tool,
     list_flow_executions as list_flow_executions_tool,
+    list_flow_logs as list_flow_logs_tool,
     list_flows as list_flows_tool,
     trigger_flow as trigger_flow_tool,
 )
@@ -1779,6 +1781,13 @@ def get_tool_definitions(
             CancelFlowExecutionParams,
             str,
             "Cancel a running Flow Designer execution by setting its state to cancelled",
+            "json",
+        ),
+        "list_flow_logs": (
+            list_flow_logs_tool,
+            ListFlowLogsParams,
+            str,
+            "List log entries for a Flow Designer execution from sys_flow_log, ordered by sequence",
             "json",
         ),
         # Changeset Management Tools

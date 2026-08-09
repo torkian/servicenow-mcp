@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 _FLOW_TABLE = "sys_hub_flow"
 _FLOW_CONTEXT_TABLE = "sys_flow_context"
+_FLOW_LOG_TABLE = "sys_flow_log"
 _FLOW_API_BASE = "/api/now/v2/flow_api/flows"
 
 _FLOW_FIELDS = [
@@ -709,4 +710,121 @@ def get_flow_execution(
         return {
             "success": False,
             "message": f"Error retrieving flow execution: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# list_flow_logs
+# ---------------------------------------------------------------------------
+
+_FLOW_LOG_FIELDS = [
+    "sys_id",
+    "flow_context",
+    "message",
+    "level",
+    "sequence",
+    "activity",
+    "sys_created_on",
+]
+
+
+def _format_flow_log(record: Dict) -> Dict:
+    """Normalise a sys_flow_log record."""
+
+    def _ref(value):
+        if isinstance(value, dict):
+            return value.get("display_value") or value.get("value")
+        return value
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "execution_id": _ref(record.get("flow_context")),
+        "message": record.get("message"),
+        "level": record.get("level"),
+        "sequence": record.get("sequence"),
+        "activity": _ref(record.get("activity")),
+        "created_on": record.get("sys_created_on"),
+    }
+
+
+class ListFlowLogsParams(BaseModel):
+    """Parameters for listing log entries from a Flow Designer execution."""
+
+    execution_id: str = Field(
+        ...,
+        description=(
+            "The sys_id of the flow execution (sys_flow_context record) whose log "
+            "entries should be returned."
+        ),
+    )
+    level: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by log level.  Common values: 'info', 'warn', 'error'.  "
+            "When omitted all levels are returned."
+        ),
+    )
+    limit: Optional[int] = Field(50, description="Maximum records to return (default 50)")
+    offset: Optional[int] = Field(0, description="Offset for pagination")
+
+
+def list_flow_logs(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List log entries for a Flow Designer execution from sys_flow_log.
+
+    Returns the ordered sequence of log messages produced during a flow
+    execution, including the activity that generated each entry and its
+    severity level.  Useful for debugging failed or unexpected executions.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListFlowLogsParams.
+
+    Returns:
+        Dictionary with ``success``, ``logs`` (list), ``count``,
+        ``has_more``, and ``next_offset`` keys on success, or
+        ``success=False`` and ``message`` on failure.
+    """
+    result = _unwrap_and_validate_params(
+        params, ListFlowLogsParams, required_fields=["execution_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: ListFlowLogsParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts: List[str] = [f"flow_context={validated.execution_id}"]
+    if validated.level:
+        query_parts.append(f"level={validated.level}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        order_by="sequence",
+        fields=",".join(_FLOW_LOG_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{_FLOW_LOG_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        logs = [_format_flow_log(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(logs, validated.limit, validated.offset, "logs")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing flow logs: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing flow logs: {_format_http_error(e)}",
         }

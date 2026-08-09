@@ -1,7 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-(empty — replenishment needed)
+1. Add pause_flow_execution and resume_flow_execution tools (sys_flow_context PATCH)
+2. Add event management tools (sysevent table: list_events, get_event, create_event)
+3. Add generic table CRUD tools for custom tables (list_records, get_record, create_record, update_record, delete_record on any table)
+4. Improve test coverage on scrum_task_tools.py (84%), sctask_tools.py (83%), story_tools.py (79%)
+5. Add list_kb_categories and get_kb_category tools (kb_category table)
+6. Add create_problem_workaround and get_problem_workaround tools
+7. Add list_service_catalog tools (list all catalog items across categories)
+8. Add ServiceNow metric/gauge tools (sys_metric table)
+9. Add user_preference tools (sys_user_preference: get, set, delete)
+10. Add survey/assessment tools (asmt_assessment_instance table)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -129,3 +138,4 @@
 122. 2026-08-06 — Add get_flow_execution tool (GET sys_flow_context/{sys_id}; 404/empty-result guards; normalised execution fields including trigger_type/trigger/context_parameters; registered in platform_developer and full packages; 12 new tests; 2673 total tests; 94% total coverage)
 123. 2026-08-07 — Add cancel_flow_execution tool (PATCH sys_flow_context/{sys_id} with state=cancelled; optional cancel_reason stored as work_notes; 404 guard; registered in platform_developer and full packages; 12 new tests; 2685 total tests; 94% total coverage)
 124. 2026-08-08 — Add get_on_call_rotation_member tool (GET cmn_rota_member/{sys_id}; 404/empty-result guards; reference fields normalised; registered in system_administrator and full packages; 13 new tests; 2698 total tests; 99% on_call_tools.py coverage; 94% total coverage)
+125. 2026-08-09 — Add list_flow_logs tool (GET sys_flow_log by flow_context sys_id; optional level filter; ordered by sequence; _format_flow_log normalises reference fields; registered in platform_developer and full packages; 13 new tests; 2714 total tests; 94% total coverage)

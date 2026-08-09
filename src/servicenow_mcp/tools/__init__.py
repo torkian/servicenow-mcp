@@ -303,6 +303,7 @@ from servicenow_mcp.tools.flow_tools import (
     get_flow,
     get_flow_execution,
     list_flow_executions,
+    list_flow_logs,
     list_flows,
     trigger_flow,
 )
@@ -406,6 +407,7 @@ __all__ = [
     "list_flow_executions",
     "get_flow_execution",
     "cancel_flow_execution",
+    "list_flow_logs",
 
     # Workflow management tools
     "list_workflows",

@@ -9,11 +9,13 @@ from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.flow_tools import (
     _format_execution,
     _format_flow,
+    _format_flow_log,
     _resolve_flow_sys_id,
     cancel_flow_execution,
     get_flow,
     get_flow_execution,
     list_flow_executions,
+    list_flow_logs,
     list_flows,
     trigger_flow,
 )
@@ -879,6 +881,180 @@ class TestCancelFlowExecution(unittest.TestCase):
         )
         call_json = mock_req.call_args[1].get("json", {})
         self.assertEqual(call_json.get("work_notes"), reason)
+
+
+# ---------------------------------------------------------------------------
+# list_flow_logs
+# ---------------------------------------------------------------------------
+
+FAKE_FLOW_LOG_EXECUTION_ID = "c" * 32
+
+FAKE_LOG_RECORD = {
+    "sys_id": "d" * 32,
+    "flow_context": {
+        "display_value": "My Flow Execution",
+        "value": FAKE_FLOW_LOG_EXECUTION_ID,
+    },
+    "message": "Activity completed successfully.",
+    "level": "info",
+    "sequence": "10",
+    "activity": {"display_value": "Assign Ticket", "value": "e" * 32},
+    "sys_created_on": "2026-08-09 10:00:00",
+}
+
+
+class TestFormatFlowLog(unittest.TestCase):
+    def test_formats_all_fields(self):
+        result = _format_flow_log(FAKE_LOG_RECORD)
+        self.assertEqual(result["sys_id"], "d" * 32)
+        self.assertEqual(result["execution_id"], "My Flow Execution")
+        self.assertEqual(result["message"], "Activity completed successfully.")
+        self.assertEqual(result["level"], "info")
+        self.assertEqual(result["sequence"], "10")
+        self.assertEqual(result["activity"], "Assign Ticket")
+        self.assertEqual(result["created_on"], "2026-08-09 10:00:00")
+
+    def test_reference_fields_as_strings(self):
+        record = dict(FAKE_LOG_RECORD)
+        record["flow_context"] = FAKE_FLOW_LOG_EXECUTION_ID
+        record["activity"] = "e" * 32
+        result = _format_flow_log(record)
+        self.assertEqual(result["execution_id"], FAKE_FLOW_LOG_EXECUTION_ID)
+        self.assertEqual(result["activity"], "e" * 32)
+
+    def test_missing_fields_return_none(self):
+        result = _format_flow_log({})
+        self.assertIsNone(result["sys_id"])
+        self.assertIsNone(result["message"])
+        self.assertIsNone(result["level"])
+
+
+class TestListFlowLogs(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.cfg = _make_config()
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_returns_logs(self, mock_req):
+        mock_req.return_value = _make_response(
+            200,
+            {"result": [FAKE_LOG_RECORD, FAKE_LOG_RECORD]},
+        )
+        result = list_flow_logs(
+            self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(len(result["logs"]), 2)
+        self.assertEqual(result["count"], 2)
+        self.assertFalse(result["has_more"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_level_filter_passed_in_query(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_flow_logs(
+            self.auth,
+            self.cfg,
+            {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID, "level": "error"},
+        )
+        call_params = mock_req.call_args[1].get("params", {})
+        self.assertIn("level=error", call_params.get("sysparm_query", ""))
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_execution_id_in_query(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_flow_logs(self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID})
+        call_params = mock_req.call_args[1].get("params", {})
+        self.assertIn(FAKE_FLOW_LOG_EXECUTION_ID, call_params.get("sysparm_query", ""))
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_pagination_has_more(self, mock_req):
+        records = [FAKE_LOG_RECORD] * 50
+        mock_req.return_value = _make_response(200, {"result": records})
+        result = list_flow_logs(
+            self.auth,
+            self.cfg,
+            {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID, "limit": 50, "offset": 0},
+        )
+        self.assertTrue(result["success"])
+        self.assertTrue(result["has_more"])
+        self.assertEqual(result["next_offset"], 50)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_pagination_offset_passed(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_flow_logs(
+            self.auth,
+            self.cfg,
+            {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID, "limit": 10, "offset": 20},
+        )
+        call_params = mock_req.call_args[1].get("params", {})
+        self.assertEqual(call_params.get("sysparm_offset"), 20)
+        self.assertEqual(call_params.get("sysparm_limit"), 10)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = list_flow_logs(
+            self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing flow logs", result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_connection_error_returns_failure(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = list_flow_logs(
+            self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID}
+        )
+        self.assertFalse(result["success"])
+
+    def test_missing_execution_id_returns_failure(self):
+        result = list_flow_logs(self.auth, self.cfg, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_empty_results(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = list_flow_logs(
+            self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["logs"], [])
+        self.assertEqual(result["count"], 0)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_no_level_filter_no_level_in_query(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_flow_logs(self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID})
+        call_params = mock_req.call_args[1].get("params", {})
+        query = call_params.get("sysparm_query", "")
+        self.assertIn("flow_context=", query)
+        self.assertNotIn("level=", query)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_ordered_by_sequence(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_flow_logs(self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID})
+        call_params = mock_req.call_args[1].get("params", {})
+        self.assertEqual(call_params.get("sysparm_orderby"), "sequence")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_correct_table_queried(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_flow_logs(self.auth, self.cfg, {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID})
+        call_url = mock_req.call_args[0][1]
+        self.assertIn("sys_flow_log", call_url)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_info_level_filter(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_LOG_RECORD]})
+        result = list_flow_logs(
+            self.auth,
+            self.cfg,
+            {"execution_id": FAKE_FLOW_LOG_EXECUTION_ID, "level": "info"},
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["logs"][0]["level"], "info")
 
 
 if __name__ == "__main__":
