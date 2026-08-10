@@ -305,6 +305,8 @@ from servicenow_mcp.tools.flow_tools import (
     list_flow_executions,
     list_flow_logs,
     list_flows,
+    pause_flow_execution,
+    resume_flow_execution,
     trigger_flow,
 )
 from servicenow_mcp.tools.workflow_activity_tools import (
@@ -407,6 +409,8 @@ __all__ = [
     "list_flow_executions",
     "get_flow_execution",
     "cancel_flow_execution",
+    "pause_flow_execution",
+    "resume_flow_execution",
     "list_flow_logs",
 
     # Workflow management tools

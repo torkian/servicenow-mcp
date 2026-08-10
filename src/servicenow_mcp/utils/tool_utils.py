@@ -969,6 +969,8 @@ from servicenow_mcp.tools.flow_tools import (
     ListFlowExecutionsParams,
     ListFlowLogsParams,
     ListFlowsParams,
+    PauseFlowExecutionParams,
+    ResumeFlowExecutionParams,
     TriggerFlowParams,
     cancel_flow_execution as cancel_flow_execution_tool,
     get_flow as get_flow_tool,
@@ -976,6 +978,8 @@ from servicenow_mcp.tools.flow_tools import (
     list_flow_executions as list_flow_executions_tool,
     list_flow_logs as list_flow_logs_tool,
     list_flows as list_flows_tool,
+    pause_flow_execution as pause_flow_execution_tool,
+    resume_flow_execution as resume_flow_execution_tool,
     trigger_flow as trigger_flow_tool,
 )
 from servicenow_mcp.tools.workflow_activity_tools import (
@@ -1788,6 +1792,20 @@ def get_tool_definitions(
             ListFlowLogsParams,
             str,
             "List log entries for a Flow Designer execution from sys_flow_log, ordered by sequence",
+            "json",
+        ),
+        "pause_flow_execution": (
+            pause_flow_execution_tool,
+            PauseFlowExecutionParams,
+            str,
+            "Pause a running Flow Designer execution by setting its state to paused",
+            "json",
+        ),
+        "resume_flow_execution": (
+            resume_flow_execution_tool,
+            ResumeFlowExecutionParams,
+            str,
+            "Resume a paused Flow Designer execution by setting its state back to running",
             "json",
         ),
         # Changeset Management Tools

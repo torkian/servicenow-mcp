@@ -17,6 +17,8 @@ from servicenow_mcp.tools.flow_tools import (
     list_flow_executions,
     list_flow_logs,
     list_flows,
+    pause_flow_execution,
+    resume_flow_execution,
     trigger_flow,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -1055,6 +1057,240 @@ class TestListFlowLogs(unittest.TestCase):
         )
         self.assertTrue(result["success"])
         self.assertEqual(result["logs"][0]["level"], "info")
+
+
+# ---------------------------------------------------------------------------
+# pause_flow_execution
+# ---------------------------------------------------------------------------
+
+FAKE_PAUSE_EXECUTION_SYS_ID = "f" * 32
+
+
+class TestPauseFlowExecution(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.cfg = _make_config()
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_sets_state_paused(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertEqual(call_json.get("state"), "paused")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_returns_execution_id(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_id"], FAKE_PAUSE_EXECUTION_SYS_ID)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_pause_reason_stored_in_work_notes(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        pause_flow_execution(
+            self.auth,
+            self.cfg,
+            {
+                "execution_id": FAKE_PAUSE_EXECUTION_SYS_ID,
+                "pause_reason": "Waiting for approval",
+            },
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertEqual(call_json.get("work_notes"), "Waiting for approval")
+        self.assertEqual(call_json.get("state"), "paused")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_no_pause_reason_omits_work_notes(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertNotIn("work_notes", call_json)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_404_returns_not_found(self, mock_req):
+        mock_req.return_value = _make_response(404, {})
+        mock_req.return_value.raise_for_status = MagicMock()
+        result = pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn(FAKE_PAUSE_EXECUTION_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_http_500_returns_error(self, mock_req):
+        mock_req.return_value = _make_response(
+            500, {"error": {"message": "Internal Server Error"}}
+        )
+        result = pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error pausing flow execution", result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_network_error(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error pausing flow execution", result["message"])
+
+    def test_missing_execution_id_returns_error(self):
+        result = pause_flow_execution(self.auth, self.cfg, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_uses_patch_method(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        self.assertEqual(mock_req.call_args[0][0], "PATCH")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_url_includes_execution_id_and_table(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        call_url = mock_req.call_args[0][1]
+        self.assertIn(FAKE_PAUSE_EXECUTION_SYS_ID, call_url)
+        self.assertIn("sys_flow_context", call_url)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_message_mentions_paused(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = pause_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_PAUSE_EXECUTION_SYS_ID}
+        )
+        self.assertIn("paused", result["message"].lower())
+
+
+# ---------------------------------------------------------------------------
+# resume_flow_execution
+# ---------------------------------------------------------------------------
+
+FAKE_RESUME_EXECUTION_SYS_ID = "9" * 32
+
+
+class TestResumeFlowExecution(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth_manager()
+        self.cfg = _make_config()
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_sets_state_running(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertEqual(call_json.get("state"), "running")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_returns_execution_id(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["execution_id"], FAKE_RESUME_EXECUTION_SYS_ID)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_resume_notes_stored_in_work_notes(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        resume_flow_execution(
+            self.auth,
+            self.cfg,
+            {
+                "execution_id": FAKE_RESUME_EXECUTION_SYS_ID,
+                "resume_notes": "Approval received",
+            },
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertEqual(call_json.get("work_notes"), "Approval received")
+        self.assertEqual(call_json.get("state"), "running")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_no_resume_notes_omits_work_notes(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        call_json = mock_req.call_args[1].get("json", {})
+        self.assertNotIn("work_notes", call_json)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_404_returns_not_found(self, mock_req):
+        mock_req.return_value = _make_response(404, {})
+        mock_req.return_value.raise_for_status = MagicMock()
+        result = resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn(FAKE_RESUME_EXECUTION_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_http_500_returns_error(self, mock_req):
+        mock_req.return_value = _make_response(
+            500, {"error": {"message": "Internal Server Error"}}
+        )
+        result = resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error resuming flow execution", result["message"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_network_error(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error resuming flow execution", result["message"])
+
+    def test_missing_execution_id_returns_error(self):
+        result = resume_flow_execution(self.auth, self.cfg, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_uses_patch_method(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        self.assertEqual(mock_req.call_args[0][0], "PATCH")
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_url_includes_execution_id_and_table(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        call_url = mock_req.call_args[0][1]
+        self.assertIn(FAKE_RESUME_EXECUTION_SYS_ID, call_url)
+        self.assertIn("sys_flow_context", call_url)
+
+    @patch("servicenow_mcp.tools.flow_tools._make_request")
+    def test_success_message_mentions_resumed(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = resume_flow_execution(
+            self.auth, self.cfg, {"execution_id": FAKE_RESUME_EXECUTION_SYS_ID}
+        )
+        self.assertIn("resumed", result["message"].lower())
 
 
 if __name__ == "__main__":

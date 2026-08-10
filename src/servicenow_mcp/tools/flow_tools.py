@@ -605,6 +605,173 @@ def cancel_flow_execution(
 
 
 # ---------------------------------------------------------------------------
+# pause_flow_execution
+# ---------------------------------------------------------------------------
+
+
+class PauseFlowExecutionParams(BaseModel):
+    """Parameters for pausing a running Flow Designer execution."""
+
+    execution_id: str = Field(
+        ...,
+        description=(
+            "The sys_id of the flow execution (sys_flow_context record) to pause."
+        ),
+    )
+    pause_reason: Optional[str] = Field(
+        None,
+        description=(
+            "Optional reason for pausing.  When provided it is stored in the "
+            "record's work_notes field for audit purposes."
+        ),
+    )
+
+
+def pause_flow_execution(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Pause a running Flow Designer execution by setting its state to 'paused'.
+
+    PATCHes the sys_flow_context record for the given execution_id.  Only
+    executions currently in a 'running' or 'waiting' state can be paused;
+    ServiceNow returns an error for executions already in a terminal state.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching PauseFlowExecutionParams.
+
+    Returns:
+        Dictionary with ``success``, ``execution_id``, and ``message`` keys on
+        success, or ``success=False`` and ``message`` on failure.
+    """
+    result = _unwrap_and_validate_params(
+        params, PauseFlowExecutionParams, required_fields=["execution_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: PauseFlowExecutionParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{_FLOW_CONTEXT_TABLE}/{validated.execution_id}"
+    body: Dict[str, Any] = {"state": "paused"}
+    if validated.pause_reason:
+        body["work_notes"] = validated.pause_reason
+
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Flow execution not found: {validated.execution_id}",
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "execution_id": validated.execution_id,
+            "message": "Flow execution paused successfully.",
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error pausing flow execution: {e}")
+        return {
+            "success": False,
+            "message": f"Error pausing flow execution: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# resume_flow_execution
+# ---------------------------------------------------------------------------
+
+
+class ResumeFlowExecutionParams(BaseModel):
+    """Parameters for resuming a paused Flow Designer execution."""
+
+    execution_id: str = Field(
+        ...,
+        description=(
+            "The sys_id of the flow execution (sys_flow_context record) to resume."
+        ),
+    )
+    resume_notes: Optional[str] = Field(
+        None,
+        description=(
+            "Optional notes about why the execution is being resumed.  When provided "
+            "they are stored in the record's work_notes field for audit purposes."
+        ),
+    )
+
+
+def resume_flow_execution(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Resume a paused Flow Designer execution by setting its state to 'running'.
+
+    PATCHes the sys_flow_context record for the given execution_id.  Only
+    executions currently in a 'paused' or 'waiting' state can be resumed;
+    ServiceNow returns an error for executions in a terminal state (complete,
+    cancelled, error).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ResumeFlowExecutionParams.
+
+    Returns:
+        Dictionary with ``success``, ``execution_id``, and ``message`` keys on
+        success, or ``success=False`` and ``message`` on failure.
+    """
+    result = _unwrap_and_validate_params(
+        params, ResumeFlowExecutionParams, required_fields=["execution_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: ResumeFlowExecutionParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{_FLOW_CONTEXT_TABLE}/{validated.execution_id}"
+    body: Dict[str, Any] = {"state": "running"}
+    if validated.resume_notes:
+        body["work_notes"] = validated.resume_notes
+
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Flow execution not found: {validated.execution_id}",
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "execution_id": validated.execution_id,
+            "message": "Flow execution resumed successfully.",
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error resuming flow execution: {e}")
+        return {
+            "success": False,
+            "message": f"Error resuming flow execution: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
 # get_flow_execution
 # ---------------------------------------------------------------------------
 
