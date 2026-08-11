@@ -261,6 +261,11 @@ from servicenow_mcp.tools.scheduled_job_tools import (
     list_scheduled_jobs,
     update_scheduled_job,
 )
+from servicenow_mcp.tools.event_tools import (
+    create_event,
+    get_event,
+    list_events,
+)
 from servicenow_mcp.tools.syslog_tools import (
     get_syslog_entry,
     list_syslog_entries,
@@ -509,6 +514,11 @@ __all__ = [
     "create_scheduled_job",
     "update_scheduled_job",
     "delete_scheduled_job",
+
+    # Event tools
+    "list_events",
+    "get_event",
+    "create_event",
 
     # Syslog tools
     "list_syslog_entries",

@@ -850,6 +850,16 @@ from servicenow_mcp.tools.scheduled_job_tools import (
     list_scheduled_jobs as list_scheduled_jobs_tool,
     update_scheduled_job as update_scheduled_job_tool,
 )
+from servicenow_mcp.tools.event_tools import (
+    CreateEventParams,
+    GetEventParams,
+    ListEventsParams,
+)
+from servicenow_mcp.tools.event_tools import (
+    create_event as create_event_tool,
+    get_event as get_event_tool,
+    list_events as list_events_tool,
+)
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -2414,6 +2424,28 @@ def get_tool_definitions(
             GetSyslogEntryParams,
             str,
             "Retrieve a single syslog entry by its sys_id",
+            "json",
+        ),
+        # Event Tools
+        "list_events": (
+            list_events_tool,
+            ListEventsParams,
+            str,
+            "List business events from the ServiceNow sysevent table, with optional filters for name, state, queue, and date range",
+            "json",
+        ),
+        "get_event": (
+            get_event_tool,
+            GetEventParams,
+            str,
+            "Retrieve a single sysevent record by its sys_id",
+            "json",
+        ),
+        "create_event": (
+            create_event_tool,
+            CreateEventParams,
+            str,
+            "Create a new business event in the ServiceNow sysevent table to queue it for processing",
             "json",
         ),
         # UI Policy Tools

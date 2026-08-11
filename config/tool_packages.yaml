@@ -300,6 +300,10 @@ system_administrator:
   # System Logs
   - list_syslog_entries
   - get_syslog_entry
+  # Event Management
+  - list_events
+  - get_event
+  - create_event
   # On-call Rotations
   - create_on_call_rotation
   - create_on_call_rotation_member
@@ -516,6 +520,10 @@ full:
   # Syslog
   - list_syslog_entries
   - get_syslog_entry
+  # Event Management
+  - list_events
+  - get_event
+  - create_event
   # On-call Rotations
   - create_on_call_rotation
   - create_on_call_rotation_member

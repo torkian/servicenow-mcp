@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add event management tools (sysevent table: list_events, get_event, create_event)
-2. Add generic table CRUD tools for custom tables (list_records, get_record, create_record, update_record, delete_record on any table)
+1. Add generic table CRUD tools for custom tables (list_records, get_record, create_record, update_record, delete_record on any table)
 3. Improve test coverage on scrum_task_tools.py (84%), sctask_tools.py (83%), story_tools.py (79%)
 4. Add list_kb_categories and get_kb_category tools (kb_category table)
 5. Add create_problem_workaround and get_problem_workaround tools
@@ -139,3 +138,4 @@
 124. 2026-08-08 — Add get_on_call_rotation_member tool (GET cmn_rota_member/{sys_id}; 404/empty-result guards; reference fields normalised; registered in system_administrator and full packages; 13 new tests; 2698 total tests; 99% on_call_tools.py coverage; 94% total coverage)
 125. 2026-08-09 — Add list_flow_logs tool (GET sys_flow_log by flow_context sys_id; optional level filter; ordered by sequence; _format_flow_log normalises reference fields; registered in platform_developer and full packages; 13 new tests; 2714 total tests; 94% total coverage)
 126. 2026-08-10 — Add pause_flow_execution and resume_flow_execution tools (PATCH sys_flow_context with state=paused/running; optional pause_reason/resume_notes stored as work_notes; 404 guards; registered in platform_developer and full packages; 22 new tests; 2736 total tests; 94% total coverage)
+127. 2026-08-11 — Add event management tools (list_events, get_event, create_event on sysevent table; state labels 0-3 mapped to pending/processed/error/cancelled; fired_by reference normalised; datetime validation on process_on; registered in system_administrator and full packages; 38 new tests; 2774 total tests; 94% total coverage)
