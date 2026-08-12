@@ -369,6 +369,12 @@ system_administrator:
   - list_sla_breaches
   - get_sla_breach
   - resolve_sla_breach
+  # Generic Table CRUD
+  - list_records
+  - get_record
+  - create_record
+  - update_record
+  - delete_record
 
 full:
   # Incident Management
@@ -662,3 +668,9 @@ full:
   - bulk_update_change_tasks
   - bulk_update_problems
   - bulk_update_problem_tasks
+  # Generic Table CRUD
+  - list_records
+  - get_record
+  - create_record
+  - update_record
+  - delete_record

@@ -860,6 +860,20 @@ from servicenow_mcp.tools.event_tools import (
     get_event as get_event_tool,
     list_events as list_events_tool,
 )
+from servicenow_mcp.tools.generic_table_tools import (
+    CreateRecordParams,
+    DeleteRecordParams,
+    GetRecordParams,
+    ListRecordsParams,
+    UpdateRecordParams,
+)
+from servicenow_mcp.tools.generic_table_tools import (
+    create_record as create_record_tool,
+    delete_record as delete_record_tool,
+    get_record as get_record_tool,
+    list_records as list_records_tool,
+    update_record as update_record_tool,
+)
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -3387,6 +3401,65 @@ def get_tool_definitions(
                 "Accepts a user sys_id or username. Optionally filter by include_inherited "
                 "(True = only inherited roles, False = only direct grants). Returns paginated "
                 "records with role name, inheritance flag, and granting role."
+            ),
+            "raw_dict",
+        ),
+        # Generic Table CRUD Tools
+        "list_records": (
+            list_records_tool,
+            ListRecordsParams,
+            Dict[str, Any],
+            (
+                "List records from any ServiceNow table with optional sysparm_query filtering, "
+                "field selection, pagination, and sort ordering. Accepts any table name "
+                "(including custom u_ tables). Use sysparm_query with ServiceNow encoded query "
+                "notation (e.g. 'active=true^priority=1'). Returns paginated records."
+            ),
+            "raw_dict",
+        ),
+        "get_record": (
+            get_record_tool,
+            GetRecordParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single record by sys_id from any ServiceNow table. "
+                "Accepts any table name and returns the record's fields with display values. "
+                "Returns a 404-style error when the record does not exist."
+            ),
+            "raw_dict",
+        ),
+        "create_record": (
+            create_record_tool,
+            CreateRecordParams,
+            Dict[str, Any],
+            (
+                "Create a new record in any ServiceNow table by supplying a dictionary of "
+                "field → value pairs. Field names must match the internal ServiceNow column "
+                "names (e.g. 'short_description', not 'Short description'). Returns the "
+                "created record including its new sys_id."
+            ),
+            "raw_dict",
+        ),
+        "update_record": (
+            update_record_tool,
+            UpdateRecordParams,
+            Dict[str, Any],
+            (
+                "Update an existing record in any ServiceNow table using PATCH semantics — "
+                "only the fields supplied are changed. Accepts any table name, the record "
+                "sys_id, and a dictionary of field → new value. Returns a 404-style error "
+                "when the record does not exist."
+            ),
+            "raw_dict",
+        ),
+        "delete_record": (
+            delete_record_tool,
+            DeleteRecordParams,
+            Dict[str, Any],
+            (
+                "Delete a record from any ServiceNow table by sys_id. "
+                "Returns a 404-style error when the record does not exist. "
+                "This is a destructive operation and cannot be undone."
             ),
             "raw_dict",
         ),

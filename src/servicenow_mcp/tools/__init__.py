@@ -266,6 +266,13 @@ from servicenow_mcp.tools.event_tools import (
     get_event,
     list_events,
 )
+from servicenow_mcp.tools.generic_table_tools import (
+    create_record,
+    delete_record,
+    get_record,
+    list_records,
+    update_record,
+)
 from servicenow_mcp.tools.syslog_tools import (
     get_syslog_entry,
     list_syslog_entries,
@@ -655,4 +662,11 @@ __all__ = [
     "list_on_call_rotations",
     "update_on_call_rotation",
     "update_on_call_rotation_member",
+
+    # Generic Table CRUD tools
+    "list_records",
+    "get_record",
+    "create_record",
+    "update_record",
+    "delete_record",
 ]
