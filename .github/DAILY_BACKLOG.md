@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Improve test coverage on scrum_task_tools.py (84%), sctask_tools.py (83%), story_tools.py (79%)
-4. Add list_kb_categories and get_kb_category tools (kb_category table)
+1. Add list_kb_categories and get_kb_category tools (kb_category table)
 5. Add create_problem_workaround and get_problem_workaround tools
 6. Add list_service_catalog tools (list all catalog items across categories)
 7. Add ServiceNow metric/gauge tools (sys_metric table)
@@ -139,3 +138,4 @@
 126. 2026-08-10 — Add pause_flow_execution and resume_flow_execution tools (PATCH sys_flow_context with state=paused/running; optional pause_reason/resume_notes stored as work_notes; 404 guards; registered in platform_developer and full packages; 22 new tests; 2736 total tests; 94% total coverage)
 127. 2026-08-11 — Add event management tools (list_events, get_event, create_event on sysevent table; state labels 0-3 mapped to pending/processed/error/cancelled; fired_by reference normalised; datetime validation on process_on; registered in system_administrator and full packages; 38 new tests; 2774 total tests; 94% total coverage)
 128. 2026-08-12 — Add generic table CRUD tools (list_records, get_record, create_record, update_record, delete_record on any table; sysparm_query/field/pagination support on list; empty-body and 404 guards on update/delete; registered in system_administrator and full packages; 54 new tests; 2828 total tests; 94% coverage; 100% generic_table_tools.py coverage)
+129. 2026-08-13 — Improve test coverage on scrum_task_tools.py (84%→100%), sctask_tools.py (83%→100%), story_tools.py (79%→100%); 58 new tests covering optional field branches, no-instance_url/no-headers error paths, all timeframe filters, validation failures, SCTASK number-resolution error paths, time_worked parse-exception paths, and dependency tool error paths; 2886 total tests; 95% total coverage
