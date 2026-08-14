@@ -1187,5 +1187,249 @@ class TestCreateKnowledgeArticle(unittest.TestCase):
         self.assertIsNone(params.disable_suggesting)
 
 
+class TestGetKBCategory(unittest.TestCase):
+    """Tests for the get_kb_category tool."""
+
+    PATCH_TARGET = "servicenow_mcp.tools.knowledge_base._make_request"
+
+    def setUp(self):
+        auth_config = AuthConfig(
+            type=AuthType.BASIC,
+            basic=BasicAuthConfig(username="u", password="p"),
+        )
+        self.config = ServerConfig(
+            instance_url="https://example.service-now.com",
+            auth=auth_config,
+        )
+        self.auth_manager = MagicMock(spec=AuthManager)
+        self.auth_manager.get_headers.return_value = {"Authorization": "Basic xxx"}
+
+    def _mock_response(self, status_code=200, json_data=None):
+        mock_resp = MagicMock()
+        mock_resp.status_code = status_code
+        mock_resp.json.return_value = json_data or {}
+        if status_code >= 400:
+            mock_resp.raise_for_status.side_effect = requests.HTTPError(
+                response=mock_resp
+            )
+        else:
+            mock_resp.raise_for_status.return_value = None
+        return mock_resp
+
+    # ------------------------------------------------------------------ helpers
+    def _category_payload(self, sys_id="abc123def456abc123def456abc12345"):
+        return {
+            "result": {
+                "sys_id": sys_id,
+                "label": {"display_value": "Networking"},
+                "description": {"display_value": "Network-related articles"},
+                "kb_knowledge_base": {
+                    "display_value": "IT Knowledge",
+                    "value": "kb000001",
+                },
+                "parent": {
+                    "display_value": "Hardware",
+                    "value": "par000001",
+                },
+                "active": "true",
+                "sys_created_on": "2024-01-01 00:00:00",
+                "sys_updated_on": "2024-06-01 00:00:00",
+            }
+        }
+
+    # ------------------------------------------------------------------ tests
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_get_by_sys_id_success(self, mock_req):
+        """Direct sys_id lookup returns category details."""
+        sys_id = "abc123def456abc123def456abc12345"
+        mock_req.return_value = self._mock_response(200, self._category_payload(sys_id))
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id=sys_id),
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual("Networking", result["category"]["label"])
+        self.assertEqual("IT Knowledge", result["category"]["knowledge_base"])
+        self.assertEqual("kb000001", result["category"]["knowledge_base_sys_id"])
+        self.assertEqual("Hardware", result["category"]["parent_category"])
+        self.assertTrue(result["category"]["active"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_get_by_sys_id_url_contains_sys_id(self, mock_req):
+        """When a 32-char hex sys_id is given the URL uses it directly."""
+        sys_id = "abc123def456abc123def456abc12345"
+        mock_req.return_value = self._mock_response(200, self._category_payload(sys_id))
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id=sys_id),
+        )
+
+        call_url = mock_req.call_args[0][1]
+        self.assertIn(sys_id, call_url)
+        # Only one request should be made (no resolver call)
+        self.assertEqual(1, mock_req.call_count)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_get_by_name_resolves_then_fetches(self, mock_req):
+        """When a label is given the tool first resolves it then fetches by sys_id."""
+        sys_id = "abc123def456abc123def456abc12345"
+        # First call: resolver; second call: fetch
+        resolver_resp = self._mock_response(
+            200, {"result": [{"sys_id": sys_id, "label": "Networking"}]}
+        )
+        fetch_resp = self._mock_response(200, self._category_payload(sys_id))
+        mock_req.side_effect = [resolver_resp, fetch_resp]
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id="Networking"),
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual("Networking", result["category"]["label"])
+        self.assertEqual(2, mock_req.call_count)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_get_by_name_not_found(self, mock_req):
+        """When label lookup returns empty list an error is returned."""
+        mock_req.return_value = self._mock_response(200, {"result": []})
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id="Nonexistent"),
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_get_404_returns_error(self, mock_req):
+        """A 404 response from ServiceNow surfaces as a not-found error."""
+        sys_id = "abc123def456abc123def456abc12345"
+        mock_req.return_value = self._mock_response(404)
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id=sys_id),
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_get_empty_result_returns_error(self, mock_req):
+        """An empty result dict surfaces as a not-found error."""
+        sys_id = "abc123def456abc123def456abc12345"
+        mock_req.return_value = self._mock_response(200, {"result": {}})
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id=sys_id),
+        )
+
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_get_network_error(self, mock_req):
+        """Network errors are caught and return a failure dict."""
+        sys_id = "abc123def456abc123def456abc12345"
+        mock_req.side_effect = requests.ConnectionError("connection refused")
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id=sys_id),
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("Failed to get knowledge base category", result["message"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_active_false_serialised_correctly(self, mock_req):
+        """active='false' string from ServiceNow is deserialised to Python False."""
+        sys_id = "abc123def456abc123def456abc12345"
+        payload = self._category_payload(sys_id)
+        payload["result"]["active"] = "false"
+        mock_req.return_value = self._mock_response(200, payload)
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id=sys_id),
+        )
+
+        self.assertTrue(result["success"])
+        self.assertFalse(result["category"]["active"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_no_parent_category(self, mock_req):
+        """A category with no parent returns empty strings for parent fields."""
+        sys_id = "abc123def456abc123def456abc12345"
+        payload = self._category_payload(sys_id)
+        payload["result"]["parent"] = ""
+        mock_req.return_value = self._mock_response(200, payload)
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id=sys_id),
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual("", result["category"]["parent_category"])
+        self.assertEqual("", result["category"]["parent_category_sys_id"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_name_resolver_network_error_returns_not_found(self, mock_req):
+        """If the resolver call throws a network error, not-found is returned."""
+        mock_req.side_effect = requests.ConnectionError("timeout")
+
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams, get_kb_category
+
+        result = get_kb_category(
+            self.config,
+            self.auth_manager,
+            GetKBCategoryParams(category_id="Networking"),
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_params_model_requires_category_id(self):
+        """GetKBCategoryParams requires category_id."""
+        from pydantic import ValidationError
+        from servicenow_mcp.tools.knowledge_base import GetKBCategoryParams
+
+        with self.assertRaises(ValidationError):
+            GetKBCategoryParams()  # missing required field
+
+
 if __name__ == "__main__":
     unittest.main()

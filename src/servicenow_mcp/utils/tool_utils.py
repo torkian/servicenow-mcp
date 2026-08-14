@@ -538,6 +538,9 @@ from servicenow_mcp.tools.knowledge_base import (
     CreateCategoryParams as CreateKBCategoryParams,  # Aliased
 )
 from servicenow_mcp.tools.knowledge_base import (
+    GetKBCategoryParams,
+)
+from servicenow_mcp.tools.knowledge_base import (
     ListCategoriesParams as ListKBCategoriesParams,  # Aliased
 )
 from servicenow_mcp.tools.knowledge_base import (
@@ -552,6 +555,9 @@ from servicenow_mcp.tools.knowledge_base import (
 )
 from servicenow_mcp.tools.knowledge_base import (
     get_article as get_article_tool,
+)
+from servicenow_mcp.tools.knowledge_base import (
+    get_kb_category as get_kb_category_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
     list_articles as list_articles_tool,
@@ -2017,6 +2023,17 @@ def get_tool_definitions(
             Dict[str, Any],  # Expects dict
             "List categories in a knowledge base",
             "raw_dict",  # Tool returns raw dict
+        ),
+        "get_kb_category": (
+            get_kb_category_tool,
+            GetKBCategoryParams,
+            Dict[str, Any],
+            (
+                "Get a specific knowledge base category by sys_id or label. "
+                "When a 32-char hex sys_id is supplied it is used directly; "
+                "otherwise the label is resolved via a LIKE lookup first."
+            ),
+            "raw_dict",
         ),
         # User Management Tools
         "create_user": (

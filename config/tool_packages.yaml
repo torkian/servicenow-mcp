@@ -57,6 +57,7 @@ service_desk:
   - get_article
   - list_articles
   - list_articles_by_category
+  - get_kb_category
   # Asset Lookup & Provisioning
   - list_assets
   - get_asset
@@ -184,6 +185,7 @@ knowledge_author:
   # KB Categories
   - create_category  # KB specific category tool
   - list_categories  # KB specific category tool
+  - get_kb_category  # KB specific category tool
   # Article Lifecycle
   - create_article
   - create_knowledge_article
@@ -494,6 +496,7 @@ full:
   - list_knowledge_bases
   - create_category # KB specific
   - list_categories # KB specific
+  - get_kb_category # KB specific
   - create_article
   - create_knowledge_article
   - update_article

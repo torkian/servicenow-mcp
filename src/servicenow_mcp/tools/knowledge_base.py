@@ -135,6 +135,15 @@ class ListCategoriesParams(BaseModel):
     query: Optional[str] = Field(None, description="Search query for categories")
 
 
+class GetKBCategoryParams(BaseModel):
+    """Parameters for getting a specific knowledge base category."""
+
+    category_id: str = Field(
+        ...,
+        description="Category sys_id (32-char hex) or category label/name to look up",
+    )
+
+
 class ListArticlesByCategoryParams(BaseModel):
     """Parameters for listing knowledge articles within a specific category."""
 
@@ -1283,3 +1292,111 @@ def create_knowledge_article(
             success=False,
             message=f"Failed to create knowledge article: {_format_http_error(e)}",
         )
+
+
+def get_kb_category(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: GetKBCategoryParams,
+) -> Dict[str, Any]:
+    """Get a specific knowledge base category by sys_id or label.
+
+    When ``category_id`` is a 32-character hex string it is used directly as
+    the ``sys_id`` in the URL.  Otherwise it is treated as a label and resolved
+    via a ``labelLIKE`` query before the individual record is fetched.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required category identifier.
+
+    Returns:
+        Dictionary with category details or an error response.
+    """
+    category_id = params.category_id
+
+    # Resolve name → sys_id when not already a hex sys_id
+    is_sys_id = len(category_id) == 32 and all(
+        c in "0123456789abcdefABCDEF" for c in category_id
+    )
+    if not is_sys_id:
+        resolved = _resolve_category_sys_id(config, auth_manager, category_id)
+        if not resolved:
+            return {
+                "success": False,
+                "message": f"Knowledge base category '{category_id}' not found",
+            }
+        category_id = resolved
+
+    api_url = f"{config.api_url}/table/kb_category/{category_id}"
+    query_params = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params=query_params,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Knowledge base category '{params.category_id}' not found",
+            }
+
+        response.raise_for_status()
+
+        result = response.json().get("result", {})
+        if not result or not isinstance(result, dict):
+            return {
+                "success": False,
+                "message": f"Knowledge base category '{params.category_id}' not found",
+            }
+
+        def _dv(field) -> str:
+            if isinstance(field, dict):
+                return field.get("display_value", "")
+            return field or ""
+
+        kb_field = result.get("kb_knowledge_base")
+        parent_field = result.get("parent")
+        active_field = result.get("active")
+
+        category = {
+            "sys_id": result.get("sys_id", ""),
+            "label": _dv(result.get("label")),
+            "description": _dv(result.get("description")),
+            "knowledge_base": _dv(kb_field),
+            "knowledge_base_sys_id": (
+                kb_field.get("value", "") if isinstance(kb_field, dict) else ""
+            ),
+            "parent_category": _dv(parent_field),
+            "parent_category_sys_id": (
+                parent_field.get("value", "") if isinstance(parent_field, dict) else ""
+            ),
+            "active": (
+                active_field.lower() == "true"
+                if isinstance(active_field, str)
+                else bool(active_field)
+            ),
+            "created": result.get("sys_created_on", ""),
+            "updated": result.get("sys_updated_on", ""),
+        }
+
+        return {
+            "success": True,
+            "message": f"Retrieved knowledge base category '{category['label']}'",
+            "category": category,
+        }
+
+    except requests.RequestException as e:
+        logger.error("Failed to get knowledge base category: %s", e)
+        return {
+            "success": False,
+            "message": f"Failed to get knowledge base category: {_format_http_error(e)}",
+        }
