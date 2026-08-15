@@ -178,7 +178,9 @@ from servicenow_mcp.tools.problem_task_tools import (
 from servicenow_mcp.tools.problem_tools import (
     close_problem,
     create_problem,
+    create_problem_workaround,
     get_problem,
+    get_problem_workaround,
     list_problems,
     update_problem,
 )
@@ -602,6 +604,8 @@ __all__ = [
     "create_problem",
     "update_problem",
     "close_problem",
+    "create_problem_workaround",
+    "get_problem_workaround",
     # Problem Task tools
     "create_problem_task",
     "list_problem_tasks",

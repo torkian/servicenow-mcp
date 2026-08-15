@@ -608,7 +608,9 @@ from servicenow_mcp.tools.problem_task_tools import (
 from servicenow_mcp.tools.problem_tools import (
     CloseProblemParams,
     CreateProblemParams,
+    CreateProblemWorkaroundParams,
     GetProblemParams,
+    GetProblemWorkaroundParams,
     ListProblemsParams,
     UpdateProblemParams,
 )
@@ -619,7 +621,13 @@ from servicenow_mcp.tools.problem_tools import (
     create_problem as create_problem_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
+    create_problem_workaround as create_problem_workaround_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
     get_problem as get_problem_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    get_problem_workaround as get_problem_workaround_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
     list_problems as list_problems_tool,
@@ -3235,6 +3243,31 @@ def get_tool_definitions(
                 "Close a problem record by setting its state to Closed (4). "
                 "Accepts a problem number (e.g. PRB0001234) or sys_id. "
                 "Optionally include close_notes, fix_notes, cause_notes, and work_notes."
+            ),
+            "raw_dict",
+        ),
+        "create_problem_workaround": (
+            create_problem_workaround_tool,
+            CreateProblemWorkaroundParams,
+            Dict[str, Any],
+            (
+                "Record a workaround on a ServiceNow problem. "
+                "Accepts a problem number (e.g. PRB0001234) or sys_id and a required "
+                "workaround text field. Optionally mark the problem as a known error "
+                "(known_error=true) and append work_notes at the same time."
+            ),
+            "raw_dict",
+        ),
+        "get_problem_workaround": (
+            get_problem_workaround_tool,
+            GetProblemWorkaroundParams,
+            Dict[str, Any],
+            (
+                "Retrieve the workaround details for a ServiceNow problem. "
+                "Accepts a problem number (e.g. PRB0001234) or sys_id. "
+                "Returns workaround_info with sys_id, number, short_description, "
+                "workaround text, has_workaround flag, known_error flag, state, "
+                "and problem_state — without fetching the full problem record."
             ),
             "raw_dict",
         ),

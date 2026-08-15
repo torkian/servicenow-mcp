@@ -30,6 +30,8 @@ service_desk:
   - create_problem
   - update_problem
   - close_problem
+  - create_problem_workaround
+  - get_problem_workaround
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks
@@ -169,6 +171,8 @@ change_coordinator:
   - create_problem
   - update_problem
   - close_problem
+  - create_problem_workaround
+  - get_problem_workaround
   # Bulk Operations
   - bulk_update_incidents
   - bulk_update_change_requests
@@ -607,6 +611,8 @@ full:
   - create_problem
   - update_problem
   - close_problem
+  - create_problem_workaround
+  - get_problem_workaround
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks

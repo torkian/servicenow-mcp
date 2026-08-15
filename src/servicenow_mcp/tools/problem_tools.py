@@ -1,8 +1,8 @@
 """
 Problem management tools for the ServiceNow MCP server.
 
-Provides tools for listing, retrieving, creating, and updating problem records
-via the /api/now/table/problem endpoint.
+Provides tools for listing, retrieving, creating, updating, closing, and
+managing workarounds for problem records via the /api/now/table/problem endpoint.
 """
 
 import logging
@@ -127,6 +127,36 @@ class CloseProblemParams(BaseModel):
     fix_notes: Optional[str] = Field(None, description="Description of the fix that was applied")
     cause_notes: Optional[str] = Field(None, description="Root-cause analysis notes")
     work_notes: Optional[str] = Field(None, description="Additional work notes to append on closure")
+
+
+class CreateProblemWorkaroundParams(BaseModel):
+    """Parameters for creating/setting a workaround on a problem."""
+
+    problem_id: str = Field(
+        ...,
+        description="Problem number (e.g. PRB0001234) or sys_id (32-char hex)",
+    )
+    workaround: str = Field(
+        ...,
+        description="Workaround description — steps users can follow to avoid or mitigate the problem",
+    )
+    known_error: Optional[bool] = Field(
+        None,
+        description="If True, also mark the problem as a known error (sets known_error=true)",
+    )
+    work_notes: Optional[str] = Field(
+        None,
+        description="Optional work notes to append when recording the workaround",
+    )
+
+
+class GetProblemWorkaroundParams(BaseModel):
+    """Parameters for retrieving the workaround of a problem."""
+
+    problem_id: str = Field(
+        ...,
+        description="Problem number (e.g. PRB0001234) or sys_id (32-char hex)",
+    )
 
 
 def _format_problem(record: Dict) -> Dict:
@@ -537,3 +567,170 @@ def close_problem(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error closing problem: {e}")
         return {"success": False, "message": f"Error closing problem: {_format_http_error(e)}"}
+
+
+def create_problem_workaround(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Set a workaround on a problem record in ServiceNow.
+
+    PATCHes the problem's ``workaround`` field and optionally marks it as a
+    known error.  Use this when a workaround is found during root-cause
+    analysis so it is recorded on the problem for users and service desk staff.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateProblemWorkaroundParams.
+
+    Returns:
+        Dictionary with ``success``, ``sys_id``, ``number``, and ``problem`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, CreateProblemWorkaroundParams, required_fields=["problem_id", "workaround"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    resolve = _resolve_problem_sys_id(validated.problem_id, instance_url, headers)
+    if not resolve["success"]:
+        return resolve
+    sys_id = resolve["sys_id"]
+
+    body: Dict[str, Any] = {"workaround": validated.workaround}
+    if validated.known_error is not None:
+        body["known_error"] = "true" if validated.known_error else "false"
+    if validated.work_notes is not None:
+        body["work_notes"] = validated.work_notes
+
+    url = f"{instance_url}{PROBLEM_TABLE}/{sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Problem not found: {validated.problem_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {
+            "success": True,
+            "message": "Problem workaround recorded successfully",
+            "sys_id": record.get("sys_id") or sys_id,
+            "number": record.get("number"),
+            "problem": _format_problem(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error setting problem workaround: {e}")
+        return {"success": False, "message": f"Error setting problem workaround: {_format_http_error(e)}"}
+
+
+def get_problem_workaround(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve the workaround details for a problem record.
+
+    Returns the ``workaround`` text and related fields (``known_error``,
+    ``state``, ``problem_state``) so callers can quickly check whether a
+    workaround is available without fetching the full problem record.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetProblemWorkaroundParams.
+
+    Returns:
+        Dictionary with ``success`` and ``workaround_info`` keys.
+        ``workaround_info`` includes ``sys_id``, ``number``,
+        ``short_description``, ``workaround``, ``known_error``,
+        ``state``, and ``problem_state``.
+    """
+    result = _unwrap_and_validate_params(
+        params, GetProblemWorkaroundParams, required_fields=["problem_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    workaround_fields = "sys_id,number,short_description,workaround,known_error,state,problem_state"
+
+    # Direct sys_id fetch
+    if len(validated.problem_id) == 32 and all(c in "0123456789abcdef" for c in validated.problem_id):
+        url = f"{instance_url}{PROBLEM_TABLE}/{validated.problem_id}"
+        try:
+            response = _make_request(
+                "GET",
+                url,
+                headers=headers,
+                params={
+                    "sysparm_fields": workaround_fields,
+                    "sysparm_display_value": "true",
+                    "sysparm_exclude_reference_link": "true",
+                },
+            )
+            if response.status_code == 404:
+                return {"success": False, "message": f"Problem not found: {validated.problem_id}"}
+            response.raise_for_status()
+            record = response.json().get("result", {})
+            if not record:
+                return {"success": False, "message": f"Problem not found: {validated.problem_id}"}
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error retrieving problem workaround: {e}")
+            return {"success": False, "message": f"Error retrieving problem workaround: {_format_http_error(e)}"}
+    else:
+        # Number-based lookup
+        url = f"{instance_url}{PROBLEM_TABLE}"
+        try:
+            response = _make_request(
+                "GET",
+                url,
+                headers=headers,
+                params={
+                    "sysparm_query": f"number={validated.problem_id}",
+                    "sysparm_limit": 1,
+                    "sysparm_fields": workaround_fields,
+                    "sysparm_display_value": "true",
+                    "sysparm_exclude_reference_link": "true",
+                },
+            )
+            response.raise_for_status()
+            records = response.json().get("result", [])
+            if not records:
+                return {"success": False, "message": f"Problem not found: {validated.problem_id}"}
+            record = records[0]
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error retrieving problem workaround: {e}")
+            return {"success": False, "message": f"Error retrieving problem workaround: {_format_http_error(e)}"}
+
+    known_error_raw = record.get("known_error", "false")
+    known_error_bool = known_error_raw in (True, "true", "1")
+
+    return {
+        "success": True,
+        "workaround_info": {
+            "sys_id": record.get("sys_id"),
+            "number": record.get("number"),
+            "short_description": record.get("short_description"),
+            "workaround": record.get("workaround") or "",
+            "has_workaround": bool(record.get("workaround")),
+            "known_error": known_error_bool,
+            "state": record.get("state"),
+            "problem_state": record.get("problem_state"),
+        },
+    }
