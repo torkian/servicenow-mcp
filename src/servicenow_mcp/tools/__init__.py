@@ -38,8 +38,10 @@ from servicenow_mcp.tools.catalog_tools import (
     get_catalog_item,
     list_catalog_categories,
     list_catalog_items,
+    list_catalog_items_by_catalog,
     list_catalogs,
     move_catalog_items,
+    search_catalog_items,
     update_catalog_category,
 )
 from servicenow_mcp.tools.catalog_variables import (
@@ -367,6 +369,8 @@ __all__ = [
     "create_catalog_item",
     "delete_catalog_item",
     "list_catalog_items",
+    "list_catalog_items_by_catalog",
+    "search_catalog_items",
     "get_catalog_item",
     "list_catalog_categories",
     "get_catalog_category",

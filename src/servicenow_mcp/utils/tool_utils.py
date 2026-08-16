@@ -83,9 +83,11 @@ from servicenow_mcp.tools.catalog_tools import (
     GetCatalogItemParams,
     GetCatalogParams,
     ListCatalogCategoriesParams,
+    ListCatalogItemsByCatalogParams,
     ListCatalogItemsParams,
     ListCatalogsParams,
     MoveCatalogItemsParams,
+    SearchCatalogItemsParams,
     UpdateCatalogCategoryParams,
 )
 from servicenow_mcp.tools.catalog_tools import (
@@ -113,10 +115,16 @@ from servicenow_mcp.tools.catalog_tools import (
     list_catalog_items as list_catalog_items_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
+    list_catalog_items_by_catalog as list_catalog_items_by_catalog_tool,
+)
+from servicenow_mcp.tools.catalog_tools import (
     list_catalogs as list_catalogs_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     move_catalog_items as move_catalog_items_tool,
+)
+from servicenow_mcp.tools.catalog_tools import (
+    search_catalog_items as search_catalog_items_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     update_catalog_category as update_catalog_category_tool,
@@ -1282,6 +1290,20 @@ def get_tool_definitions(
             str,  # Expects JSON string
             "Move catalog items to a different category.",
             "json_dict",  # Tool returns Pydantic model
+        ),
+        "list_catalog_items_by_catalog": (
+            list_catalog_items_by_catalog_tool,
+            ListCatalogItemsByCatalogParams,
+            str,
+            "List all catalog items belonging to a specific service catalog (by sys_id or title), across all its categories.",
+            "json",
+        ),
+        "search_catalog_items": (
+            search_catalog_items_tool,
+            SearchCatalogItemsParams,
+            str,
+            "Full-text search for catalog items across all service catalogs; returns catalog and category context for each result.",
+            "json",
         ),
         "get_optimization_recommendations": (
             get_optimization_recommendations_tool,

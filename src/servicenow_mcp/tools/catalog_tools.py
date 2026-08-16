@@ -119,6 +119,26 @@ class MoveCatalogItemsParams(BaseModel):
     target_category_id: str = Field(..., description="Target category ID to move items to")
 
 
+class ListCatalogItemsByCatalogParams(BaseModel):
+    """Parameters for listing all catalog items within a specific catalog across all its categories."""
+
+    catalog_id: str = Field(..., description="Service catalog sys_id or title to scope the item listing")
+    limit: int = Field(10, description="Maximum number of items to return")
+    offset: int = Field(0, description="Offset for pagination")
+    category: Optional[str] = Field(None, description="Optional category sys_id or title to further narrow results")
+    active: bool = Field(True, description="Whether to only return active catalog items")
+    query: Optional[str] = Field(None, description="Optional text search applied to item name and short_description")
+
+
+class SearchCatalogItemsParams(BaseModel):
+    """Parameters for full-text search of catalog items across all catalogs."""
+
+    query: str = Field(..., description="Text to search for in catalog item names and descriptions")
+    limit: int = Field(10, description="Maximum number of items to return")
+    offset: int = Field(0, description="Offset for pagination")
+    active: bool = Field(True, description="Whether to only return active catalog items")
+
+
 def list_catalogs(
     config: ServerConfig,
     auth_manager: AuthManager,
@@ -906,6 +926,211 @@ def delete_catalog_item(
             message=f"Error deleting catalog item: {_format_http_error(e)}",
             data=None,
         )
+
+
+def _resolve_catalog_sys_id(
+    config: ServerConfig,
+    headers: Dict[str, Any],
+    catalog_id: str,
+) -> Optional[str]:
+    """Resolve a catalog title to its sys_id; pass sys_id through unchanged."""
+    if len(catalog_id) == 32 and all(c in "0123456789abcdef" for c in catalog_id):
+        return catalog_id
+    url = f"{config.instance_url}/api/now/table/sc_catalog"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"titleLIKE{catalog_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id,title",
+                "sysparm_display_value": "false",
+            },
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        return results[0]["sys_id"] if results else None
+    except requests.exceptions.RequestException:
+        return None
+
+
+def list_catalog_items_by_catalog(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ListCatalogItemsByCatalogParams,
+) -> Dict[str, Any]:
+    """List all catalog items belonging to a specific service catalog.
+
+    Resolves the catalog by sys_id or title, then queries sc_cat_item with a
+    ``catalogsIN`` filter so items that belong to multiple catalogs are still
+    returned.  Each result includes the resolved category display-value so
+    callers can see which category each item lives in without a separate lookup.
+    """
+    logger.info(f"Listing catalog items for catalog: {params.catalog_id}")
+
+    headers = auth_manager.get_headers()
+    headers["Accept"] = "application/json"
+
+    # Resolve catalog identifier → sys_id.
+    catalog_sys_id = _resolve_catalog_sys_id(config, headers, params.catalog_id)
+    if catalog_sys_id is None:
+        return {
+            "success": False,
+            "message": f"Catalog not found: {params.catalog_id}",
+            "items": [],
+            "total": 0,
+            "limit": params.limit,
+            "offset": params.offset,
+            "has_more": False,
+        }
+
+    url = f"{config.instance_url}/api/now/table/sc_cat_item"
+    filters = [f"catalogsIN{catalog_sys_id}"]
+    if params.active:
+        filters.append("active=true")
+    if params.category:
+        # Support category sys_id or substring name match.
+        if len(params.category) == 32 and all(c in "0123456789abcdef" for c in params.category):
+            filters.append(f"category={params.category}")
+        else:
+            filters.append(f"category.titleLIKE{params.category}")
+    if params.query:
+        filters.append(f"nameLIKE{params.query}^ORshort_descriptionLIKE{params.query}")
+
+    query_params: Dict[str, Any] = {
+        "sysparm_limit": params.limit + 1,
+        "sysparm_offset": params.offset,
+        "sysparm_query": "^".join(filters),
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+
+        raw = response.json().get("result", [])
+        has_more = len(raw) > params.limit
+        items = raw[: params.limit]
+
+        formatted = [
+            {
+                "sys_id": it.get("sys_id", ""),
+                "name": it.get("name", ""),
+                "short_description": it.get("short_description", ""),
+                "category": it.get("category", ""),
+                "price": it.get("price", ""),
+                "active": it.get("active", ""),
+                "order": it.get("order", ""),
+                "picture": it.get("picture", ""),
+            }
+            for it in items
+        ]
+
+        return {
+            "success": True,
+            "message": f"Retrieved {len(formatted)} catalog item(s) for catalog {params.catalog_id}",
+            "catalog_sys_id": catalog_sys_id,
+            "items": formatted,
+            "total": len(formatted),
+            "limit": params.limit,
+            "offset": params.offset,
+            "has_more": has_more,
+            "next_offset": params.offset + params.limit if has_more else None,
+        }
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing catalog items by catalog: {_format_http_error(e)}")
+        return {
+            "success": False,
+            "message": f"Error listing catalog items: {_format_http_error(e)}",
+            "items": [],
+            "total": 0,
+            "limit": params.limit,
+            "offset": params.offset,
+            "has_more": False,
+        }
+
+
+def search_catalog_items(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: SearchCatalogItemsParams,
+) -> Dict[str, Any]:
+    """Full-text search for catalog items across all service catalogs.
+
+    Searches both ``name`` and ``short_description`` fields.  Each result
+    includes category and catalog display-values so callers immediately know
+    where each item lives without extra lookups.
+    """
+    logger.info(f"Searching catalog items: '{params.query}'")
+
+    headers = auth_manager.get_headers()
+    headers["Accept"] = "application/json"
+
+    url = f"{config.instance_url}/api/now/table/sc_cat_item"
+    filters = [f"nameLIKE{params.query}^ORshort_descriptionLIKE{params.query}"]
+    if params.active:
+        filters.append("active=true")
+
+    query_params: Dict[str, Any] = {
+        "sysparm_limit": params.limit + 1,
+        "sysparm_offset": params.offset,
+        "sysparm_query": "^".join(filters),
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+
+        raw = response.json().get("result", [])
+        has_more = len(raw) > params.limit
+        items = raw[: params.limit]
+
+        formatted = [
+            {
+                "sys_id": it.get("sys_id", ""),
+                "name": it.get("name", ""),
+                "short_description": it.get("short_description", ""),
+                "description": it.get("description", ""),
+                "category": it.get("category", ""),
+                "catalogs": it.get("catalogs", ""),
+                "price": it.get("price", ""),
+                "active": it.get("active", ""),
+                "order": it.get("order", ""),
+                "picture": it.get("picture", ""),
+            }
+            for it in items
+        ]
+
+        return {
+            "success": True,
+            "message": f"Found {len(formatted)} catalog item(s) matching '{params.query}'",
+            "query": params.query,
+            "items": formatted,
+            "total": len(formatted),
+            "limit": params.limit,
+            "offset": params.offset,
+            "has_more": has_more,
+            "next_offset": params.offset + params.limit if has_more else None,
+        }
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error searching catalog items: {_format_http_error(e)}")
+        return {
+            "success": False,
+            "message": f"Error searching catalog items: {_format_http_error(e)}",
+            "query": params.query,
+            "items": [],
+            "total": 0,
+            "limit": params.limit,
+            "offset": params.offset,
+            "has_more": False,
+        }
 
 
 def move_catalog_items(

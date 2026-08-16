@@ -97,12 +97,17 @@ service_desk:
   # CMDB / Outage Awareness
   - list_cmdb_ci_outages
   - get_ci_outage
+  # Catalog Search
+  - list_catalog_items_by_catalog
+  - search_catalog_items
 
 catalog_builder:
   # Core Catalog
   - list_catalogs
   - get_catalog
   - list_catalog_items
+  - list_catalog_items_by_catalog
+  - search_catalog_items
   - get_catalog_item
   - create_catalog_item
   - update_catalog_item
@@ -403,6 +408,8 @@ full:
   - list_catalogs
   - get_catalog
   - list_catalog_items
+  - list_catalog_items_by_catalog
+  - search_catalog_items
   - get_catalog_item
   - create_catalog_item
   - update_catalog_item

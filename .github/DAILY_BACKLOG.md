@@ -1,10 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_service_catalog tools (list all catalog items across categories)
-2. Add ServiceNow metric/gauge tools (sys_metric table)
-3. Add user_preference tools (sys_user_preference: get, set, delete)
-4. Add survey/assessment tools (asmt_assessment_instance table)
+1. Add ServiceNow metric/gauge tools (sys_metric table)
+2. Add user_preference tools (sys_user_preference: get, set, delete)
+3. Add survey/assessment tools (asmt_assessment_instance table)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -139,3 +138,4 @@
 129. 2026-08-13 — Improve test coverage on scrum_task_tools.py (84%→100%), sctask_tools.py (83%→100%), story_tools.py (79%→100%); 58 new tests covering optional field branches, no-instance_url/no-headers error paths, all timeframe filters, validation failures, SCTASK number-resolution error paths, time_worked parse-exception paths, and dependency tool error paths; 2886 total tests; 95% total coverage
 130. 2026-08-14 — Add get_kb_category tool (GET kb_category/{sys_id}; sys_id passthrough or labelLIKE resolver; reference fields normalised; active string→bool; registered in knowledge_author, service_desk, and full packages; 11 new tests; 2897 total tests; 95% total coverage)
 131. 2026-08-15 — Add create_problem_workaround and get_problem_workaround tools (PATCH problem.workaround field with optional known_error/work_notes; GET workaround-focused fields with has_workaround flag; sys_id and PRB-number lookup paths; registered in service_desk, change_coordinator, and full packages; 25 new tests; 2922 total tests; 95% total coverage)
+132. 2026-08-16 — Add list_catalog_items_by_catalog and search_catalog_items tools (sc_cat_item scoped by catalog via catalogsIN filter; catalog title→sys_id resolver; category name or sys_id sub-filter; full-text cross-catalog search; both tools carry has_more/next_offset pagination; registered in catalog_builder, service_desk, full packages; 35 new tests; 2957 total tests; 95% total coverage)
