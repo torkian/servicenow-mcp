@@ -386,6 +386,10 @@ system_administrator:
   - create_record
   - update_record
   - delete_record
+  # Metric / Gauge Tools
+  - list_metric_definitions
+  - get_metric_definition
+  - list_metric_values
 
 full:
   # Incident Management
@@ -690,3 +694,7 @@ full:
   - create_record
   - update_record
   - delete_record
+  # Metric / Gauge Tools
+  - list_metric_definitions
+  - get_metric_definition
+  - list_metric_values

@@ -896,6 +896,16 @@ from servicenow_mcp.tools.generic_table_tools import (
     list_records as list_records_tool,
     update_record as update_record_tool,
 )
+from servicenow_mcp.tools.metric_tools import (
+    GetMetricDefinitionParams,
+    ListMetricDefinitionsParams,
+    ListMetricValuesParams,
+)
+from servicenow_mcp.tools.metric_tools import (
+    get_metric_definition as get_metric_definition_tool,
+    list_metric_definitions as list_metric_definitions_tool,
+    list_metric_values as list_metric_values_tool,
+)
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -3532,6 +3542,44 @@ def get_tool_definitions(
                 "Delete a record from any ServiceNow table by sys_id. "
                 "Returns a 404-style error when the record does not exist. "
                 "This is a destructive operation and cannot be undone."
+            ),
+            "raw_dict",
+        ),
+        # Metric / gauge tools
+        "list_metric_definitions": (
+            list_metric_definitions_tool,
+            ListMetricDefinitionsParams,
+            Dict[str, Any],
+            (
+                "List metric definitions from the ServiceNow sys_metric_base table. "
+                "Metric definitions describe what is measured: the source table, field, "
+                "aggregation type (avg/sum/count/max/min), and an optional filter condition. "
+                "Supports filtering by name, table, metric_type, and active flag. "
+                "Returns paginated results ordered by name."
+            ),
+            "raw_dict",
+        ),
+        "get_metric_definition": (
+            get_metric_definition_tool,
+            GetMetricDefinitionParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single metric definition from sys_metric_base by sys_id or exact name. "
+                "A 32-character hex string is treated as a sys_id; anything else triggers a "
+                "name= lookup. Returns a 404-style error when the definition does not exist."
+            ),
+            "raw_dict",
+        ),
+        "list_metric_values": (
+            list_metric_values_tool,
+            ListMetricValuesParams,
+            Dict[str, Any],
+            (
+                "List metric value records from the ServiceNow sys_metric table. "
+                "Each record holds the numeric measurement captured by a metric definition "
+                "for a specific source record on a given date. Supports filtering by "
+                "metric definition (sys_id or name), table_name, record_id, and date range. "
+                "Returns paginated results ordered newest-first by default."
             ),
             "raw_dict",
         ),

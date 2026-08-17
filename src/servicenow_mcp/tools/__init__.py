@@ -278,6 +278,11 @@ from servicenow_mcp.tools.generic_table_tools import (
     list_records,
     update_record,
 )
+from servicenow_mcp.tools.metric_tools import (
+    get_metric_definition,
+    list_metric_definitions,
+    list_metric_values,
+)
 from servicenow_mcp.tools.syslog_tools import (
     get_syslog_entry,
     list_syslog_entries,
@@ -679,4 +684,9 @@ __all__ = [
     "create_record",
     "update_record",
     "delete_record",
+
+    # Metric / gauge tools
+    "list_metric_definitions",
+    "get_metric_definition",
+    "list_metric_values",
 ]
