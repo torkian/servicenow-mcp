@@ -390,6 +390,11 @@ system_administrator:
   - list_metric_definitions
   - get_metric_definition
   - list_metric_values
+  # User Preference Tools
+  - get_user_preference
+  - set_user_preference
+  - delete_user_preference
+  - list_user_preferences
 
 full:
   # Incident Management
@@ -698,3 +703,8 @@ full:
   - list_metric_definitions
   - get_metric_definition
   - list_metric_values
+  # User Preference Tools
+  - get_user_preference
+  - set_user_preference
+  - delete_user_preference
+  - list_user_preferences

@@ -906,6 +906,18 @@ from servicenow_mcp.tools.metric_tools import (
     list_metric_definitions as list_metric_definitions_tool,
     list_metric_values as list_metric_values_tool,
 )
+from servicenow_mcp.tools.user_preference_tools import (
+    DeleteUserPreferenceParams,
+    GetUserPreferenceParams,
+    ListUserPreferencesParams,
+    SetUserPreferenceParams,
+)
+from servicenow_mcp.tools.user_preference_tools import (
+    delete_user_preference as delete_user_preference_tool,
+    get_user_preference as get_user_preference_tool,
+    list_user_preferences as list_user_preferences_tool,
+    set_user_preference as set_user_preference_tool,
+)
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -3580,6 +3592,52 @@ def get_tool_definitions(
                 "for a specific source record on a given date. Supports filtering by "
                 "metric definition (sys_id or name), table_name, record_id, and date range. "
                 "Returns paginated results ordered newest-first by default."
+            ),
+            "raw_dict",
+        ),
+        # User preference tools
+        "get_user_preference": (
+            get_user_preference_tool,
+            GetUserPreferenceParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single user preference from sys_user_preference by user and preference key name. "
+                "The user_id can be a sys_id (32-char hex) or a user_name; the name is the preference key "
+                "(e.g. 'rowcount', 'theme'). Returns the preference value and metadata, or an error if not found."
+            ),
+            "raw_dict",
+        ),
+        "set_user_preference": (
+            set_user_preference_tool,
+            SetUserPreferenceParams,
+            Dict[str, Any],
+            (
+                "Create or update a user preference in sys_user_preference. "
+                "If a preference with the given name already exists for the user it is updated (PATCH); "
+                "otherwise a new record is created (POST). Returns the saved preference and whether it was "
+                "'created' or 'updated'."
+            ),
+            "raw_dict",
+        ),
+        "delete_user_preference": (
+            delete_user_preference_tool,
+            DeleteUserPreferenceParams,
+            Dict[str, Any],
+            (
+                "Delete a user preference from sys_user_preference by user and preference key name. "
+                "The user_id can be a sys_id or user_name. Returns success/failure with a descriptive message."
+            ),
+            "raw_dict",
+        ),
+        "list_user_preferences": (
+            list_user_preferences_tool,
+            ListUserPreferencesParams,
+            Dict[str, Any],
+            (
+                "List user preferences from sys_user_preference. "
+                "Optionally filter by user (sys_id or user_name) and/or preference name (substring match). "
+                "When user_id is omitted, all preferences are returned (requires admin access). "
+                "Supports pagination via limit/offset."
             ),
             "raw_dict",
         ),

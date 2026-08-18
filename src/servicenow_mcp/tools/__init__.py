@@ -283,6 +283,12 @@ from servicenow_mcp.tools.metric_tools import (
     list_metric_definitions,
     list_metric_values,
 )
+from servicenow_mcp.tools.user_preference_tools import (
+    delete_user_preference,
+    get_user_preference,
+    list_user_preferences,
+    set_user_preference,
+)
 from servicenow_mcp.tools.syslog_tools import (
     get_syslog_entry,
     list_syslog_entries,
@@ -689,4 +695,10 @@ __all__ = [
     "list_metric_definitions",
     "get_metric_definition",
     "list_metric_values",
+
+    # User preference tools
+    "get_user_preference",
+    "set_user_preference",
+    "delete_user_preference",
+    "list_user_preferences",
 ]
