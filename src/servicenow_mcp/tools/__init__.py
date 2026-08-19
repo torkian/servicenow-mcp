@@ -278,6 +278,12 @@ from servicenow_mcp.tools.generic_table_tools import (
     list_records,
     update_record,
 )
+from servicenow_mcp.tools.assessment_tools import (
+    get_assessment_instance,
+    get_assessment_metric_type,
+    list_assessment_instances,
+    list_assessment_metric_types,
+)
 from servicenow_mcp.tools.metric_tools import (
     get_metric_definition,
     list_metric_definitions,
@@ -701,4 +707,10 @@ __all__ = [
     "set_user_preference",
     "delete_user_preference",
     "list_user_preferences",
+
+    # Assessment / Survey tools
+    "list_assessment_instances",
+    "get_assessment_instance",
+    "list_assessment_metric_types",
+    "get_assessment_metric_type",
 ]

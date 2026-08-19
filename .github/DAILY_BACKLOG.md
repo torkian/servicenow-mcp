@@ -1,7 +1,8 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add survey/assessment tools (asmt_assessment_instance table)
+1. Add create_assessment_instance tool (POST asmt_assessment_instance; assign metric type and source record; optional user/assigned_to/due_date)
+2. Add export_assessment_results tool (aggregate scores and responses for a metric type; optional date range)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -139,3 +140,4 @@
 132. 2026-08-16 — Add list_catalog_items_by_catalog and search_catalog_items tools (sc_cat_item scoped by catalog via catalogsIN filter; catalog title→sys_id resolver; category name or sys_id sub-filter; full-text cross-catalog search; both tools carry has_more/next_offset pagination; registered in catalog_builder, service_desk, full packages; 35 new tests; 2957 total tests; 95% total coverage)
 133. 2026-08-17 — Add metric/gauge tools (list_metric_definitions, get_metric_definition, list_metric_values); metric_tools.py covers sys_metric_base and sys_metric tables; name→sys_id resolver on get and list_metric_values; date range filter with validate_servicenow_date; registered in system_administrator and full packages; 51 new tests; 99% metric_tools.py coverage
 134. 2026-08-18 — Add user_preference tools (get_user_preference, set_user_preference, delete_user_preference, list_user_preferences on sys_user_preference; user_name→sys_id resolver; set_user_preference upserts via POST/PATCH; 42 new tests; 96% user_preference_tools.py coverage; 3050 total tests; 95% total coverage)
+135. 2026-08-19 — Add survey/assessment tools (list_assessment_instances, get_assessment_instance, list_assessment_metric_types, get_assessment_metric_type); assessment_tools.py covers asmt_assessment_instance and asmt_metric_type tables; metric_type name→sys_id resolver; reference fields normalised; state/user/source_table/metric_type filters; registered in system_administrator and full packages; 37 new tests; 97% assessment_tools.py coverage; 3087 total tests; 95% total coverage)

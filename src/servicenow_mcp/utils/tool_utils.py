@@ -918,6 +918,18 @@ from servicenow_mcp.tools.user_preference_tools import (
     list_user_preferences as list_user_preferences_tool,
     set_user_preference as set_user_preference_tool,
 )
+from servicenow_mcp.tools.assessment_tools import (
+    GetAssessmentInstanceParams,
+    GetAssessmentMetricTypeParams,
+    ListAssessmentInstancesParams,
+    ListAssessmentMetricTypesParams,
+)
+from servicenow_mcp.tools.assessment_tools import (
+    get_assessment_instance as get_assessment_instance_tool,
+    get_assessment_metric_type as get_assessment_metric_type_tool,
+    list_assessment_instances as list_assessment_instances_tool,
+    list_assessment_metric_types as list_assessment_metric_types_tool,
+)
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -3638,6 +3650,55 @@ def get_tool_definitions(
                 "Optionally filter by user (sys_id or user_name) and/or preference name (substring match). "
                 "When user_id is omitted, all preferences are returned (requires admin access). "
                 "Supports pagination via limit/offset."
+            ),
+            "raw_dict",
+        ),
+        # Assessment / Survey tools
+        "list_assessment_instances": (
+            list_assessment_instances_tool,
+            ListAssessmentInstancesParams,
+            Dict[str, Any],
+            (
+                "List assessment instances from the ServiceNow asmt_assessment_instance table. "
+                "Assessment instances represent an individual respondent's copy of a survey or assessment. "
+                "Supports filtering by state (draft/pending/in_progress/complete/cancelled), "
+                "metric_type (name or sys_id of the assessment definition), user (respondent), "
+                "source_table, and source_id. Returns paginated results."
+            ),
+            "raw_dict",
+        ),
+        "get_assessment_instance": (
+            get_assessment_instance_tool,
+            GetAssessmentInstanceParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single assessment instance from asmt_assessment_instance by sys_id. "
+                "Returns state, score, percent_answered, user, due_date, completion_date, "
+                "and the linked metric_type (assessment definition)."
+            ),
+            "raw_dict",
+        ),
+        "list_assessment_metric_types": (
+            list_assessment_metric_types_tool,
+            ListAssessmentMetricTypesParams,
+            Dict[str, Any],
+            (
+                "List assessment metric type definitions from asmt_metric_type. "
+                "Metric types define the structure of a survey or assessment: name, type "
+                "(survey/assessment/certification), related_table, frequency, and due_period. "
+                "Supports filtering by name (substring), active flag, type, and related_table. "
+                "Returns paginated results ordered by name."
+            ),
+            "raw_dict",
+        ),
+        "get_assessment_metric_type": (
+            get_assessment_metric_type_tool,
+            GetAssessmentMetricTypeParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single assessment metric type from asmt_metric_type by sys_id or exact name. "
+                "A 32-character hex string is treated as a sys_id; anything else triggers a name= lookup. "
+                "Returns description, type, category, roles, related_table, frequency, and due_period."
             ),
             "raw_dict",
         ),

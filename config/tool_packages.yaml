@@ -395,6 +395,11 @@ system_administrator:
   - set_user_preference
   - delete_user_preference
   - list_user_preferences
+  # Assessment / Survey Tools
+  - list_assessment_instances
+  - get_assessment_instance
+  - list_assessment_metric_types
+  - get_assessment_metric_type
 
 full:
   # Incident Management
@@ -708,3 +713,8 @@ full:
   - set_user_preference
   - delete_user_preference
   - list_user_preferences
+  # Assessment / Survey Tools
+  - list_assessment_instances
+  - get_assessment_instance
+  - list_assessment_metric_types
+  - get_assessment_metric_type
