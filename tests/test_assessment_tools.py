@@ -4,9 +4,12 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.assessment_tools import (
+    CreateAssessmentInstanceParams,
     _format_assessment_instance,
     _format_assessment_metric_type,
     _resolve_metric_type_sys_id,
+    _resolve_user_sys_id,
+    create_assessment_instance,
     get_assessment_instance,
     get_assessment_metric_type,
     list_assessment_instances,
@@ -543,3 +546,289 @@ def test_get_assessment_metric_type_by_sys_id(mock_req, auth_manager, server_con
     )
     assert result["success"] is True
     assert result["metric_type"]["sys_id"] == MT_SYS_ID
+
+
+# ---------------------------------------------------------------------------
+# create_assessment_instance
+# ---------------------------------------------------------------------------
+
+USER_SYS_ID = "d" * 32
+ASSIGNED_SYS_ID = "e" * 32
+SOURCE_SYS_ID = "c" * 32
+
+
+# ---------------------------------------------------------------------------
+# _resolve_user_sys_id
+# ---------------------------------------------------------------------------
+
+def test_resolve_user_sys_id_passthrough():
+    """A 32-char hex sys_id is returned without HTTP calls."""
+    result = _resolve_user_sys_id(INSTANCE_URL, {}, USER_SYS_ID)
+    assert result == USER_SYS_ID
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_resolve_user_sys_id_by_name(mock_req):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [{"sys_id": USER_SYS_ID}]}
+    mock_req.return_value = mock_resp
+    result = _resolve_user_sys_id(INSTANCE_URL, {}, "jsmith")
+    assert result == USER_SYS_ID
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_resolve_user_sys_id_not_found(mock_req):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_req.return_value = mock_resp
+    result = _resolve_user_sys_id(INSTANCE_URL, {}, "unknown_user")
+    assert result is None
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_resolve_user_sys_id_request_error(mock_req):
+    import requests
+    mock_req.side_effect = requests.exceptions.RequestException("network error")
+    result = _resolve_user_sys_id(INSTANCE_URL, {}, "jsmith")
+    assert result is None
+
+
+# ---------------------------------------------------------------------------
+# CreateAssessmentInstanceParams validation
+# ---------------------------------------------------------------------------
+
+def test_create_params_valid_minimal():
+    p = CreateAssessmentInstanceParams(
+        metric_type=MT_SYS_ID,
+        source_table="incident",
+        source_id=SOURCE_SYS_ID,
+    )
+    assert p.due_date is None
+    assert p.user is None
+    assert p.assigned_to is None
+    assert p.state is None
+
+
+def test_create_params_valid_due_date():
+    p = CreateAssessmentInstanceParams(
+        metric_type=MT_SYS_ID,
+        source_table="incident",
+        source_id=SOURCE_SYS_ID,
+        due_date="2025-12-31",
+    )
+    assert p.due_date == "2025-12-31"
+
+
+def test_create_params_invalid_due_date():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        CreateAssessmentInstanceParams(
+            metric_type=MT_SYS_ID,
+            source_table="incident",
+            source_id=SOURCE_SYS_ID,
+            due_date="31-12-2025",
+        )
+
+
+# ---------------------------------------------------------------------------
+# create_assessment_instance – no instance_url / no headers
+# ---------------------------------------------------------------------------
+
+def test_create_assessment_instance_no_instance_url(server_config):
+    am = MagicMock()
+    am.instance_url = None
+    sc = MagicMock()
+    sc.instance_url = None
+    result = create_assessment_instance(
+        am, sc,
+        {"metric_type": MT_SYS_ID, "source_table": "incident", "source_id": SOURCE_SYS_ID},
+    )
+    assert result["success"] is False
+    assert "instance_url" in result["message"]
+
+
+def test_create_assessment_instance_no_headers(server_config):
+    am = MagicMock()
+    am.instance_url = INSTANCE_URL
+    am.get_headers.return_value = None
+    sc = MagicMock()
+    sc.instance_url = None
+    result = create_assessment_instance(
+        am, sc,
+        {"metric_type": MT_SYS_ID, "source_table": "incident", "source_id": SOURCE_SYS_ID},
+    )
+    assert result["success"] is False
+    assert "get_headers" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# create_assessment_instance – metric_type resolution failures
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=None)
+def test_create_assessment_instance_metric_type_not_found(mock_resolve, auth_manager, server_config):
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {"metric_type": "Nonexistent Survey", "source_table": "incident", "source_id": SOURCE_SYS_ID},
+    )
+    assert result["success"] is False
+    assert "Assessment metric type not found" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# create_assessment_instance – user/assigned_to resolution failures
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._resolve_user_sys_id", return_value=None)
+def test_create_assessment_instance_user_not_found(mock_user, mock_mt, auth_manager, server_config):
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {
+            "metric_type": MT_SYS_ID,
+            "source_table": "incident",
+            "source_id": SOURCE_SYS_ID,
+            "user": "unknown_user",
+        },
+    )
+    assert result["success"] is False
+    assert "User not found" in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._resolve_user_sys_id", side_effect=[USER_SYS_ID, None])
+def test_create_assessment_instance_assigned_to_not_found(mock_user, mock_mt, auth_manager, server_config):
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {
+            "metric_type": MT_SYS_ID,
+            "source_table": "incident",
+            "source_id": SOURCE_SYS_ID,
+            "user": "jsmith",
+            "assigned_to": "unknown_manager",
+        },
+    )
+    assert result["success"] is False
+    assert "User not found" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# create_assessment_instance – success paths
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_create_assessment_instance_minimal_success(mock_req, mock_mt, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": RAW_INSTANCE}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {"metric_type": MT_SYS_ID, "source_table": "incident", "source_id": SOURCE_SYS_ID},
+    )
+    assert result["success"] is True
+    assert result["instance"]["sys_id"] == INSTANCE_SYS_ID
+    assert result["instance"]["metric_type"] == "Employee Survey"
+
+    # Body sent to POST should contain the required fields.
+    call_kwargs = mock_req.call_args
+    body = call_kwargs[1]["json"]
+    assert body["metric_type"] == MT_SYS_ID
+    assert body["source_table"] == "incident"
+    assert body["source_id"] == SOURCE_SYS_ID
+    assert "user" not in body
+    assert "assigned_to" not in body
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._resolve_user_sys_id", side_effect=[USER_SYS_ID, ASSIGNED_SYS_ID])
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_create_assessment_instance_full_params(mock_req, mock_user, mock_mt, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": RAW_INSTANCE}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {
+            "metric_type": "Employee Survey",
+            "source_table": "incident",
+            "source_id": SOURCE_SYS_ID,
+            "user": "jsmith",
+            "assigned_to": "manager_user",
+            "due_date": "2025-12-31",
+            "state": "pending",
+        },
+    )
+    assert result["success"] is True
+
+    body = mock_req.call_args[1]["json"]
+    assert body["user"] == USER_SYS_ID
+    assert body["assigned_to"] == ASSIGNED_SYS_ID
+    assert body["due_date"] == "2025-12-31"
+    assert body["state"] == "pending"
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_create_assessment_instance_user_sys_id_passthrough(mock_req, mock_mt, auth_manager, server_config):
+    """When user is already a 32-char hex sys_id, no extra lookup is done."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": RAW_INSTANCE}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {
+            "metric_type": MT_SYS_ID,
+            "source_table": "incident",
+            "source_id": SOURCE_SYS_ID,
+            "user": USER_SYS_ID,
+        },
+    )
+    assert result["success"] is True
+    body = mock_req.call_args[1]["json"]
+    assert body["user"] == USER_SYS_ID
+    # Only one _make_request call (the POST itself).
+    assert mock_req.call_count == 1
+
+
+# ---------------------------------------------------------------------------
+# create_assessment_instance – error paths
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_create_assessment_instance_http_error(mock_req, mock_mt, auth_manager, server_config):
+    import requests
+    mock_req.side_effect = requests.exceptions.RequestException("500 Internal")
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {"metric_type": MT_SYS_ID, "source_table": "incident", "source_id": SOURCE_SYS_ID},
+    )
+    assert result["success"] is False
+    assert "Error creating assessment instance" in result["message"]
+
+
+def test_create_assessment_instance_missing_required(auth_manager, server_config):
+    """Missing required fields should return failure from param validation."""
+    result = create_assessment_instance(auth_manager, server_config, {"metric_type": MT_SYS_ID})
+    assert result["success"] is False
+
+
+def test_create_assessment_instance_invalid_params(auth_manager, server_config):
+    """Invalid due_date format should return failure."""
+    result = create_assessment_instance(
+        auth_manager, server_config,
+        {
+            "metric_type": MT_SYS_ID,
+            "source_table": "incident",
+            "source_id": SOURCE_SYS_ID,
+            "due_date": "bad-date",
+        },
+    )
+    assert result["success"] is False

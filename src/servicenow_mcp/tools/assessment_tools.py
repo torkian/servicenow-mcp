@@ -10,7 +10,7 @@ import logging
 from typing import Any, Dict, List, Optional
 
 import requests
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
@@ -23,6 +23,7 @@ from servicenow_mcp.utils.helpers import (
     _make_request,
     _paginated_list_response,
     _unwrap_and_validate_params,
+    validate_servicenow_date,
 )
 
 logger = logging.getLogger(__name__)
@@ -481,4 +482,178 @@ def get_assessment_metric_type(
         return {
             "success": False,
             "message": f"Error retrieving assessment metric type: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# create_assessment_instance
+# ---------------------------------------------------------------------------
+
+
+class CreateAssessmentInstanceParams(BaseModel):
+    """Parameters for creating a new assessment instance."""
+
+    metric_type: str = Field(
+        ...,
+        description=(
+            "The sys_id or exact name of the assessment metric type (survey definition) "
+            "to use for this instance."
+        ),
+    )
+    source_table: str = Field(
+        ...,
+        description=(
+            "The ServiceNow table that the source record belongs to (e.g. 'incident', "
+            "'change_request', 'sys_user')."
+        ),
+    )
+    source_id: str = Field(
+        ...,
+        description="The sys_id of the source record that this assessment is attached to.",
+    )
+    user: Optional[str] = Field(
+        None,
+        description=(
+            "The sys_id or user_name of the respondent. When omitted ServiceNow uses "
+            "the authenticated user."
+        ),
+    )
+    assigned_to: Optional[str] = Field(
+        None,
+        description="The sys_id or user_name of the user responsible for completing the assessment.",
+    )
+    due_date: Optional[str] = Field(
+        None,
+        description="Due date for the assessment in YYYY-MM-DD format.",
+    )
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Initial state of the instance. Typical values: 'draft', 'pending', 'in_progress'. "
+            "Defaults to ServiceNow's platform default when omitted."
+        ),
+    )
+
+    @field_validator("due_date", mode="before")
+    @classmethod
+    def validate_due_date(cls, v: Optional[str]) -> Optional[str]:
+        """Validate due_date as YYYY-MM-DD."""
+        if v is None:
+            return v
+        return validate_servicenow_date(v)
+
+
+def _resolve_user_sys_id(
+    instance_url: str,
+    headers: Dict,
+    user_value: str,
+) -> Optional[str]:
+    """Return a sys_user sys_id from a user_name or passthrough if already a sys_id."""
+    if len(user_value) == 32 and all(c in "0123456789abcdef" for c in user_value):
+        return user_value
+    url = f"{instance_url}/api/now/table/sys_user"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"user_name={user_value}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+def create_assessment_instance(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new assessment instance in asmt_assessment_instance.
+
+    Assigns a metric type (survey definition) to a source record and optionally
+    specifies the respondent (user), the person responsible (assigned_to), and a
+    due date.  The metric_type may be supplied as a sys_id or as its exact name;
+    user and assigned_to may be supplied as sys_ids or as user_name values.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreateAssessmentInstanceParams.
+
+    Returns:
+        Dictionary with ``success`` and ``instance`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        CreateAssessmentInstanceParams,
+        required_fields=["metric_type", "source_table", "source_id"],
+    )
+    if not result["success"]:
+        return result
+    validated: CreateAssessmentInstanceParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Resolve metric_type to a sys_id.
+    mt_sys_id = _resolve_metric_type_sys_id(instance_url, headers, validated.metric_type)
+    if not mt_sys_id:
+        return {
+            "success": False,
+            "message": f"Assessment metric type not found: {validated.metric_type}",
+        }
+
+    # Build the request body.
+    body: Dict[str, Any] = {
+        "metric_type": mt_sys_id,
+        "source_table": validated.source_table,
+        "source_id": validated.source_id,
+    }
+
+    if validated.user:
+        user_sys_id = _resolve_user_sys_id(instance_url, headers, validated.user)
+        if not user_sys_id:
+            return {"success": False, "message": f"User not found: {validated.user}"}
+        body["user"] = user_sys_id
+
+    if validated.assigned_to:
+        assigned_sys_id = _resolve_user_sys_id(instance_url, headers, validated.assigned_to)
+        if not assigned_sys_id:
+            return {"success": False, "message": f"User not found: {validated.assigned_to}"}
+        body["assigned_to"] = assigned_sys_id
+
+    if validated.due_date:
+        body["due_date"] = validated.due_date
+
+    if validated.state:
+        body["state"] = validated.state
+
+    url = f"{instance_url}/api/now/table/{ASSESSMENT_INSTANCE_TABLE}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+    try:
+        response = _make_request("POST", url, headers=headers, json=body, params=query_params)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "instance": _format_assessment_instance(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error("Error creating assessment instance: %s", e)
+        return {
+            "success": False,
+            "message": f"Error creating assessment instance: {_format_http_error(e)}",
         }

@@ -919,12 +919,14 @@ from servicenow_mcp.tools.user_preference_tools import (
     set_user_preference as set_user_preference_tool,
 )
 from servicenow_mcp.tools.assessment_tools import (
+    CreateAssessmentInstanceParams,
     GetAssessmentInstanceParams,
     GetAssessmentMetricTypeParams,
     ListAssessmentInstancesParams,
     ListAssessmentMetricTypesParams,
 )
 from servicenow_mcp.tools.assessment_tools import (
+    create_assessment_instance as create_assessment_instance_tool,
     get_assessment_instance as get_assessment_instance_tool,
     get_assessment_metric_type as get_assessment_metric_type_tool,
     list_assessment_instances as list_assessment_instances_tool,
@@ -3699,6 +3701,20 @@ def get_tool_definitions(
                 "Retrieve a single assessment metric type from asmt_metric_type by sys_id or exact name. "
                 "A 32-character hex string is treated as a sys_id; anything else triggers a name= lookup. "
                 "Returns description, type, category, roles, related_table, frequency, and due_period."
+            ),
+            "raw_dict",
+        ),
+        "create_assessment_instance": (
+            create_assessment_instance_tool,
+            CreateAssessmentInstanceParams,
+            Dict[str, Any],
+            (
+                "Create a new assessment instance in asmt_assessment_instance. "
+                "Assigns a metric_type (survey/assessment definition, by sys_id or exact name) "
+                "to a source record identified by source_table and source_id. "
+                "Optionally set the respondent (user), the person responsible (assigned_to), "
+                "a due_date (YYYY-MM-DD), and an initial state. "
+                "User and assigned_to may be supplied as sys_ids or as user_name strings."
             ),
             "raw_dict",
         ),

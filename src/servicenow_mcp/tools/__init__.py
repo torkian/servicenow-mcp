@@ -279,6 +279,7 @@ from servicenow_mcp.tools.generic_table_tools import (
     update_record,
 )
 from servicenow_mcp.tools.assessment_tools import (
+    create_assessment_instance,
     get_assessment_instance,
     get_assessment_metric_type,
     list_assessment_instances,
@@ -713,4 +714,5 @@ __all__ = [
     "get_assessment_instance",
     "list_assessment_metric_types",
     "get_assessment_metric_type",
+    "create_assessment_instance",
 ]
