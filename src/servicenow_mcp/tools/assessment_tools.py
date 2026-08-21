@@ -26,6 +26,9 @@ from servicenow_mcp.utils.helpers import (
     validate_servicenow_date,
 )
 
+# Table used for individual question responses
+ASSESSMENT_QUESTION_RESPONSE_TABLE = "asmt_assessment_instance_question"
+
 logger = logging.getLogger(__name__)
 
 ASSESSMENT_INSTANCE_TABLE = "asmt_assessment_instance"
@@ -657,3 +660,185 @@ def create_assessment_instance(
             "success": False,
             "message": f"Error creating assessment instance: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# export_assessment_results
+# ---------------------------------------------------------------------------
+
+
+class ExportAssessmentResultsParams(BaseModel):
+    """Parameters for exporting aggregated assessment results for a metric type."""
+
+    metric_type: str = Field(
+        ...,
+        description=(
+            "The sys_id or exact name of the assessment metric type (survey definition) "
+            "whose results should be exported."
+        ),
+    )
+    completed_after: Optional[str] = Field(
+        None,
+        description=(
+            "Return only instances completed on or after this date (YYYY-MM-DD). "
+            "Filters on completion_date."
+        ),
+    )
+    completed_before: Optional[str] = Field(
+        None,
+        description=(
+            "Return only instances completed on or before this date (YYYY-MM-DD). "
+            "Filters on completion_date."
+        ),
+    )
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by instance state. Pass 'complete' to include only finished "
+            "instances in the aggregation."
+        ),
+    )
+    limit: Optional[int] = Field(
+        200,
+        description="Maximum number of individual instance records to include (default 200, max 1000).",
+    )
+    offset: Optional[int] = Field(0, description="Offset for pagination of individual records.")
+
+    @field_validator("completed_after", "completed_before", mode="before")
+    @classmethod
+    def validate_date_fields(cls, v: Optional[str]) -> Optional[str]:
+        """Validate date fields as YYYY-MM-DD."""
+        if v is None:
+            return v
+        return validate_servicenow_date(v)
+
+
+def _compute_score_distribution(scores: List[float]) -> Dict[str, int]:
+    """Bucket numeric scores into quartile bands and return counts."""
+    dist: Dict[str, int] = {"0-25": 0, "26-50": 0, "51-75": 0, "76-100": 0}
+    for s in scores:
+        if s <= 25:
+            dist["0-25"] += 1
+        elif s <= 50:
+            dist["26-50"] += 1
+        elif s <= 75:
+            dist["51-75"] += 1
+        else:
+            dist["76-100"] += 1
+    return dist
+
+
+def export_assessment_results(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Export aggregated assessment results for a given metric type.
+
+    Queries asmt_assessment_instance for all instances of the specified
+    metric type (survey/assessment definition), optionally scoped by
+    completion date range and state. Returns:
+
+    * A ``summary`` block with total count, completed count, completion rate,
+      average score, and a score distribution across four quartile bands.
+    * A paginated ``instances`` list with per-respondent detail.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ExportAssessmentResultsParams.
+
+    Returns:
+        Dictionary with ``success``, ``summary``, ``instances``,
+        ``count``, ``has_more``, and ``next_offset`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, ExportAssessmentResultsParams, required_fields=["metric_type"]
+    )
+    if not result["success"]:
+        return result
+    validated: ExportAssessmentResultsParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Resolve metric_type name → sys_id.
+    mt_sys_id = _resolve_metric_type_sys_id(instance_url, headers, validated.metric_type)
+    if not mt_sys_id:
+        return {
+            "success": False,
+            "message": f"Assessment metric type not found: {validated.metric_type}",
+        }
+
+    # Build query filters.
+    query_parts: List[str] = [f"metric_type={mt_sys_id}"]
+    if validated.state:
+        query_parts.append(f"state={validated.state}")
+    if validated.completed_after:
+        query_parts.append(f"completion_date>={validated.completed_after}")
+    if validated.completed_before:
+        query_parts.append(f"completion_date<={validated.completed_before}")
+
+    limit = min(validated.limit or 200, 1000)
+    offset = validated.offset or 0
+
+    query_params = _build_sysparm_params(
+        limit,
+        offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        order_by="sys_created_on",
+        fields=",".join(ASSESSMENT_INSTANCE_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{ASSESSMENT_INSTANCE_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+    except requests.exceptions.RequestException as e:
+        logger.error("Error exporting assessment results: %s", e)
+        return {
+            "success": False,
+            "message": f"Error exporting assessment results: {_format_http_error(e)}",
+        }
+
+    raw_records = response.json().get("result", [])
+    instances = [_format_assessment_instance(r) for r in raw_records]
+
+    # Compute summary statistics over the returned page.
+    total = len(instances)
+    completed = sum(1 for i in instances if str(i.get("state", "")).lower() in ("complete", "4"))
+    completion_rate = round((completed / total * 100), 1) if total else 0.0
+
+    numeric_scores: List[float] = []
+    for inst in instances:
+        raw_score = inst.get("score")
+        if raw_score not in (None, "", "N/A"):
+            try:
+                numeric_scores.append(float(raw_score))
+            except (ValueError, TypeError):
+                pass
+
+    avg_score = round(sum(numeric_scores) / len(numeric_scores), 2) if numeric_scores else None
+
+    summary: Dict[str, Any] = {
+        "metric_type_sys_id": mt_sys_id,
+        "total_instances": total,
+        "completed_instances": completed,
+        "completion_rate_pct": completion_rate,
+        "average_score": avg_score,
+        "score_distribution": _compute_score_distribution(numeric_scores),
+        "filters_applied": {
+            "state": validated.state,
+            "completed_after": validated.completed_after,
+            "completed_before": validated.completed_before,
+        },
+    }
+
+    paginated = _paginated_list_response(instances, limit, offset, "instances")
+    paginated["summary"] = summary
+    return paginated

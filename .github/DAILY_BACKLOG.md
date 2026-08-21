@@ -1,7 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add export_assessment_results tool (aggregate scores and responses for a metric type; optional date range)
+1. Add delete_assessment_instance tool (DELETE asmt_assessment_instance/{sys_id}; 404 guard; registered in system_administrator + full packages)
+2. Add list_catalog_item_questions tool (io_set_item and item_option_new; questions linked to a catalog item variable set)
+3. Add export_assessment_responses tool (per-question response detail from asmt_questionnaire_response; links to assessment instance; optional question/metric filters)
+4. Add cmdb_ci_affinity tools (list_ci_affinities, get_ci_affinity; cmdb_ci_affinity table; filters for ci_sys_id and affinity_type)
+5. Add list_cmdb_ci_groups tool (cmdb_ci_group table; filters for name/type/active; pagination)
+6. Add get_cmdb_ci_group tool (GET cmdb_ci_group/{sys_id}; 404/empty-result guards; registered in system_administrator + full)
+7. Add list_problem_tasks_by_problem shortcut (wraps list_problem_tasks with problem_id param; mirrors list_change_tasks_by_change pattern)
+8. Add archive_knowledge_article tool (PATCH kb_knowledge with workflow_state=retired; optional retire_reason; registered in knowledge_author + full)
+9. Add get_change_conflict tool (GET change_conflict/{sys_id}; 404 guard; normalised fields; registered in change_coordinator + full)
+10. Add list_incident_slas tool (task_sla scoped to incident table; filters for has_breached/stage; pagination; registered in service_desk + full)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -105,7 +114,6 @@
 99. 2026-07-14 — Add delete_change_schedule_span tool (DELETE cmn_schedule_span/{sys_id}; required span_id; 204/404 guards; network error handling; registered in change_coordinator and full packages; 15 new tests; 2246 total tests; 93% coverage)
 100. 2026-07-15 — Add list_on_call_rotation_members tool
 101. 2026-07-16 — Add create_on_call_rotation tool (POST cmn_rota; name/group/active/description/manager/schedule/escalation/type fields; active serialised as string; registered in system_administrator and full packages; 13 new tests; 2283 total tests; 100% on_call_tools.py coverage) (cmn_rota_member table; rotation sys_id/name resolver; active filter; ordered by member order field; reference fields normalised; registered in system_administrator and full packages; 25 new tests; 2271 total tests; 93% coverage)
-
 102. 2026-07-17 — Add update_on_call_rotation tool (PATCH cmn_rota/{sys_id}; rotation sys_id/name resolver; optional name/group/active/description/manager/schedule/escalation/type fields; empty-body guard; 404 guard; active serialised as string; registered in system_administrator and full packages; 13 new tests; 2299 total tests; 100% on_call_tools.py coverage)
 103. 2026-07-18 — Add get_catalog_category tool
 104. 2026-07-19 — Add create_request_item_task, list_request_item_tasks, close_request_item_task tools (sc_task linked to RITM via request_item field; RITM number/sys_id resolver; state filter + pagination for list; 28 new tests; 2339 total tests; 93% coverage) (GET sc_category/{sys_id}; 404/empty-result guards; extra fields full_description/header_icon/homepage_renderer; completes create/list/update/get set for catalog categories; registered in catalog_builder and full packages; 12 new tests; 2311 total tests; 93% coverage)
@@ -141,3 +149,4 @@
 134. 2026-08-18 — Add user_preference tools (get_user_preference, set_user_preference, delete_user_preference, list_user_preferences on sys_user_preference; user_name→sys_id resolver; set_user_preference upserts via POST/PATCH; 42 new tests; 96% user_preference_tools.py coverage; 3050 total tests; 95% total coverage)
 135. 2026-08-19 — Add survey/assessment tools (list_assessment_instances, get_assessment_instance, list_assessment_metric_types, get_assessment_metric_type); assessment_tools.py covers asmt_assessment_instance and asmt_metric_type tables; metric_type name→sys_id resolver; reference fields normalised; state/user/source_table/metric_type filters; registered in system_administrator and full packages; 37 new tests; 97% assessment_tools.py coverage; 3087 total tests; 95% total coverage)
 136. 2026-08-20 — Add create_assessment_instance tool (POST asmt_assessment_instance; metric_type/user/assigned_to resolved by name or sys_id; optional due_date with YYYY-MM-DD validation; optional state; _resolve_user_sys_id helper; registered in system_administrator and full packages; 18 new tests; 3105 total tests; 95% total coverage)
+137. 2026-08-21 — Add export_assessment_results tool (GET asmt_assessment_instance aggregated by metric type; summary block with total/completed counts, completion rate, average score, quartile score distribution; optional completed_after/completed_before/state filters; limit capped at 1000; registered in system_administrator and full packages; 24 new tests; 3129 total tests; 95% total coverage)

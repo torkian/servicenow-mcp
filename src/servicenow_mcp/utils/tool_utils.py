@@ -920,6 +920,7 @@ from servicenow_mcp.tools.user_preference_tools import (
 )
 from servicenow_mcp.tools.assessment_tools import (
     CreateAssessmentInstanceParams,
+    ExportAssessmentResultsParams,
     GetAssessmentInstanceParams,
     GetAssessmentMetricTypeParams,
     ListAssessmentInstancesParams,
@@ -927,6 +928,7 @@ from servicenow_mcp.tools.assessment_tools import (
 )
 from servicenow_mcp.tools.assessment_tools import (
     create_assessment_instance as create_assessment_instance_tool,
+    export_assessment_results as export_assessment_results_tool,
     get_assessment_instance as get_assessment_instance_tool,
     get_assessment_metric_type as get_assessment_metric_type_tool,
     list_assessment_instances as list_assessment_instances_tool,
@@ -3715,6 +3717,21 @@ def get_tool_definitions(
                 "Optionally set the respondent (user), the person responsible (assigned_to), "
                 "a due_date (YYYY-MM-DD), and an initial state. "
                 "User and assigned_to may be supplied as sys_ids or as user_name strings."
+            ),
+            "raw_dict",
+        ),
+        "export_assessment_results": (
+            export_assessment_results_tool,
+            ExportAssessmentResultsParams,
+            Dict[str, Any],
+            (
+                "Export aggregated assessment results for a given metric type (survey/assessment definition). "
+                "Queries asmt_assessment_instance, optionally scoped by completion date range "
+                "(completed_after/completed_before as YYYY-MM-DD) and state. "
+                "Returns a summary block with total/completed counts, completion rate, average score, "
+                "and a score distribution across four quartile bands (0-25, 26-50, 51-75, 76-100), "
+                "plus a paginated instances list with per-respondent detail. "
+                "metric_type may be supplied as a sys_id or as an exact name."
             ),
             "raw_dict",
         ),

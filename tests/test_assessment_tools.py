@@ -5,11 +5,14 @@ from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.assessment_tools import (
     CreateAssessmentInstanceParams,
+    ExportAssessmentResultsParams,
+    _compute_score_distribution,
     _format_assessment_instance,
     _format_assessment_metric_type,
     _resolve_metric_type_sys_id,
     _resolve_user_sys_id,
     create_assessment_instance,
+    export_assessment_results,
     get_assessment_instance,
     get_assessment_metric_type,
     list_assessment_instances,
@@ -830,5 +833,343 @@ def test_create_assessment_instance_invalid_params(auth_manager, server_config):
             "source_id": SOURCE_SYS_ID,
             "due_date": "bad-date",
         },
+    )
+    assert result["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# _compute_score_distribution
+# ---------------------------------------------------------------------------
+
+def test_compute_score_distribution_all_buckets():
+    scores = [10.0, 30.0, 60.0, 90.0]
+    dist = _compute_score_distribution(scores)
+    assert dist["0-25"] == 1
+    assert dist["26-50"] == 1
+    assert dist["51-75"] == 1
+    assert dist["76-100"] == 1
+
+
+def test_compute_score_distribution_boundaries():
+    scores = [0.0, 25.0, 26.0, 50.0, 51.0, 75.0, 76.0, 100.0]
+    dist = _compute_score_distribution(scores)
+    assert dist["0-25"] == 2
+    assert dist["26-50"] == 2
+    assert dist["51-75"] == 2
+    assert dist["76-100"] == 2
+
+
+def test_compute_score_distribution_empty():
+    dist = _compute_score_distribution([])
+    assert dist == {"0-25": 0, "26-50": 0, "51-75": 0, "76-100": 0}
+
+
+# ---------------------------------------------------------------------------
+# ExportAssessmentResultsParams validation
+# ---------------------------------------------------------------------------
+
+def test_export_params_valid_minimal():
+    p = ExportAssessmentResultsParams(metric_type="Employee Survey")
+    assert p.metric_type == "Employee Survey"
+    assert p.completed_after is None
+    assert p.completed_before is None
+    assert p.state is None
+    assert p.limit == 200
+    assert p.offset == 0
+
+
+def test_export_params_valid_date_range():
+    p = ExportAssessmentResultsParams(
+        metric_type="Employee Survey",
+        completed_after="2025-01-01",
+        completed_before="2025-12-31",
+    )
+    assert p.completed_after == "2025-01-01"
+    assert p.completed_before == "2025-12-31"
+
+
+def test_export_params_invalid_completed_after():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        ExportAssessmentResultsParams(metric_type="Survey", completed_after="01/01/2025")
+
+
+def test_export_params_invalid_completed_before():
+    from pydantic import ValidationError
+    with pytest.raises(ValidationError):
+        ExportAssessmentResultsParams(metric_type="Survey", completed_before="13/01/2025")
+
+
+# ---------------------------------------------------------------------------
+# export_assessment_results – success paths
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_success(mock_req, mock_resolve, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [RAW_INSTANCE]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    assert result["success"] is True
+    assert result["count"] == 1
+    assert len(result["instances"]) == 1
+    assert "summary" in result
+    summary = result["summary"]
+    assert summary["metric_type_sys_id"] == MT_SYS_ID
+    assert summary["total_instances"] == 1
+    assert summary["completed_instances"] == 1
+    assert summary["completion_rate_pct"] == 100.0
+    assert summary["average_score"] == 85.0
+    assert summary["score_distribution"]["76-100"] == 1
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_empty(mock_req, mock_resolve, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    assert result["success"] is True
+    assert result["count"] == 0
+    assert result["instances"] == []
+    summary = result["summary"]
+    assert summary["total_instances"] == 0
+    assert summary["completed_instances"] == 0
+    assert summary["completion_rate_pct"] == 0.0
+    assert summary["average_score"] is None
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_date_filters_in_query(mock_req, mock_resolve, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    export_assessment_results(
+        auth_manager, server_config,
+        {
+            "metric_type": "Employee Survey",
+            "completed_after": "2025-01-01",
+            "completed_before": "2025-12-31",
+        },
+    )
+    call_kwargs = mock_req.call_args
+    query = call_kwargs[1]["params"].get("sysparm_query", "")
+    assert "completion_date>=2025-01-01" in query
+    assert "completion_date<=2025-12-31" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_state_filter_in_query(mock_req, mock_resolve, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    export_assessment_results(
+        auth_manager, server_config,
+        {"metric_type": "Employee Survey", "state": "complete"},
+    )
+    call_kwargs = mock_req.call_args
+    query = call_kwargs[1]["params"].get("sysparm_query", "")
+    assert "state=complete" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_metric_type_in_query(mock_req, mock_resolve, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    call_kwargs = mock_req.call_args
+    query = call_kwargs[1]["params"].get("sysparm_query", "")
+    assert f"metric_type={MT_SYS_ID}" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_limit_cap(mock_req, mock_resolve, auth_manager, server_config):
+    """Limits above 1000 should be capped at 1000."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    export_assessment_results(
+        auth_manager, server_config,
+        {"metric_type": "Employee Survey", "limit": 5000},
+    )
+    call_kwargs = mock_req.call_args
+    params = call_kwargs[1]["params"]
+    assert params.get("sysparm_limit") <= 1000
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_pagination(mock_req, mock_resolve, auth_manager, server_config):
+    """has_more should be True when count == limit."""
+    records = [dict(RAW_INSTANCE, sys_id=str(i) * 32) for i in range(10)]
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": records}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_results(
+        auth_manager, server_config,
+        {"metric_type": "Employee Survey", "limit": 10, "offset": 0},
+    )
+    assert result["has_more"] is True
+    assert result["next_offset"] == 10
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_non_numeric_score_skipped(mock_req, mock_resolve, auth_manager, server_config):
+    """Instances with non-numeric scores should not break the average."""
+    raw_no_score = dict(RAW_INSTANCE, score="N/A", state="pending")
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [raw_no_score]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    assert result["success"] is True
+    assert result["summary"]["average_score"] is None
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_none_score_skipped(mock_req, mock_resolve, auth_manager, server_config):
+    """Instances with None scores should not break the average."""
+    raw_no_score = dict(RAW_INSTANCE, score=None, state="pending")
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [raw_no_score]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    assert result["success"] is True
+    assert result["summary"]["average_score"] is None
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_numeric_4_state_counted(mock_req, mock_resolve, auth_manager, server_config):
+    """State value '4' (numeric string for Complete) should count as completed."""
+    raw_state_4 = dict(RAW_INSTANCE, state="4")
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [raw_state_4]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    assert result["summary"]["completed_instances"] == 1
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_filters_applied_in_summary(mock_req, mock_resolve, auth_manager, server_config):
+    """Filters applied should be reflected in summary.filters_applied."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_results(
+        auth_manager, server_config,
+        {
+            "metric_type": "Employee Survey",
+            "state": "complete",
+            "completed_after": "2025-01-01",
+            "completed_before": "2025-12-31",
+        },
+    )
+    filters = result["summary"]["filters_applied"]
+    assert filters["state"] == "complete"
+    assert filters["completed_after"] == "2025-01-01"
+    assert filters["completed_before"] == "2025-12-31"
+
+
+# ---------------------------------------------------------------------------
+# export_assessment_results – error / guard paths
+# ---------------------------------------------------------------------------
+
+def test_export_assessment_results_missing_required(auth_manager, server_config):
+    """Missing metric_type should return failure."""
+    result = export_assessment_results(auth_manager, server_config, {})
+    assert result["success"] is False
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=None)
+def test_export_assessment_results_metric_type_not_found(mock_resolve, auth_manager, server_config):
+    result = export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Nonexistent"}
+    )
+    assert result["success"] is False
+    assert "not found" in result["message"]
+
+
+def test_export_assessment_results_no_instance_url(server_config):
+    am = MagicMock()
+    am.instance_url = None
+    sc = MagicMock()
+    sc.instance_url = None
+    result = export_assessment_results(am, sc, {"metric_type": "Employee Survey"})
+    assert result["success"] is False
+    assert "instance_url" in result["message"]
+
+
+def test_export_assessment_results_no_headers(server_config):
+    am = MagicMock()
+    am.instance_url = INSTANCE_URL
+    am.get_headers.return_value = None
+    sc = MagicMock()
+    sc.instance_url = None
+    result = export_assessment_results(am, sc, {"metric_type": "Employee Survey"})
+    assert result["success"] is False
+    assert "get_headers" in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_results_http_error(mock_req, mock_resolve, auth_manager, server_config):
+    import requests
+    mock_req.side_effect = requests.exceptions.RequestException("timeout")
+    result = export_assessment_results(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    assert result["success"] is False
+    assert "Error exporting assessment results" in result["message"]
+
+
+def test_export_assessment_results_invalid_date(auth_manager, server_config):
+    """Invalid completed_after date format should return failure."""
+    result = export_assessment_results(
+        auth_manager, server_config,
+        {"metric_type": "Employee Survey", "completed_after": "bad-date"},
     )
     assert result["success"] is False
