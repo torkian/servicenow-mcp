@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add delete_assessment_instance tool (DELETE asmt_assessment_instance/{sys_id}; 404 guard; registered in system_administrator + full packages)
-2. Add list_catalog_item_questions tool (io_set_item and item_option_new; questions linked to a catalog item variable set)
+1. Add list_catalog_item_questions tool (io_set_item and item_option_new; questions linked to a catalog item variable set)
 3. Add export_assessment_responses tool (per-question response detail from asmt_questionnaire_response; links to assessment instance; optional question/metric filters)
 4. Add cmdb_ci_affinity tools (list_ci_affinities, get_ci_affinity; cmdb_ci_affinity table; filters for ci_sys_id and affinity_type)
 5. Add list_cmdb_ci_groups tool (cmdb_ci_group table; filters for name/type/active; pagination)
@@ -150,3 +149,4 @@
 135. 2026-08-19 — Add survey/assessment tools (list_assessment_instances, get_assessment_instance, list_assessment_metric_types, get_assessment_metric_type); assessment_tools.py covers asmt_assessment_instance and asmt_metric_type tables; metric_type name→sys_id resolver; reference fields normalised; state/user/source_table/metric_type filters; registered in system_administrator and full packages; 37 new tests; 97% assessment_tools.py coverage; 3087 total tests; 95% total coverage)
 136. 2026-08-20 — Add create_assessment_instance tool (POST asmt_assessment_instance; metric_type/user/assigned_to resolved by name or sys_id; optional due_date with YYYY-MM-DD validation; optional state; _resolve_user_sys_id helper; registered in system_administrator and full packages; 18 new tests; 3105 total tests; 95% total coverage)
 137. 2026-08-21 — Add export_assessment_results tool (GET asmt_assessment_instance aggregated by metric type; summary block with total/completed counts, completion rate, average score, quartile score distribution; optional completed_after/completed_before/state filters; limit capped at 1000; registered in system_administrator and full packages; 24 new tests; 3129 total tests; 95% total coverage)
+138. 2026-08-22 — Add delete_assessment_instance tool (DELETE asmt_assessment_instance/{sys_id}; 404 guard; 204/200 success handling; DeleteAssessmentInstanceParams model; registered in system_administrator and full packages; 10 new tests; 3139 total tests; 95% total coverage)

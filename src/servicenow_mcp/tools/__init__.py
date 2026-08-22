@@ -280,6 +280,7 @@ from servicenow_mcp.tools.generic_table_tools import (
 )
 from servicenow_mcp.tools.assessment_tools import (
     create_assessment_instance,
+    delete_assessment_instance,
     export_assessment_results,
     get_assessment_instance,
     get_assessment_metric_type,
@@ -713,6 +714,7 @@ __all__ = [
     # Assessment / Survey tools
     "list_assessment_instances",
     "get_assessment_instance",
+    "delete_assessment_instance",
     "list_assessment_metric_types",
     "get_assessment_metric_type",
     "create_assessment_instance",

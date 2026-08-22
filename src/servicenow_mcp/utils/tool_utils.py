@@ -920,6 +920,7 @@ from servicenow_mcp.tools.user_preference_tools import (
 )
 from servicenow_mcp.tools.assessment_tools import (
     CreateAssessmentInstanceParams,
+    DeleteAssessmentInstanceParams,
     ExportAssessmentResultsParams,
     GetAssessmentInstanceParams,
     GetAssessmentMetricTypeParams,
@@ -928,6 +929,7 @@ from servicenow_mcp.tools.assessment_tools import (
 )
 from servicenow_mcp.tools.assessment_tools import (
     create_assessment_instance as create_assessment_instance_tool,
+    delete_assessment_instance as delete_assessment_instance_tool,
     export_assessment_results as export_assessment_results_tool,
     get_assessment_instance as get_assessment_instance_tool,
     get_assessment_metric_type as get_assessment_metric_type_tool,
@@ -3732,6 +3734,19 @@ def get_tool_definitions(
                 "and a score distribution across four quartile bands (0-25, 26-50, 51-75, 76-100), "
                 "plus a paginated instances list with per-respondent detail. "
                 "metric_type may be supplied as a sys_id or as an exact name."
+            ),
+            "raw_dict",
+        ),
+        "delete_assessment_instance": (
+            delete_assessment_instance_tool,
+            DeleteAssessmentInstanceParams,
+            Dict[str, Any],
+            (
+                "Delete an assessment instance from the asmt_assessment_instance table. "
+                "Requires the sys_id of the instance to delete. "
+                "Returns a 404 error if the record does not exist. "
+                "Use with caution: deletion is permanent and removes the respondent's copy "
+                "of the survey/assessment along with any responses captured in the instance."
             ),
             "raw_dict",
         ),

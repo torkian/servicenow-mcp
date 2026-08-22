@@ -5,6 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.assessment_tools import (
     CreateAssessmentInstanceParams,
+    DeleteAssessmentInstanceParams,
     ExportAssessmentResultsParams,
     _compute_score_distribution,
     _format_assessment_instance,
@@ -12,6 +13,7 @@ from servicenow_mcp.tools.assessment_tools import (
     _resolve_metric_type_sys_id,
     _resolve_user_sys_id,
     create_assessment_instance,
+    delete_assessment_instance,
     export_assessment_results,
     get_assessment_instance,
     get_assessment_metric_type,
@@ -1173,3 +1175,117 @@ def test_export_assessment_results_invalid_date(auth_manager, server_config):
         {"metric_type": "Employee Survey", "completed_after": "bad-date"},
     )
     assert result["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# delete_assessment_instance
+# ---------------------------------------------------------------------------
+
+
+def test_delete_assessment_instance_missing_instance_id(auth_manager, server_config):
+    """Missing required instance_id should return failure."""
+    result = delete_assessment_instance(auth_manager, server_config, {})
+    assert result["success"] is False
+    assert "instance_id" in result["message"].lower() or "required" in result["message"].lower()
+
+
+def test_delete_assessment_instance_no_instance_url(server_config):
+    """Missing instance_url should return failure."""
+    am = MagicMock()
+    am.instance_url = None
+    server_config.instance_url = None
+    result = delete_assessment_instance(am, server_config, {"instance_id": INSTANCE_SYS_ID})
+    assert result["success"] is False
+    assert "instance_url" in result["message"]
+
+
+def test_delete_assessment_instance_no_headers(server_config):
+    """Missing headers should return failure."""
+    am = MagicMock()
+    am.instance_url = INSTANCE_URL
+    am.get_headers.return_value = None
+    server_config.instance_url = None
+    result = delete_assessment_instance(am, server_config, {"instance_id": INSTANCE_SYS_ID})
+    assert result["success"] is False
+    assert "headers" in result["message"].lower()
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_delete_assessment_instance_204_success(mock_req, auth_manager, server_config):
+    """A 204 No Content response should be treated as success."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 204
+    mock_req.return_value = mock_resp
+    result = delete_assessment_instance(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    assert result["success"] is True
+    assert INSTANCE_SYS_ID in result["message"]
+    assert "deleted" in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_delete_assessment_instance_200_success(mock_req, auth_manager, server_config):
+    """A 200 OK response (some SN versions) should also be treated as success."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+    result = delete_assessment_instance(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    assert result["success"] is True
+    assert "deleted" in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_delete_assessment_instance_404(mock_req, auth_manager, server_config):
+    """A 404 response should return a descriptive not-found error."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    mock_req.return_value = mock_resp
+    result = delete_assessment_instance(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    assert result["success"] is False
+    assert "not found" in result["message"].lower()
+    assert INSTANCE_SYS_ID in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_delete_assessment_instance_http_error(mock_req, auth_manager, server_config):
+    """A RequestException should be caught and returned as failure."""
+    import requests as req_lib
+    mock_req.side_effect = req_lib.exceptions.RequestException("connection reset")
+    result = delete_assessment_instance(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    assert result["success"] is False
+    assert "Error deleting assessment instance" in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_delete_assessment_instance_correct_url(mock_req, auth_manager, server_config):
+    """DELETE should target the correct table URL including the sys_id."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 204
+    mock_req.return_value = mock_resp
+    delete_assessment_instance(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    call_args = mock_req.call_args
+    assert call_args[0][0] == "DELETE"
+    assert f"asmt_assessment_instance/{INSTANCE_SYS_ID}" in call_args[0][1]
+
+
+def test_delete_assessment_instance_params_model():
+    """DeleteAssessmentInstanceParams requires instance_id."""
+    p = DeleteAssessmentInstanceParams(instance_id=INSTANCE_SYS_ID)
+    assert p.instance_id == INSTANCE_SYS_ID
+
+
+def test_delete_assessment_instance_params_missing():
+    """DeleteAssessmentInstanceParams rejects missing instance_id."""
+    import pydantic
+    with pytest.raises(pydantic.ValidationError):
+        DeleteAssessmentInstanceParams()

@@ -663,6 +663,78 @@ def create_assessment_instance(
 
 
 # ---------------------------------------------------------------------------
+# delete_assessment_instance
+# ---------------------------------------------------------------------------
+
+
+class DeleteAssessmentInstanceParams(BaseModel):
+    """Parameters for deleting an assessment instance."""
+
+    instance_id: str = Field(
+        ...,
+        description="The sys_id of the asmt_assessment_instance record to delete.",
+    )
+
+
+def delete_assessment_instance(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete an assessment instance from the asmt_assessment_instance table.
+
+    Issues a DELETE request against the record identified by ``instance_id``.
+    Returns a 404 error when no matching record exists.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeleteAssessmentInstanceParams.
+
+    Returns:
+        Dictionary with ``success`` and ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, DeleteAssessmentInstanceParams, required_fields=["instance_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: DeleteAssessmentInstanceParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{ASSESSMENT_INSTANCE_TABLE}/{validated.instance_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Assessment instance not found: {validated.instance_id}",
+            }
+        if response.status_code == 204:
+            return {
+                "success": True,
+                "message": f"Assessment instance {validated.instance_id} deleted successfully",
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"Assessment instance {validated.instance_id} deleted successfully",
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error("Error deleting assessment instance: %s", e)
+        return {
+            "success": False,
+            "message": f"Error deleting assessment instance: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
 # export_assessment_results
 # ---------------------------------------------------------------------------
 
