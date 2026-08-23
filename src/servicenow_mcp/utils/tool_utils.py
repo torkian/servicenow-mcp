@@ -136,6 +136,7 @@ from servicenow_mcp.tools.catalog_variables import (
     CreateCatalogItemVariableSetParams,
     CreateCatalogVariableChoiceParams,
     DeleteCatalogItemVariableParams,
+    ListCatalogItemQuestionsParams,
     ListCatalogItemVariablesParams,
     UpdateCatalogItemVariableParams,
 )
@@ -150,6 +151,9 @@ from servicenow_mcp.tools.catalog_variables import (
 )
 from servicenow_mcp.tools.catalog_variables import (
     delete_catalog_item_variable as delete_catalog_item_variable_tool,
+)
+from servicenow_mcp.tools.catalog_variables import (
+    list_catalog_item_questions as list_catalog_item_questions_tool,
 )
 from servicenow_mcp.tools.catalog_variables import (
     list_catalog_item_variables as list_catalog_item_variables_tool,
@@ -1387,6 +1391,13 @@ def get_tool_definitions(
             Dict[str, Any],  # Expects dict
             "List catalog item variables",
             "dict",  # Tool returns Pydantic model
+        ),
+        "list_catalog_item_questions": (
+            list_catalog_item_questions_tool,
+            ListCatalogItemQuestionsParams,
+            Dict[str, Any],
+            "List questions (variables) linked to a catalog item, including those from linked variable sets (io_set_item)",
+            "dict",
         ),
         "update_catalog_item_variable": (
             update_catalog_item_variable_tool,

@@ -12,12 +12,14 @@ from servicenow_mcp.tools.catalog_variables import (
     CreateCatalogItemVariableSetParams,
     CreateCatalogVariableChoiceParams,
     DeleteCatalogItemVariableParams,
+    ListCatalogItemQuestionsParams,
     ListCatalogItemVariablesParams,
     UpdateCatalogItemVariableParams,
     create_catalog_item_variable,
     create_catalog_item_variable_set,
     create_catalog_variable_choice,
     delete_catalog_item_variable,
+    list_catalog_item_questions,
     list_catalog_item_variables,
     update_catalog_item_variable,
 )
@@ -802,6 +804,391 @@ class TestCreateCatalogItemVariableSet(unittest.TestCase):
 
         link_body = mock_post.call_args_list[1][1]["json"]
         self.assertNotIn("order", link_body)
+
+
+class TestListCatalogItemQuestions(unittest.TestCase):
+    """Tests for list_catalog_item_questions."""
+
+    def setUp(self):
+        auth_config = AuthConfig(
+            type=AuthType.BASIC,
+            basic=BasicAuthConfig(username="admin", password="secret"),
+        )
+        self.config = ServerConfig(instance_url="https://test.service-now.com", auth=auth_config)
+        self.auth_manager = MagicMock()
+        self.auth_manager.get_headers.return_value = {"Authorization": "Basic xxx"}
+
+    def _make_ok_response(self, records):
+        resp = MagicMock()
+        resp.raise_for_status = MagicMock()
+        resp.json.return_value = {"result": records}
+        return resp
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_direct_questions_returned(self, mock_req):
+        """Questions directly linked via cat_item are returned."""
+        direct_q = {
+            "sys_id": "q1",
+            "name": "color",
+            "type": "0",
+            "question_text": "Preferred color?",
+            "order": "100",
+            "mandatory": "false",
+            "default_value": "",
+            "help_text": "",
+            "description": "",
+            "variable_set": "",
+            "cat_item": "item123",
+            "reference": "",
+            "max_length": "",
+            "min": "",
+            "max": "",
+            "active": "true",
+            "sys_created_on": "2026-01-01",
+            "sys_updated_on": "2026-01-01",
+        }
+        # First call: direct cat_item query
+        # Second call: io_set_item lookup
+        mock_req.side_effect = [
+            self._make_ok_response([direct_q]),
+            self._make_ok_response([]),  # no variable sets
+        ]
+
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123")
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.total, 1)
+        self.assertEqual(result.questions[0]["sys_id"], "q1")
+        self.assertEqual(result.questions[0]["type"], "single_line_text")
+        self.assertFalse(result.questions[0]["mandatory"])
+        self.assertTrue(result.questions[0]["active"])
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_variable_set_questions_included(self, mock_req):
+        """Questions from linked variable sets are merged into results."""
+        # io_set_item returns one variable set
+        io_record = {"variable_set": {"value": "vs1"}}
+        set_q = {
+            "sys_id": "q2",
+            "name": "size",
+            "type": "2",
+            "question_text": "Size?",
+            "order": "200",
+            "mandatory": "true",
+            "default_value": "",
+            "help_text": "",
+            "description": "",
+            "variable_set": {"display_value": "My Set", "value": "vs1"},
+            "cat_item": "",
+            "reference": "",
+            "max_length": "",
+            "min": "",
+            "max": "",
+            "active": "true",
+            "sys_created_on": "2026-01-01",
+            "sys_updated_on": "2026-01-01",
+        }
+        mock_req.side_effect = [
+            self._make_ok_response([]),          # direct cat_item query -> empty
+            self._make_ok_response([io_record]),  # io_set_item query
+            self._make_ok_response([set_q]),      # variable_setIN query
+        ]
+
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123")
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.total, 1)
+        self.assertEqual(result.questions[0]["sys_id"], "q2")
+        self.assertEqual(result.questions[0]["type"], "multiple_choice")
+        self.assertTrue(result.questions[0]["mandatory"])
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_deduplication_across_sources(self, mock_req):
+        """Questions appearing in both direct and variable-set sources are deduped."""
+        shared_q = {
+            "sys_id": "qX",
+            "name": "qty",
+            "type": "0",
+            "question_text": "Qty?",
+            "order": "50",
+            "mandatory": "false",
+            "default_value": "",
+            "help_text": "",
+            "description": "",
+            "variable_set": "",
+            "cat_item": "item123",
+            "reference": "",
+            "max_length": "",
+            "min": "",
+            "max": "",
+            "active": "true",
+            "sys_created_on": "",
+            "sys_updated_on": "",
+        }
+        io_record = {"variable_set": {"value": "vs1"}}
+        mock_req.side_effect = [
+            self._make_ok_response([shared_q]),   # direct
+            self._make_ok_response([io_record]),   # io_set_item
+            self._make_ok_response([shared_q]),    # variable_set query returns same question
+        ]
+
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123")
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        # Should only appear once
+        self.assertEqual(result.total, 1)
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_type_filter_by_code(self, mock_req):
+        """type filter is passed as-is when a numeric code is given."""
+        mock_req.side_effect = [
+            self._make_ok_response([]),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123", question_type="3")
+        list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        first_call_params = mock_req.call_args_list[0][1]["params"]
+        self.assertIn("type=3", first_call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_type_filter_by_name(self, mock_req):
+        """type filter accepts a human-readable label and converts to numeric code."""
+        mock_req.side_effect = [
+            self._make_ok_response([]),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123", question_type="yes_no")
+        list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        first_call_params = mock_req.call_args_list[0][1]["params"]
+        self.assertIn("type=3", first_call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_mandatory_only_filter(self, mock_req):
+        """mandatory_only=True appends mandatory=true to queries."""
+        mock_req.side_effect = [
+            self._make_ok_response([]),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123", mandatory_only=True)
+        list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        first_call_params = mock_req.call_args_list[0][1]["params"]
+        self.assertIn("mandatory=true", first_call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_variable_set_id_filter(self, mock_req):
+        """variable_set_id restricts questions to a single set without io_set_item lookup."""
+        mock_req.side_effect = [
+            self._make_ok_response([]),   # direct cat_item
+            self._make_ok_response([]),   # variable_set_id direct query
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123", variable_set_id="vs99")
+        list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        # Only 2 calls (no io_set_item lookup)
+        self.assertEqual(mock_req.call_count, 2)
+        set_call_params = mock_req.call_args_list[1][1]["params"]
+        self.assertIn("variable_set=vs99", set_call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_pagination_limit_offset(self, mock_req):
+        """Pagination correctly slices results and populates has_more/next_offset."""
+        questions = [
+            {
+                "sys_id": f"q{i}",
+                "name": f"q{i}",
+                "type": "0",
+                "question_text": f"Q {i}?",
+                "order": str(i * 10),
+                "mandatory": "false",
+                "default_value": "",
+                "help_text": "",
+                "description": "",
+                "variable_set": "",
+                "cat_item": "item123",
+                "reference": "",
+                "max_length": "",
+                "min": "",
+                "max": "",
+                "active": "true",
+                "sys_created_on": "",
+                "sys_updated_on": "",
+            }
+            for i in range(5)
+        ]
+        mock_req.side_effect = [
+            self._make_ok_response(questions),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123", limit=2, offset=0)
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.total, 5)
+        self.assertEqual(len(result.questions), 2)
+        self.assertTrue(result.has_more)
+        self.assertEqual(result.next_offset, 2)
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_no_has_more_when_last_page(self, mock_req):
+        """has_more is False on the last page."""
+        questions = [
+            {
+                "sys_id": "qa",
+                "name": "qa",
+                "type": "0",
+                "question_text": "A?",
+                "order": "10",
+                "mandatory": "false",
+                "default_value": "",
+                "help_text": "",
+                "description": "",
+                "variable_set": "",
+                "cat_item": "item123",
+                "reference": "",
+                "max_length": "",
+                "min": "",
+                "max": "",
+                "active": "false",
+                "sys_created_on": "",
+                "sys_updated_on": "",
+            }
+        ]
+        mock_req.side_effect = [
+            self._make_ok_response(questions),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123", limit=10, offset=0)
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertFalse(result.has_more)
+        self.assertIsNone(result.next_offset)
+        self.assertFalse(result.questions[0]["active"])
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_io_set_item_failure_does_not_crash(self, mock_req):
+        """A network error on io_set_item lookup is swallowed; direct results still returned."""
+        direct_q = {
+            "sys_id": "qDirect",
+            "name": "d",
+            "type": "0",
+            "question_text": "Direct?",
+            "order": "10",
+            "mandatory": "false",
+            "default_value": "",
+            "help_text": "",
+            "description": "",
+            "variable_set": "",
+            "cat_item": "item123",
+            "reference": "",
+            "max_length": "",
+            "min": "",
+            "max": "",
+            "active": "true",
+            "sys_created_on": "",
+            "sys_updated_on": "",
+        }
+        io_fail = MagicMock()
+        io_fail.raise_for_status.side_effect = requests.HTTPError("500")
+
+        mock_req.side_effect = [
+            self._make_ok_response([direct_q]),
+            io_fail,
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123")
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.total, 1)
+        self.assertEqual(result.questions[0]["sys_id"], "qDirect")
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_empty_result(self, mock_req):
+        """Empty catalog item with no questions returns success with zero total."""
+        mock_req.side_effect = [
+            self._make_ok_response([]),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="empty_item")
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertTrue(result.success)
+        self.assertEqual(result.total, 0)
+        self.assertEqual(result.questions, [])
+        self.assertFalse(result.has_more)
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_sorted_by_order(self, mock_req):
+        """Questions are sorted by the order field ascending."""
+        q_high = {
+            "sys_id": "q_high",
+            "name": "last",
+            "type": "0",
+            "question_text": "Z?",
+            "order": "900",
+            "mandatory": "false",
+            "default_value": "",
+            "help_text": "",
+            "description": "",
+            "variable_set": "",
+            "cat_item": "item123",
+            "reference": "",
+            "max_length": "",
+            "min": "",
+            "max": "",
+            "active": "true",
+            "sys_created_on": "",
+            "sys_updated_on": "",
+        }
+        q_low = {**q_high, "sys_id": "q_low", "name": "first", "order": "10"}
+
+        mock_req.side_effect = [
+            self._make_ok_response([q_high, q_low]),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123")
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertEqual(result.questions[0]["sys_id"], "q_low")
+        self.assertEqual(result.questions[1]["sys_id"], "q_high")
+
+    @patch("servicenow_mcp.tools.catalog_variables._make_request")
+    def test_unknown_type_code_preserved(self, mock_req):
+        """Unknown type codes are returned as-is in type field."""
+        q = {
+            "sys_id": "qU",
+            "name": "unk",
+            "type": "99",
+            "question_text": "Unknown?",
+            "order": "10",
+            "mandatory": "false",
+            "default_value": "",
+            "help_text": "",
+            "description": "",
+            "variable_set": "",
+            "cat_item": "item123",
+            "reference": "",
+            "max_length": "",
+            "min": "",
+            "max": "",
+            "active": "true",
+            "sys_created_on": "",
+            "sys_updated_on": "",
+        }
+        mock_req.side_effect = [
+            self._make_ok_response([q]),
+            self._make_ok_response([]),
+        ]
+        params = ListCatalogItemQuestionsParams(catalog_item_id="item123")
+        result = list_catalog_item_questions(self.config, self.auth_manager, params)
+
+        self.assertEqual(result.questions[0]["type_code"], "99")
+        self.assertEqual(result.questions[0]["type"], "99")
 
 
 if __name__ == "__main__":

@@ -49,6 +49,7 @@ from servicenow_mcp.tools.catalog_variables import (
     create_catalog_item_variable_set,
     create_catalog_variable_choice,
     delete_catalog_item_variable,
+    list_catalog_item_questions,
     list_catalog_item_variables,
     update_catalog_item_variable,
 )
@@ -402,6 +403,7 @@ __all__ = [
     "create_catalog_item_variable",
     "create_catalog_item_variable_set",
     "list_catalog_item_variables",
+    "list_catalog_item_questions",
     "update_catalog_item_variable",
     "delete_catalog_item_variable",
     "create_catalog_variable_choice",

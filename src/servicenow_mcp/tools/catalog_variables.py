@@ -556,3 +556,273 @@ def delete_catalog_item_variable(
             success=False,
             message=f"Failed to delete catalog item variable: {_format_http_error(e)}",
         )
+
+
+# ---------------------------------------------------------------------------
+# list_catalog_item_questions
+# ---------------------------------------------------------------------------
+
+QUESTION_FIELDS = [
+    "sys_id",
+    "name",
+    "type",
+    "question_text",
+    "order",
+    "mandatory",
+    "default_value",
+    "help_text",
+    "description",
+    "variable_set",
+    "cat_item",
+    "reference",
+    "max_length",
+    "min",
+    "max",
+    "active",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+QUESTION_TYPE_LABELS: Dict[str, str] = {
+    "0": "single_line_text",
+    "1": "multi_line_text",
+    "2": "multiple_choice",
+    "3": "yes_no",
+    "4": "reference",
+    "5": "date",
+    "6": "date_time",
+    "7": "label",
+    "8": "break",
+    "9": "macro",
+    "10": "ui_page",
+    "11": "wide_single_line_text",
+    "12": "masked",
+    "14": "numeric_scale",
+    "15": "container_start",
+    "16": "container_end",
+    "17": "attachment",
+    "18": "lookup_select_box",
+    "19": "checkbox",
+    "20": "ip_address",
+    "21": "field_list",
+    "22": "multi_select_box",
+    "26": "email",
+    "24": "lookup_multiple_choice",
+    "28": "generic_widget",
+    "30": "select_box",
+}
+
+
+class ListCatalogItemQuestionsParams(BaseModel):
+    """Parameters for listing questions linked to a catalog item."""
+
+    catalog_item_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the catalog item (sc_cat_item) whose questions to list. "
+            "Both directly-attached questions and questions coming through linked "
+            "variable sets (io_set_item) are returned."
+        ),
+    )
+    variable_set_id: Optional[str] = Field(
+        None,
+        description=(
+            "Restrict results to questions belonging to this variable set sys_id. "
+            "When omitted, questions from all linked variable sets are included."
+        ),
+    )
+    question_type: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by question type code or name "
+            "(e.g. '0', 'single_line_text', '2', 'multiple_choice')."
+        ),
+    )
+    mandatory_only: bool = Field(
+        False,
+        description="When True, only mandatory questions are returned.",
+    )
+    limit: int = Field(100, description="Maximum number of questions to return (1-500).", ge=1, le=500)
+    offset: int = Field(0, description="Zero-based offset for pagination.", ge=0)
+
+
+class ListCatalogItemQuestionsResponse(BaseModel):
+    """Response from list_catalog_item_questions."""
+
+    success: bool
+    message: str
+    questions: List[Dict[str, Any]] = []
+    total: int = 0
+    has_more: bool = False
+    next_offset: Optional[int] = None
+
+
+def _format_question(raw: Dict[str, Any]) -> Dict[str, Any]:
+    """Normalise a raw item_option_new record."""
+
+    def _ref_val(v: Any) -> Any:
+        if isinstance(v, dict):
+            return v.get("display_value") or v.get("value")
+        return v
+
+    type_code = str(raw.get("type", ""))
+    return {
+        "sys_id": raw.get("sys_id"),
+        "name": raw.get("name"),
+        "type_code": type_code,
+        "type": QUESTION_TYPE_LABELS.get(type_code, type_code),
+        "question_text": raw.get("question_text"),
+        "order": raw.get("order"),
+        "mandatory": raw.get("mandatory") in ("true", True),
+        "default_value": raw.get("default_value"),
+        "help_text": raw.get("help_text"),
+        "description": raw.get("description"),
+        "variable_set": _ref_val(raw.get("variable_set")),
+        "cat_item": _ref_val(raw.get("cat_item")),
+        "reference_table": _ref_val(raw.get("reference")),
+        "max_length": raw.get("max_length"),
+        "min": raw.get("min"),
+        "max": raw.get("max"),
+        "active": raw.get("active") in ("true", True),
+        "sys_created_on": raw.get("sys_created_on"),
+        "sys_updated_on": raw.get("sys_updated_on"),
+    }
+
+
+def list_catalog_item_questions(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ListCatalogItemQuestionsParams,
+) -> ListCatalogItemQuestionsResponse:
+    """
+    List all questions (variables) linked to a catalog item.
+
+    Combines two sources:
+
+    1. **Direct questions** — ``item_option_new`` records whose ``cat_item``
+       field equals *catalog_item_id*.
+    2. **Variable-set questions** — ``item_option_new`` records whose
+       ``variable_set`` belongs to a set linked to the catalog item through an
+       ``io_set_item`` junction record.
+
+    Both sets are merged and deduplicated by ``sys_id`` before pagination is
+    applied.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters controlling the query.
+
+    Returns:
+        Paginated list of normalised question records.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    table_url = f"{base_url}/api/now/table/item_option_new"
+
+    # ------------------------------------------------------------------
+    # 1. Resolve type filter to a numeric code (accept names or codes)
+    # ------------------------------------------------------------------
+    type_filter: Optional[str] = None
+    if params.question_type is not None:
+        qt = params.question_type.strip()
+        if qt.isdigit():
+            type_filter = qt
+        else:
+            # Accept label lookups (case-insensitive)
+            label_map = {v: k for k, v in QUESTION_TYPE_LABELS.items()}
+            type_filter = label_map.get(qt.lower())
+
+    # ------------------------------------------------------------------
+    # 2. Collect all questions (direct + via variable sets)
+    # ------------------------------------------------------------------
+    seen_ids: Dict[str, Dict[str, Any]] = {}
+
+    def _fetch_questions(extra_query: str) -> None:
+        parts = [extra_query]
+        if type_filter:
+            parts.append(f"type={type_filter}")
+        if params.mandatory_only:
+            parts.append("mandatory=true")
+        query = "^".join(parts)
+        query_params: Dict[str, Any] = {
+            "sysparm_query": query,
+            "sysparm_fields": ",".join(QUESTION_FIELDS),
+            "sysparm_display_value": "true",
+            "sysparm_exclude_reference_link": "true",
+            # Fetch a generous batch; we deduplicate across sources
+            "sysparm_limit": 500,
+            "sysparm_offset": 0,
+        }
+        try:
+            resp = _make_request(
+                "GET",
+                table_url,
+                params=query_params,
+                headers=headers,
+                timeout=config.timeout,
+            )
+            resp.raise_for_status()
+            for record in resp.json().get("result", []):
+                sid = record.get("sys_id")
+                if sid and sid not in seen_ids:
+                    seen_ids[sid] = record
+        except requests.RequestException as e:
+            logger.warning(f"Question query failed (query={extra_query}): {e}")
+
+    # Source 1: direct cat_item link
+    _fetch_questions(f"cat_item={params.catalog_item_id}")
+
+    # Source 2: via io_set_item → variable set
+    if params.variable_set_id:
+        # Caller has already restricted to one set
+        _fetch_questions(f"variable_set={params.variable_set_id}")
+    else:
+        # Discover all variable sets linked to this catalog item
+        try:
+            io_resp = _make_request(
+                "GET",
+                f"{base_url}/api/now/table/io_set_item",
+                params={
+                    "sysparm_query": f"sc_cat_item={params.catalog_item_id}",
+                    "sysparm_fields": "variable_set",
+                    "sysparm_display_value": "false",
+                    "sysparm_limit": 200,
+                },
+                headers=headers,
+                timeout=config.timeout,
+            )
+            io_resp.raise_for_status()
+            set_ids = [
+                r["variable_set"]["value"] if isinstance(r.get("variable_set"), dict)
+                else r.get("variable_set")
+                for r in io_resp.json().get("result", [])
+                if r.get("variable_set")
+            ]
+            # Batch fetch questions for all discovered sets
+            if set_ids:
+                _fetch_questions("variable_setIN" + ",".join(set_ids))
+        except requests.RequestException as e:
+            logger.warning(f"Failed to resolve io_set_item for catalog item {params.catalog_item_id}: {e}")
+
+    # ------------------------------------------------------------------
+    # 3. Sort by order, then paginate
+    # ------------------------------------------------------------------
+    all_questions = list(seen_ids.values())
+    try:
+        all_questions.sort(key=lambda q: int(q.get("order") or 0))
+    except (TypeError, ValueError):
+        pass
+
+    total = len(all_questions)
+    page = all_questions[params.offset : params.offset + params.limit]
+    has_more = (params.offset + params.limit) < total
+
+    return ListCatalogItemQuestionsResponse(
+        success=True,
+        message=f"Retrieved {len(page)} question(s) for catalog item (total {total})",
+        questions=[_format_question(q) for q in page],
+        total=total,
+        has_more=has_more,
+        next_offset=params.offset + params.limit if has_more else None,
+    )

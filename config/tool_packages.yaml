@@ -122,6 +122,7 @@ catalog_builder:
   - create_catalog_item_variable
   - create_catalog_item_variable_set
   - list_catalog_item_variables
+  - list_catalog_item_questions
   - update_catalog_item_variable
   - delete_catalog_item_variable
   - create_catalog_variable_choice
@@ -443,6 +444,7 @@ full:
   - create_catalog_item_variable
   - create_catalog_item_variable_set
   - list_catalog_item_variables
+  - list_catalog_item_questions
   - update_catalog_item_variable
   - delete_catalog_item_variable
   - create_catalog_variable_choice
