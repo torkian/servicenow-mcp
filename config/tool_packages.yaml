@@ -404,6 +404,7 @@ system_administrator:
   - get_assessment_metric_type
   - create_assessment_instance
   - export_assessment_results
+  - export_assessment_responses
 
 full:
   # Incident Management
@@ -726,3 +727,4 @@ full:
   - get_assessment_metric_type
   - create_assessment_instance
   - export_assessment_results
+  - export_assessment_responses

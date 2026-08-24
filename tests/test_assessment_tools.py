@@ -6,14 +6,18 @@ from unittest.mock import MagicMock, patch
 from servicenow_mcp.tools.assessment_tools import (
     CreateAssessmentInstanceParams,
     DeleteAssessmentInstanceParams,
+    ExportAssessmentResponsesParams,
     ExportAssessmentResultsParams,
     _compute_score_distribution,
     _format_assessment_instance,
     _format_assessment_metric_type,
+    _format_assessment_response,
+    _resolve_metric_sys_id,
     _resolve_metric_type_sys_id,
     _resolve_user_sys_id,
     create_assessment_instance,
     delete_assessment_instance,
+    export_assessment_responses,
     export_assessment_results,
     get_assessment_instance,
     get_assessment_metric_type,
@@ -1289,3 +1293,341 @@ def test_delete_assessment_instance_params_missing():
     import pydantic
     with pytest.raises(pydantic.ValidationError):
         DeleteAssessmentInstanceParams()
+
+
+# ---------------------------------------------------------------------------
+# export_assessment_responses
+# ---------------------------------------------------------------------------
+
+
+METRIC_SYS_ID = "9" * 32
+RESPONSE_SYS_ID = "1" * 32
+
+RAW_RESPONSE = {
+    "sys_id": RESPONSE_SYS_ID,
+    "instance": {"display_value": "Instance A", "value": INSTANCE_SYS_ID},
+    "metric": {"display_value": "How satisfied?", "value": METRIC_SYS_ID},
+    "metric_type": {"display_value": "Employee Survey", "value": MT_SYS_ID},
+    "user": {"display_value": "jsmith", "value": "d" * 32},
+    "string_value": "Very satisfied",
+    "value": "5",
+    "comments": "Great tooling",
+    "sys_created_on": "2025-12-30 15:00:00",
+    "sys_updated_on": "2025-12-30 15:00:00",
+}
+
+
+def test_format_assessment_response_normalises_refs():
+    result = _format_assessment_response(RAW_RESPONSE)
+    assert result["sys_id"] == RESPONSE_SYS_ID
+    assert result["instance"] == "Instance A"
+    assert result["metric"] == "How satisfied?"
+    assert result["metric_type"] == "Employee Survey"
+    assert result["user"] == "jsmith"
+    assert result["string_value"] == "Very satisfied"
+    assert result["value"] == "5"
+    assert result["comments"] == "Great tooling"
+    assert result["created_on"] == "2025-12-30 15:00:00"
+    assert result["updated_on"] == "2025-12-30 15:00:00"
+
+
+def test_format_assessment_response_missing_fields():
+    result = _format_assessment_response({})
+    assert result["sys_id"] is None
+    assert result["comments"] is None
+    assert result["string_value"] is None
+
+
+# --- _resolve_metric_sys_id helper -----------------------------------------
+
+
+def test_resolve_metric_sys_id_passthrough():
+    """A 32-char hex string should be returned unchanged."""
+    assert _resolve_metric_sys_id(INSTANCE_URL, {}, METRIC_SYS_ID) == METRIC_SYS_ID
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_resolve_metric_sys_id_name_lookup(mock_req):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [{"sys_id": METRIC_SYS_ID}]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+    assert _resolve_metric_sys_id(INSTANCE_URL, {}, "How satisfied?") == METRIC_SYS_ID
+    call = mock_req.call_args
+    assert "asmt_metric" in call[0][1]
+    assert call[1]["params"]["sysparm_query"] == "name=How satisfied?"
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_resolve_metric_sys_id_not_found(mock_req):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+    assert _resolve_metric_sys_id(INSTANCE_URL, {}, "Nonexistent") is None
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_resolve_metric_sys_id_http_error(mock_req):
+    import requests as req_lib
+    mock_req.side_effect = req_lib.exceptions.RequestException("boom")
+    assert _resolve_metric_sys_id(INSTANCE_URL, {}, "Any Name") is None
+
+
+# --- ExportAssessmentResponsesParams model ---------------------------------
+
+
+def test_export_assessment_responses_params_defaults():
+    p = ExportAssessmentResponsesParams(instance_id=INSTANCE_SYS_ID)
+    assert p.instance_id == INSTANCE_SYS_ID
+    assert p.limit == 100
+    assert p.offset == 0
+    assert p.has_comments is None
+
+
+def test_export_assessment_responses_params_all_fields():
+    p = ExportAssessmentResponsesParams(
+        instance_id=INSTANCE_SYS_ID,
+        metric_type="Employee Survey",
+        metric=METRIC_SYS_ID,
+        user="jsmith",
+        has_comments=True,
+        limit=50,
+        offset=25,
+    )
+    assert p.metric_type == "Employee Survey"
+    assert p.metric == METRIC_SYS_ID
+    assert p.user == "jsmith"
+    assert p.has_comments is True
+    assert p.limit == 50
+    assert p.offset == 25
+
+
+# --- error / guard paths ---------------------------------------------------
+
+
+def test_export_assessment_responses_no_filter_specified(auth_manager, server_config):
+    """At least one of instance_id / metric_type / metric / user is required."""
+    result = export_assessment_responses(auth_manager, server_config, {})
+    assert result["success"] is False
+    assert "required" in result["message"].lower() or "one of" in result["message"].lower()
+
+
+def test_export_assessment_responses_no_instance_url(server_config):
+    am = MagicMock()
+    am.instance_url = None
+    sc = MagicMock()
+    sc.instance_url = None
+    result = export_assessment_responses(am, sc, {"instance_id": INSTANCE_SYS_ID})
+    assert result["success"] is False
+    assert "instance_url" in result["message"]
+
+
+def test_export_assessment_responses_no_headers(server_config):
+    am = MagicMock()
+    am.instance_url = INSTANCE_URL
+    am.get_headers.return_value = None
+    sc = MagicMock()
+    sc.instance_url = None
+    result = export_assessment_responses(am, sc, {"instance_id": INSTANCE_SYS_ID})
+    assert result["success"] is False
+    assert "get_headers" in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=None)
+def test_export_assessment_responses_metric_type_not_found(mock_resolve, auth_manager, server_config):
+    result = export_assessment_responses(
+        auth_manager, server_config, {"metric_type": "Nonexistent Survey"}
+    )
+    assert result["success"] is False
+    assert "not found" in result["message"].lower()
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_http_error(mock_req, auth_manager, server_config):
+    import requests as req_lib
+    mock_req.side_effect = req_lib.exceptions.RequestException("timeout")
+    result = export_assessment_responses(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    assert result["success"] is False
+    assert "Error exporting assessment responses" in result["message"]
+
+
+# --- happy-path calls ------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_by_instance(mock_req, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [RAW_RESPONSE]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    assert result["success"] is True
+    assert result["count"] == 1
+    assert result["responses"][0]["sys_id"] == RESPONSE_SYS_ID
+    assert result["responses"][0]["comments"] == "Great tooling"
+    call = mock_req.call_args
+    assert "asmt_assessment_instance_question" in call[0][1]
+    query = call[1]["params"]["sysparm_query"]
+    assert f"instance={INSTANCE_SYS_ID}" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_type_sys_id", return_value=MT_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_by_metric_type_name(
+    mock_req, mock_resolve, auth_manager, server_config
+):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config, {"metric_type": "Employee Survey"}
+    )
+    assert result["success"] is True
+    query = mock_req.call_args[1]["params"]["sysparm_query"]
+    assert f"metric_type={MT_SYS_ID}" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_sys_id", return_value=METRIC_SYS_ID)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_by_metric_sys_id(
+    mock_req, mock_resolve, auth_manager, server_config
+):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config, {"metric": METRIC_SYS_ID}
+    )
+    assert result["success"] is True
+    query = mock_req.call_args[1]["params"]["sysparm_query"]
+    assert f"metric={METRIC_SYS_ID}" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_metric_sys_id", return_value=None)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_by_metric_name_fallback(
+    mock_req, mock_resolve, auth_manager, server_config
+):
+    """When a metric name cannot be resolved, fall back to a metric.nameLIKE filter."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config, {"metric": "How satisfied"}
+    )
+    assert result["success"] is True
+    query = mock_req.call_args[1]["params"]["sysparm_query"]
+    assert "metric.nameLIKEHow satisfied" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_user_sys_id", return_value="d" * 32)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_by_user_sys_id(
+    mock_req, mock_resolve, auth_manager, server_config
+):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config, {"user": "jsmith"}
+    )
+    assert result["success"] is True
+    query = mock_req.call_args[1]["params"]["sysparm_query"]
+    assert "user=" + "d" * 32 in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._resolve_user_sys_id", return_value=None)
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_by_user_name_fallback(
+    mock_req, mock_resolve, auth_manager, server_config
+):
+    """When a user cannot be resolved to a sys_id, fall back to user.user_name filter."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config, {"user": "unknown_user"}
+    )
+    assert result["success"] is True
+    query = mock_req.call_args[1]["params"]["sysparm_query"]
+    assert "user.user_name=unknown_user" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_has_comments_filter(mock_req, auth_manager, server_config):
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    export_assessment_responses(
+        auth_manager, server_config,
+        {"instance_id": INSTANCE_SYS_ID, "has_comments": True},
+    )
+    query = mock_req.call_args[1]["params"]["sysparm_query"]
+    assert "commentsISNOTEMPTY" in query
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_limit_cap(mock_req, auth_manager, server_config):
+    """Limits above 1000 should be capped at 1000."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": []}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    export_assessment_responses(
+        auth_manager, server_config,
+        {"instance_id": INSTANCE_SYS_ID, "limit": 5000},
+    )
+    params = mock_req.call_args[1]["params"]
+    assert params["sysparm_limit"] <= 1000
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_pagination(mock_req, auth_manager, server_config):
+    """has_more should be True when the returned page fills the requested limit."""
+    records = [dict(RAW_RESPONSE, sys_id=str(i) * 32) for i in range(5)]
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": records}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config,
+        {"instance_id": INSTANCE_SYS_ID, "limit": 5, "offset": 0},
+    )
+    assert result["has_more"] is True
+    assert result["next_offset"] == 5
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_export_assessment_responses_pagination_no_more(mock_req, auth_manager, server_config):
+    """has_more should be False when the returned page is smaller than the limit."""
+    mock_resp = MagicMock()
+    mock_resp.json.return_value = {"result": [RAW_RESPONSE]}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = export_assessment_responses(
+        auth_manager, server_config,
+        {"instance_id": INSTANCE_SYS_ID, "limit": 100},
+    )
+    assert result["has_more"] is False
+    assert result["next_offset"] is None

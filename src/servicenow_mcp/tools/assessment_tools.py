@@ -914,3 +914,205 @@ def export_assessment_results(
     paginated = _paginated_list_response(instances, limit, offset, "instances")
     paginated["summary"] = summary
     return paginated
+
+
+# ---------------------------------------------------------------------------
+# export_assessment_responses
+# ---------------------------------------------------------------------------
+
+
+ASSESSMENT_RESPONSE_FIELDS = [
+    "sys_id",
+    "instance",
+    "metric",
+    "metric_type",
+    "user",
+    "string_value",
+    "value",
+    "comments",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+
+def _format_assessment_response(record: Dict) -> Dict:
+    """Extract and normalise fields from an asmt_assessment_instance_question record."""
+    return {
+        "sys_id": record.get("sys_id"),
+        "instance": _ref(record.get("instance")),
+        "metric": _ref(record.get("metric")),
+        "metric_type": _ref(record.get("metric_type")),
+        "user": _ref(record.get("user")),
+        "string_value": record.get("string_value"),
+        "value": record.get("value"),
+        "comments": record.get("comments"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def _resolve_metric_sys_id(
+    instance_url: str,
+    headers: Dict,
+    metric_id: str,
+) -> Optional[str]:
+    """Return an asmt_metric sys_id from a name or passthrough if already a sys_id."""
+    if len(metric_id) == 32 and all(c in "0123456789abcdef" for c in metric_id):
+        return metric_id
+    url = f"{instance_url}/api/now/table/asmt_metric"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"name={metric_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+class ExportAssessmentResponsesParams(BaseModel):
+    """Parameters for exporting per-question response detail."""
+
+    instance_id: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by assessment instance sys_id (the respondent's copy of the survey). "
+            "Provide at least one of instance_id, metric_type, metric, or user."
+        ),
+    )
+    metric_type: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by metric type (survey definition) name or sys_id. "
+            "Returns responses for every instance of the named survey."
+        ),
+    )
+    metric: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by individual question (asmt_metric) sys_id or exact name. "
+            "Use to isolate answers to a single question across many respondents."
+        ),
+    )
+    user: Optional[str] = Field(
+        None,
+        description="Filter by respondent sys_user sys_id or user_name.",
+    )
+    has_comments: Optional[bool] = Field(
+        None,
+        description="When true, restrict results to responses that include a comment.",
+    )
+    limit: Optional[int] = Field(
+        100,
+        description="Maximum number of response records to return (default 100, max 1000).",
+    )
+    offset: Optional[int] = Field(0, description="Offset for pagination.")
+
+
+def export_assessment_responses(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Export per-question responses from the asmt_assessment_instance_question table.
+
+    Returns the individual answers captured against an assessment instance,
+    optionally scoped by instance, metric type (survey), individual question,
+    or respondent. Callers must provide at least one of ``instance_id``,
+    ``metric_type``, ``metric``, or ``user`` so the query is bounded.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ExportAssessmentResponsesParams.
+
+    Returns:
+        Dictionary with ``success``, ``responses`` (list), ``count``,
+        ``has_more``, and ``next_offset`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ExportAssessmentResponsesParams)
+    if not result["success"]:
+        return result
+    validated: ExportAssessmentResponsesParams = result["params"]
+
+    if not any([
+        validated.instance_id,
+        validated.metric_type,
+        validated.metric,
+        validated.user,
+    ]):
+        return {
+            "success": False,
+            "message": (
+                "At least one of instance_id, metric_type, metric, or user "
+                "is required to bound the query."
+            ),
+        }
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts: List[str] = []
+    if validated.instance_id:
+        query_parts.append(f"instance={validated.instance_id}")
+    if validated.metric_type:
+        mt_sys_id = _resolve_metric_type_sys_id(instance_url, headers, validated.metric_type)
+        if not mt_sys_id:
+            return {
+                "success": False,
+                "message": f"Assessment metric type not found: {validated.metric_type}",
+            }
+        query_parts.append(f"metric_type={mt_sys_id}")
+    if validated.metric:
+        metric_sys_id = _resolve_metric_sys_id(instance_url, headers, validated.metric)
+        if metric_sys_id:
+            query_parts.append(f"metric={metric_sys_id}")
+        else:
+            query_parts.append(f"metric.nameLIKE{validated.metric}")
+    if validated.user:
+        user_sys_id = _resolve_user_sys_id(instance_url, headers, validated.user)
+        if user_sys_id:
+            query_parts.append(f"user={user_sys_id}")
+        else:
+            query_parts.append(f"user.user_name={validated.user}")
+    if validated.has_comments:
+        query_parts.append("commentsISNOTEMPTY")
+
+    limit = min(validated.limit or 100, 1000)
+    offset = validated.offset or 0
+
+    query_params = _build_sysparm_params(
+        limit,
+        offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        order_by="sys_created_on",
+        fields=",".join(ASSESSMENT_RESPONSE_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{ASSESSMENT_QUESTION_RESPONSE_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        responses = [_format_assessment_response(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(responses, limit, offset, "responses")
+    except requests.exceptions.RequestException as e:
+        logger.error("Error exporting assessment responses: %s", e)
+        return {
+            "success": False,
+            "message": f"Error exporting assessment responses: {_format_http_error(e)}",
+        }

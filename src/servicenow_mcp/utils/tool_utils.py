@@ -925,6 +925,7 @@ from servicenow_mcp.tools.user_preference_tools import (
 from servicenow_mcp.tools.assessment_tools import (
     CreateAssessmentInstanceParams,
     DeleteAssessmentInstanceParams,
+    ExportAssessmentResponsesParams,
     ExportAssessmentResultsParams,
     GetAssessmentInstanceParams,
     GetAssessmentMetricTypeParams,
@@ -934,6 +935,7 @@ from servicenow_mcp.tools.assessment_tools import (
 from servicenow_mcp.tools.assessment_tools import (
     create_assessment_instance as create_assessment_instance_tool,
     delete_assessment_instance as delete_assessment_instance_tool,
+    export_assessment_responses as export_assessment_responses_tool,
     export_assessment_results as export_assessment_results_tool,
     get_assessment_instance as get_assessment_instance_tool,
     get_assessment_metric_type as get_assessment_metric_type_tool,
@@ -3758,6 +3760,21 @@ def get_tool_definitions(
                 "Returns a 404 error if the record does not exist. "
                 "Use with caution: deletion is permanent and removes the respondent's copy "
                 "of the survey/assessment along with any responses captured in the instance."
+            ),
+            "raw_dict",
+        ),
+        "export_assessment_responses": (
+            export_assessment_responses_tool,
+            ExportAssessmentResponsesParams,
+            Dict[str, Any],
+            (
+                "Export per-question response detail from the asmt_assessment_instance_question table. "
+                "Returns the individual answers captured against assessment instances, "
+                "with string_value (as-entered), value (normalised score), and comments. "
+                "Callers must supply at least one filter (instance_id, metric_type, metric, or user) "
+                "so the query is bounded. metric_type and metric may be supplied as sys_id or name; "
+                "user may be supplied as sys_id or user_name. Set has_comments=true to restrict to "
+                "responses that include free-text feedback. Paginated with has_more/next_offset."
             ),
             "raw_dict",
         ),
