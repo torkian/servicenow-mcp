@@ -347,6 +347,16 @@ from servicenow_mcp.tools.changeset_tools import (
 from servicenow_mcp.tools.changeset_tools import (
     update_changeset as update_changeset_tool,
 )
+from servicenow_mcp.tools.cmdb_affinity_tools import (
+    GetCIAffinityParams,
+    ListCIAffinitiesParams,
+)
+from servicenow_mcp.tools.cmdb_affinity_tools import (
+    get_ci_affinity as get_ci_affinity_tool,
+)
+from servicenow_mcp.tools.cmdb_affinity_tools import (
+    list_ci_affinities as list_ci_affinities_tool,
+)
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
     DeleteCIRelationshipParams,
@@ -2705,6 +2715,27 @@ def get_tool_definitions(
                 "most recent change per field, giving a concise snapshot of every field "
                 "that has changed and its current audited value. Filters: ci_table "
                 "(default cmdb_ci), field_name, changed_by, changed_after/changed_before."
+            ),
+            "raw_dict",
+        ),
+        "list_ci_affinities": (
+            list_ci_affinities_tool,
+            ListCIAffinitiesParams,
+            Dict[str, Any],
+            (
+                "List CMDB CI affinity rules from the cmdb_ci_affinity table. "
+                "Filters: name (substring), affinity_type (type field value), "
+                "ci_sys_id (CI referenced by the rule), active flag. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_ci_affinity": (
+            get_ci_affinity_tool,
+            GetCIAffinityParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single CMDB CI affinity rule by its sys_id from the "
+                "cmdb_ci_affinity table. Returns 404-style error when not found."
             ),
             "raw_dict",
         ),

@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add cmdb_ci_affinity tools (list_ci_affinities, get_ci_affinity; cmdb_ci_affinity table; filters for ci_sys_id and affinity_type)
-5. Add list_cmdb_ci_groups tool (cmdb_ci_group table; filters for name/type/active; pagination)
+1. Add list_cmdb_ci_groups tool (cmdb_ci_group table; filters for name/type/active; pagination)
 6. Add get_cmdb_ci_group tool (GET cmdb_ci_group/{sys_id}; 404/empty-result guards; registered in system_administrator + full)
 7. Add list_problem_tasks_by_problem shortcut (wraps list_problem_tasks with problem_id param; mirrors list_change_tasks_by_change pattern)
 8. Add archive_knowledge_article tool (PATCH kb_knowledge with workflow_state=retired; optional retire_reason; registered in knowledge_author + full)
@@ -150,3 +149,4 @@
 138. 2026-08-22 — Add delete_assessment_instance tool (DELETE asmt_assessment_instance/{sys_id}; 404 guard; 204/200 success handling; DeleteAssessmentInstanceParams model; registered in system_administrator and full packages; 10 new tests; 3139 total tests; 95% total coverage)
 139. 2026-08-23 — Add list_catalog_item_questions tool (item_option_new; merges direct cat_item questions with variable-set questions via io_set_item junction; deduplication by sys_id; type code/label filter; mandatory_only filter; variable_set_id scoping; sorted by order; pagination; 13 new tests; 3152 total tests; 95% total coverage)
 140. 2026-08-24 — Add export_assessment_responses tool (asmt_assessment_instance_question table; per-question response detail with string_value/value/comments; requires at least one of instance_id/metric_type/metric/user; metric+user name→sys_id resolution with LIKE fallback; has_comments filter; limit capped at 1000; registered in system_administrator and full packages; 30 new tests; 3175 total tests; 96% assessment_tools.py coverage; 95% total coverage)
+141. 2026-08-25 — Add cmdb_ci_affinity tools (list_ci_affinities, get_ci_affinity; cmdb_ci_affinity table; filters for name/affinity_type/ci_sys_id/active; 404 and empty-result guards on get; registered in system_administrator and full packages; 23 new tests; 3198 total tests; 95% total coverage)

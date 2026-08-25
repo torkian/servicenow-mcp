@@ -351,6 +351,9 @@ system_administrator:
   - create_ci_outage
   - update_ci_outage
   - delete_ci_outage
+  # CMDB Affinity
+  - list_ci_affinities
+  - get_ci_affinity
   # CMDB Relationships
   - list_ci_relationships
   - get_ci_relationship
@@ -606,6 +609,9 @@ full:
   - create_ci_outage
   - update_ci_outage
   - delete_ci_outage
+  # CMDB Affinity
+  - list_ci_affinities
+  - get_ci_affinity
   # CMDB Relationships
   - list_ci_relationships
   - get_ci_relationship
