@@ -101,6 +101,10 @@ from servicenow_mcp.tools.cmdb_affinity_tools import (
     get_ci_affinity as get_ci_affinity,
     list_ci_affinities as list_ci_affinities,
 )
+from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    get_cmdb_ci_group as get_cmdb_ci_group,
+    list_cmdb_ci_groups as list_cmdb_ci_groups,
+)
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     create_ci_relationship,
     delete_ci_relationship,

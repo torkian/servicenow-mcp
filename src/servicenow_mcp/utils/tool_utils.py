@@ -357,6 +357,16 @@ from servicenow_mcp.tools.cmdb_affinity_tools import (
 from servicenow_mcp.tools.cmdb_affinity_tools import (
     list_ci_affinities as list_ci_affinities_tool,
 )
+from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    GetCMDBCIGroupParams,
+    ListCMDBCIGroupsParams,
+)
+from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    get_cmdb_ci_group as get_cmdb_ci_group_tool,
+)
+from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    list_cmdb_ci_groups as list_cmdb_ci_groups_tool,
+)
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
     DeleteCIRelationshipParams,
@@ -2736,6 +2746,29 @@ def get_tool_definitions(
             (
                 "Retrieve a single CMDB CI affinity rule by its sys_id from the "
                 "cmdb_ci_affinity table. Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "list_cmdb_ci_groups": (
+            list_cmdb_ci_groups_tool,
+            ListCMDBCIGroupsParams,
+            Dict[str, Any],
+            (
+                "List CMDB CI groups from the cmdb_ci_group table. CI groups are "
+                "logical collections of configuration items used for batch maintenance "
+                "windows, relationship views, and alert groupings. "
+                "Filters: name (substring), group_type (type field value), active flag. "
+                "Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_cmdb_ci_group": (
+            get_cmdb_ci_group_tool,
+            GetCMDBCIGroupParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single CMDB CI group by its sys_id from the "
+                "cmdb_ci_group table. Returns 404-style error when not found."
             ),
             "raw_dict",
         ),
