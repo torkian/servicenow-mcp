@@ -17,6 +17,7 @@ from servicenow_mcp.utils.helpers import (
     _format_http_error,
     _get_headers,
     _get_instance_url,
+    _join_query_parts,
     _make_request,
     _paginated_list_response,
     _unwrap_and_validate_params,
@@ -546,3 +547,109 @@ def update_problem_task(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error updating problem task: {e}")
         return {"success": False, "message": f"Error updating problem task: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# list_problem_tasks_by_problem  (shortcut wrapping list_problem_tasks)
+# ---------------------------------------------------------------------------
+
+
+class ListProblemTasksByProblemParams(BaseModel):
+    """Parameters for the list_problem_tasks_by_problem shortcut."""
+
+    problem_id: str = Field(
+        ...,
+        description=(
+            "Problem sys_id (32-char hex) or number (e.g. PRB0001234) "
+            "whose tasks should be listed"
+        ),
+    )
+    limit: int = Field(20, description="Maximum number of tasks to return (default 20)")
+    offset: int = Field(0, description="Pagination offset")
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by task state: 1=Open, 2=Work In Progress, "
+            "3=Closed Complete, 4=Closed Incomplete"
+        ),
+    )
+    priority: Optional[str] = Field(
+        None,
+        description="Filter by task priority (1=Critical, 2=High, 3=Moderate, 4=Low)",
+    )
+    assigned_to: Optional[str] = Field(
+        None,
+        description="Filter by assigned user name or sys_id",
+    )
+
+
+def list_problem_tasks_by_problem(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List problem tasks for a specific problem, with formatted output.
+
+    A focused shortcut over the problem_task table scoped to a single problem
+    record.  Results are returned through ``_format_problem_task`` so reference
+    fields are normalised to display values.
+
+    Extra filters for ``priority`` and ``assigned_to`` are supported in
+    addition to the basic ``state`` filter available on ``list_problem_tasks``.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListProblemTasksByProblemParams.
+
+    Returns:
+        Dictionary with ``success``, ``tasks`` (formatted list), ``count``,
+        ``has_more``, and ``next_offset``.
+    """
+    result = _unwrap_and_validate_params(
+        params, ListProblemTasksByProblemParams, required_fields=["problem_id"]
+    )
+    if not result["success"]:
+        return result
+    validated: ListProblemTasksByProblemParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    problem_sys_id = _resolve_problem_sys_id(instance_url, headers, validated.problem_id)
+    if not problem_sys_id:
+        return {"success": False, "message": f"Problem not found: {validated.problem_id}"}
+
+    query_parts = [f"problem={problem_sys_id}"]
+    if validated.state is not None:
+        query_parts.append(f"state={validated.state}")
+    if validated.priority is not None:
+        query_parts.append(f"priority={validated.priority}")
+    if validated.assigned_to is not None:
+        query_parts.append(f"assigned_to={validated.assigned_to}")
+
+    api_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        fields=",".join(PROBLEM_TASK_FIELDS),
+        exclude_reference_link=True,
+    )
+    api_params["sysparm_display_value"] = "true"
+
+    url = f"{instance_url}{PROBLEM_TASK_TABLE}"
+    try:
+        resp = _make_request("GET", url, headers=headers, params=api_params)
+        resp.raise_for_status()
+        tasks = [_format_problem_task(r) for r in resp.json().get("result", [])]
+        return _paginated_list_response(tasks, validated.limit, validated.offset, "tasks")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing problem tasks by problem: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing problem tasks by problem: {_format_http_error(e)}",
+        }

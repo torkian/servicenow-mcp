@@ -619,6 +619,7 @@ from servicenow_mcp.tools.problem_task_tools import (
     CloseProblemTaskParams,
     CreateProblemTaskParams,
     GetProblemTaskParams,
+    ListProblemTasksByProblemParams,
     ListProblemTasksParams,
     UpdateProblemTaskParams,
 )
@@ -633,6 +634,9 @@ from servicenow_mcp.tools.problem_task_tools import (
 )
 from servicenow_mcp.tools.problem_task_tools import (
     list_problem_tasks as list_problem_tasks_tool,
+)
+from servicenow_mcp.tools.problem_task_tools import (
+    list_problem_tasks_by_problem as list_problem_tasks_by_problem_tool,
 )
 from servicenow_mcp.tools.problem_task_tools import (
     update_problem_task as update_problem_task_tool,
@@ -3431,6 +3435,18 @@ def get_tool_definitions(
                 "List problem_task records linked to a specific problem. "
                 "Accepts a problem number (e.g. PRB0001234) or sys_id as problem_id. "
                 "Optionally filter by state. Supports pagination with limit and offset."
+            ),
+            "raw_dict",
+        ),
+        "list_problem_tasks_by_problem": (
+            list_problem_tasks_by_problem_tool,
+            ListProblemTasksByProblemParams,
+            Dict[str, Any],
+            (
+                "List problem tasks for a specific problem with formatted output; "
+                "supports state/priority/assigned_to filters. "
+                "Accepts a problem number (e.g. PRB0001234) or sys_id as problem_id. "
+                "Reference fields are normalised to display values."
             ),
             "raw_dict",
         ),

@@ -35,6 +35,7 @@ service_desk:
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks
+  - list_problem_tasks_by_problem
   - get_problem_task
   - update_problem_task
   - close_problem_task
@@ -655,6 +656,7 @@ full:
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks
+  - list_problem_tasks_by_problem
   - get_problem_task
   - update_problem_task
   - close_problem_task

@@ -11,6 +11,7 @@ from servicenow_mcp.tools.problem_task_tools import (
     create_problem_task,
     get_problem_task,
     list_problem_tasks,
+    list_problem_tasks_by_problem,
     update_problem_task,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -831,6 +832,237 @@ class TestUpdateProblemTask(unittest.TestCase):
 
         self.assertEqual(result["sys_id"], TASK_SYS_ID)
         self.assertEqual(result["number"], "PTASK0010001")
+
+
+# ============================================================= #
+# list_problem_tasks_by_problem                                  #
+# ============================================================= #
+
+class TestListProblemTasksByProblem(unittest.TestCase):
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_success_by_sys_id(self, mock_req):
+        """List tasks when problem_id is already a sys_id (no lookup needed)."""
+        mock_req.return_value = _make_response(
+            200, {"result": [SAMPLE_TASK_RECORD, {**SAMPLE_TASK_RECORD, "number": "PTASK0010002"}]}
+        )
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": PROBLEM_SYS_ID},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 2)
+        self.assertEqual(len(result["tasks"]), 2)
+        mock_req.assert_called_once()
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_success_by_problem_number(self, mock_req):
+        """PRB number is resolved to sys_id before listing tasks."""
+        lookup_resp = _make_response(200, {"result": [{"sys_id": PROBLEM_SYS_ID}]})
+        list_resp = _make_response(200, {"result": [SAMPLE_TASK_RECORD]})
+        mock_req.side_effect = [lookup_resp, list_resp]
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": "PRB0001234"},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 1)
+        self.assertEqual(mock_req.call_count, 2)
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_state_filter(self, mock_req):
+        """state filter is included in the sysparm_query."""
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": PROBLEM_SYS_ID}]}),
+            _make_response(200, {"result": [SAMPLE_TASK_RECORD]}),
+        ]
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": "PRB0001234", "state": "1"},
+        )
+
+        self.assertTrue(result["success"])
+        list_call = mock_req.call_args_list[1]
+        query = list_call[1]["params"]["sysparm_query"]
+        self.assertIn("state=1", query)
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_priority_filter(self, mock_req):
+        """priority filter is included in the sysparm_query."""
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": PROBLEM_SYS_ID}]}),
+            _make_response(200, {"result": [SAMPLE_TASK_RECORD]}),
+        ]
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": "PRB0001234", "priority": "2"},
+        )
+
+        self.assertTrue(result["success"])
+        list_call = mock_req.call_args_list[1]
+        query = list_call[1]["params"]["sysparm_query"]
+        self.assertIn("priority=2", query)
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_assigned_to_filter(self, mock_req):
+        """assigned_to filter is included in the sysparm_query."""
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": PROBLEM_SYS_ID}]}),
+            _make_response(200, {"result": [SAMPLE_TASK_RECORD]}),
+        ]
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": "PRB0001234", "assigned_to": "jane.doe"},
+        )
+
+        self.assertTrue(result["success"])
+        list_call = mock_req.call_args_list[1]
+        query = list_call[1]["params"]["sysparm_query"]
+        self.assertIn("assigned_to=jane.doe", query)
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_all_filters_combined(self, mock_req):
+        """All three optional filters appear in the query when provided."""
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": PROBLEM_SYS_ID}]}),
+            _make_response(200, {"result": [SAMPLE_TASK_RECORD]}),
+        ]
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "problem_id": "PRB0001234",
+                "state": "2",
+                "priority": "1",
+                "assigned_to": "alice",
+            },
+        )
+
+        self.assertTrue(result["success"])
+        list_call = mock_req.call_args_list[1]
+        query = list_call[1]["params"]["sysparm_query"]
+        self.assertIn("state=2", query)
+        self.assertIn("priority=1", query)
+        self.assertIn("assigned_to=alice", query)
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_empty_result(self, mock_req):
+        """Empty result returns success with empty tasks list."""
+        mock_req.return_value = _make_response(200, {"result": []})
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": PROBLEM_SYS_ID},
+        )
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 0)
+        self.assertEqual(result["tasks"], [])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_pagination(self, mock_req):
+        """has_more is True when result count equals the limit."""
+        tasks = [SAMPLE_TASK_RECORD] * 5
+        mock_req.return_value = _make_response(200, {"result": tasks})
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": PROBLEM_SYS_ID, "limit": 5, "offset": 0},
+        )
+
+        self.assertTrue(result["has_more"])
+        self.assertEqual(result["next_offset"], 5)
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_problem_not_found(self, mock_req):
+        """Return failure when the problem number resolves to nothing."""
+        mock_req.return_value = _make_response(200, {"result": []})
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": "PRB9999999"},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    def test_missing_problem_id(self):
+        """Missing required problem_id returns a validation error."""
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {},
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_api_error(self, mock_req):
+        """Network errors propagate as failure messages."""
+        mock_req.return_value = _make_response(200, {"result": [{"sys_id": PROBLEM_SYS_ID}]})
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": PROBLEM_SYS_ID}]}),
+            requests.exceptions.ConnectionError("timeout"),
+        ]
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": "PRB0001234"},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing problem tasks by problem", result["message"])
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_normalises_reference_fields(self, mock_req):
+        """Reference dict fields are resolved to display values in the response."""
+        mock_req.return_value = _make_response(200, {"result": [SAMPLE_TASK_RECORD]})
+
+        result = list_problem_tasks_by_problem(
+            _make_auth_manager(),
+            _make_config(),
+            {"problem_id": PROBLEM_SYS_ID},
+        )
+
+        task = result["tasks"][0]
+        self.assertEqual(task["assigned_to"], "jane.doe")
+        self.assertEqual(task["assignment_group"], "Platform Ops")
+        self.assertEqual(task["problem"], "PRB0001234")
+
+    @patch("servicenow_mcp.tools.problem_task_tools._make_request")
+    def test_no_instance_url(self, mock_req):
+        """Returns failure when instance_url is missing."""
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        auth_manager.instance_url = None
+
+        server_config = MagicMock()
+        server_config.instance_url = None
+
+        result = list_problem_tasks_by_problem(
+            auth_manager,
+            server_config,
+            {"problem_id": PROBLEM_SYS_ID},
+        )
+
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
 
 
 if __name__ == "__main__":
