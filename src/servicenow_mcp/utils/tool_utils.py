@@ -556,6 +556,7 @@ from servicenow_mcp.tools.incident_tools import (
     update_incident as update_incident_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
+    ArchiveKnowledgeArticleParams,
     CreateArticleParams,
     CreateKnowledgeArticleParams,
     CreateKnowledgeBaseParams,
@@ -600,6 +601,9 @@ from servicenow_mcp.tools.knowledge_base import (
 from servicenow_mcp.tools.knowledge_base import (
     # list_categories aliased in function call
     list_knowledge_bases as list_knowledge_bases_tool,
+)
+from servicenow_mcp.tools.knowledge_base import (
+    archive_knowledge_article as archive_knowledge_article_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
     publish_article as publish_article_tool,
@@ -2096,6 +2100,16 @@ def get_tool_definitions(
             PublishArticleParams,
             str,  # Expects JSON string
             "Publish a knowledge article",
+            "json_dict",  # Tool returns Pydantic model
+        ),
+        "archive_knowledge_article": (
+            archive_knowledge_article_tool,
+            ArchiveKnowledgeArticleParams,
+            str,  # Expects JSON string
+            (
+                "Archive (retire) a knowledge article by setting its workflow_state to 'retired'. "
+                "Accepts the article sys_id. An optional retire_reason is stored as a work note."
+            ),
             "json_dict",  # Tool returns Pydantic model
         ),
         "list_articles": (

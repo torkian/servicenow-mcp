@@ -162,6 +162,7 @@ from servicenow_mcp.tools.incident_tools import (
     update_incident,
 )
 from servicenow_mcp.tools.knowledge_base import (
+    archive_knowledge_article,
     create_article,
     create_category,
     create_knowledge_article,
@@ -507,6 +508,7 @@ __all__ = [
     "create_knowledge_article",
     "update_article",
     "publish_article",
+    "archive_knowledge_article",
     "list_articles",
     "list_articles_by_category",
     "get_article",

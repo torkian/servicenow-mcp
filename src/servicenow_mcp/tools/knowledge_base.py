@@ -155,6 +155,19 @@ class ListArticlesByCategoryParams(BaseModel):
     offset: int = Field(0, description="Offset for pagination")
 
 
+class ArchiveKnowledgeArticleParams(BaseModel):
+    """Parameters for archiving (retiring) a knowledge article."""
+
+    article_id: str = Field(
+        ...,
+        description="sys_id of the article to archive/retire",
+    )
+    retire_reason: Optional[str] = Field(
+        None,
+        description="Optional reason for retiring the article, stored as a work note",
+    )
+
+
 class CreateKnowledgeArticleParams(BaseModel):
     """Parameters for creating a knowledge article with automatic name resolution."""
 
@@ -1291,6 +1304,65 @@ def create_knowledge_article(
         return ArticleResponse(
             success=False,
             message=f"Failed to create knowledge article: {_format_http_error(e)}",
+        )
+
+
+def archive_knowledge_article(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ArchiveKnowledgeArticleParams,
+) -> ArticleResponse:
+    """Archive (retire) a knowledge article by setting workflow_state to 'retired'.
+
+    Sends a PATCH request to kb_knowledge/{sys_id} with workflow_state=retired.
+    An optional retire_reason is stored as a work note on the article.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required article sys_id.
+
+    Returns:
+        ArticleResponse indicating success or failure.
+    """
+    api_url = f"{config.api_url}/table/kb_knowledge/{params.article_id}"
+
+    data: Dict[str, Any] = {"workflow_state": "retired"}
+    if params.retire_reason:
+        data["work_notes"] = params.retire_reason
+
+    try:
+        response = _make_request(
+            "PATCH",
+            api_url,
+            json=data,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+
+        if response.status_code == 404:
+            return ArticleResponse(
+                success=False,
+                message=f"Knowledge article '{params.article_id}' not found",
+            )
+
+        response.raise_for_status()
+
+        result = response.json().get("result", {})
+
+        return ArticleResponse(
+            success=True,
+            message="Knowledge article archived (retired) successfully",
+            article_id=params.article_id,
+            article_title=result.get("short_description"),
+            workflow_state=result.get("workflow_state"),
+        )
+
+    except requests.RequestException as e:
+        logger.error("Failed to archive knowledge article: %s", e)
+        return ArticleResponse(
+            success=False,
+            message=f"Failed to archive knowledge article: {_format_http_error(e)}",
         )
 
 

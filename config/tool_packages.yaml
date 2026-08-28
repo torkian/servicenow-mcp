@@ -202,6 +202,7 @@ knowledge_author:
   - create_knowledge_article
   - update_article
   - publish_article
+  - archive_knowledge_article
   - list_articles
   - list_articles_by_category
   - get_article
@@ -539,6 +540,7 @@ full:
   - create_knowledge_article
   - update_article
   - publish_article
+  - archive_knowledge_article
   - list_articles
   - list_articles_by_category
   - get_article

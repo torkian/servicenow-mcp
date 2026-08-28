@@ -1431,5 +1431,202 @@ class TestGetKBCategory(unittest.TestCase):
             GetKBCategoryParams()  # missing required field
 
 
+class TestArchiveKnowledgeArticle(unittest.TestCase):
+    """Tests for the archive_knowledge_article tool."""
+
+    def setUp(self):
+        """Set up test fixtures."""
+        from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
+
+        auth_config = AuthConfig(
+            type=AuthType.BASIC,
+            basic=BasicAuthConfig(username="test_user", password="test_password"),
+        )
+        self.config = ServerConfig(
+            instance_url="https://test.service-now.com",
+            auth=auth_config,
+        )
+        self.auth_manager = MagicMock(spec=AuthManager)
+        self.auth_manager.get_headers.return_value = {
+            "Authorization": "Bearer test",
+            "Content-Type": "application/json",
+        }
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_archive_article_success(self, mock_req):
+        """Archive an article — sets workflow_state=retired and returns success."""
+        from servicenow_mcp.tools.knowledge_base import (
+            ArchiveKnowledgeArticleParams,
+            archive_knowledge_article,
+        )
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "result": {
+                "sys_id": "art001",
+                "short_description": "Old Article",
+                "workflow_state": "retired",
+            }
+        }
+        mock_req.return_value = mock_resp
+
+        result = archive_knowledge_article(
+            self.config,
+            self.auth_manager,
+            ArchiveKnowledgeArticleParams(article_id="art001"),
+        )
+
+        self.assertTrue(result.success)
+        self.assertEqual("art001", result.article_id)
+        self.assertEqual("Old Article", result.article_title)
+        self.assertEqual("retired", result.workflow_state)
+        self.assertIn("retired", result.message)
+
+        # Verify PATCH was called with workflow_state=retired
+        mock_req.assert_called_once()
+        call_kwargs = mock_req.call_args
+        self.assertEqual("PATCH", call_kwargs[0][0])
+        self.assertIn("art001", call_kwargs[0][1])
+        self.assertEqual("retired", call_kwargs[1]["json"]["workflow_state"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_archive_article_with_retire_reason(self, mock_req):
+        """Archive an article with a retire_reason stored as work_notes."""
+        from servicenow_mcp.tools.knowledge_base import (
+            ArchiveKnowledgeArticleParams,
+            archive_knowledge_article,
+        )
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "result": {
+                "sys_id": "art002",
+                "short_description": "Deprecated Article",
+                "workflow_state": "retired",
+            }
+        }
+        mock_req.return_value = mock_resp
+
+        result = archive_knowledge_article(
+            self.config,
+            self.auth_manager,
+            ArchiveKnowledgeArticleParams(
+                article_id="art002",
+                retire_reason="Content superseded by KB0012345",
+            ),
+        )
+
+        self.assertTrue(result.success)
+        call_kwargs = mock_req.call_args
+        self.assertEqual("Content superseded by KB0012345", call_kwargs[1]["json"]["work_notes"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_archive_article_without_retire_reason_omits_work_notes(self, mock_req):
+        """When retire_reason is not given, work_notes must not appear in the body."""
+        from servicenow_mcp.tools.knowledge_base import (
+            ArchiveKnowledgeArticleParams,
+            archive_knowledge_article,
+        )
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {
+            "result": {
+                "sys_id": "art003",
+                "short_description": "Article",
+                "workflow_state": "retired",
+            }
+        }
+        mock_req.return_value = mock_resp
+
+        archive_knowledge_article(
+            self.config,
+            self.auth_manager,
+            ArchiveKnowledgeArticleParams(article_id="art003"),
+        )
+
+        call_kwargs = mock_req.call_args
+        self.assertNotIn("work_notes", call_kwargs[1]["json"])
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_archive_article_not_found(self, mock_req):
+        """A 404 response returns a failure with a descriptive message."""
+        from servicenow_mcp.tools.knowledge_base import (
+            ArchiveKnowledgeArticleParams,
+            archive_knowledge_article,
+        )
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_req.return_value = mock_resp
+
+        result = archive_knowledge_article(
+            self.config,
+            self.auth_manager,
+            ArchiveKnowledgeArticleParams(article_id="nonexistent"),
+        )
+
+        self.assertFalse(result.success)
+        self.assertIn("not found", result.message.lower())
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_archive_article_network_error(self, mock_req):
+        """A network exception returns a failure response."""
+        from servicenow_mcp.tools.knowledge_base import (
+            ArchiveKnowledgeArticleParams,
+            archive_knowledge_article,
+        )
+
+        mock_req.side_effect = requests.ConnectionError("connection refused")
+
+        result = archive_knowledge_article(
+            self.config,
+            self.auth_manager,
+            ArchiveKnowledgeArticleParams(article_id="art001"),
+        )
+
+        self.assertFalse(result.success)
+        self.assertIn("Failed to archive", result.message)
+
+    def test_params_model_requires_article_id(self):
+        """ArchiveKnowledgeArticleParams requires article_id."""
+        from pydantic import ValidationError
+        from servicenow_mcp.tools.knowledge_base import ArchiveKnowledgeArticleParams
+
+        with self.assertRaises(ValidationError):
+            ArchiveKnowledgeArticleParams()  # missing required field
+
+    def test_params_model_retire_reason_optional(self):
+        """retire_reason defaults to None."""
+        from servicenow_mcp.tools.knowledge_base import ArchiveKnowledgeArticleParams
+
+        params = ArchiveKnowledgeArticleParams(article_id="art001")
+        self.assertIsNone(params.retire_reason)
+
+    @patch("servicenow_mcp.tools.knowledge_base._make_request")
+    def test_archive_article_http_error(self, mock_req):
+        """A non-404 HTTP error returns a failure response."""
+        from servicenow_mcp.tools.knowledge_base import (
+            ArchiveKnowledgeArticleParams,
+            archive_knowledge_article,
+        )
+
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_resp.raise_for_status.side_effect = requests.HTTPError("403 Forbidden")
+        mock_req.return_value = mock_resp
+
+        result = archive_knowledge_article(
+            self.config,
+            self.auth_manager,
+            ArchiveKnowledgeArticleParams(article_id="art001"),
+        )
+
+        self.assertFalse(result.success)
+        self.assertIn("Failed to archive", result.message)
+
+
 if __name__ == "__main__":
     unittest.main()
