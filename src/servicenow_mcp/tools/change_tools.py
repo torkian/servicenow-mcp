@@ -3182,6 +3182,71 @@ def list_change_conflicts(
 
 
 # ---------------------------------------------------------------------------
+# get_change_conflict
+# ---------------------------------------------------------------------------
+
+
+class GetChangeConflictParams(BaseModel):
+    """Parameters for retrieving a single change_conflict record."""
+
+    sys_id: str = Field(
+        ...,
+        description="The 32-character sys_id of the change_conflict record to retrieve.",
+    )
+
+
+def get_change_conflict(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single change_conflict record by sys_id.
+
+    Fetches the full detail of one conflict record, including the change request,
+    conflicting CI or change, conflict type, state, and blackout window.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetChangeConflictParams.
+
+    Returns:
+        Dictionary with ``success`` and ``conflict`` keys on success, or
+        ``success=False`` with a ``message`` on error/not-found.
+    """
+    result = _unwrap_and_validate_params(params, GetChangeConflictParams, required_fields=["sys_id"])
+    if not result["success"]:
+        return result
+    validated: GetChangeConflictParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{CHANGE_CONFLICT_TABLE}/{validated.sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(CHANGE_CONFLICT_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Change conflict not found: {validated.sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {"success": False, "message": f"Change conflict not found: {validated.sys_id}"}
+        return {"success": True, "conflict": _format_change_conflict(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving change conflict: {e}")
+        return {"success": False, "message": f"Error retrieving change conflict: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
 # list_change_windows_for_date
 # ---------------------------------------------------------------------------
 

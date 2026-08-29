@@ -315,7 +315,11 @@ from servicenow_mcp.tools.change_tools import (
     list_change_conflicts as list_change_conflicts_tool,
 )
 from servicenow_mcp.tools.change_tools import (
+    get_change_conflict as get_change_conflict_tool,
+)
+from servicenow_mcp.tools.change_tools import (
     ListChangeConflictsParams,
+    GetChangeConflictParams,
 )
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
@@ -1783,6 +1787,18 @@ def get_tool_definitions(
                 "type (e.g. 'ci_conflict' or 'schedule_conflict'), "
                 "state (e.g. 'accepted' or 'unresolved'), limit, offset. "
                 "Returns conflicts list with has_more/next_offset pagination."
+            ),
+            "json",
+        ),
+        "get_change_conflict": (
+            get_change_conflict_tool,
+            GetChangeConflictParams,
+            str,
+            (
+                "Retrieve a single change_conflict record by sys_id. "
+                "Required: sys_id (32-char hex). "
+                "Returns conflict detail including change_request, conflict_ci, "
+                "conflict_change, type, state, and blackout_window."
             ),
             "json",
         ),
