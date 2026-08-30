@@ -4,6 +4,10 @@ SLA management tools for the ServiceNow MCP server.
 Provides tools for listing and retrieving SLA definition records
 from the contract_sla table and SLA breach records from the
 task_sla table via the /api/now/table/* endpoints.
+
+Also provides list_incident_slas — a focused shortcut that queries
+task_sla scoped to table_name=incident with optional incident number/
+sys_id lookup, has_breached flag, and stage filters.
 """
 
 import logging
@@ -599,4 +603,159 @@ def get_sla_breach(
         return {
             "success": False,
             "message": f"Error retrieving SLA breach record: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# list_incident_slas — task_sla scoped to incident table
+# ---------------------------------------------------------------------------
+
+INCIDENT_TABLE = "/api/now/table/incident"
+
+
+class ListIncidentSLAsParams(BaseModel):
+    """Parameters for listing SLA tracking records scoped to incidents."""
+
+    limit: Optional[int] = Field(
+        20, description="Maximum number of records to return (default 20)"
+    )
+    offset: Optional[int] = Field(0, description="Pagination offset")
+    incident_id: Optional[str] = Field(
+        None,
+        description=(
+            "Optional incident number (e.g. INC0010001) or sys_id to scope results "
+            "to a single incident. When omitted, SLAs for all incidents are returned."
+        ),
+    )
+    has_breached: Optional[bool] = Field(
+        None,
+        description="True to return only breached records; False for non-breached",
+    )
+    stage: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by SLA stage. Common values: 'in_progress', 'breached', "
+            "'paused', 'completed'"
+        ),
+    )
+    sla_sys_id: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by a specific SLA definition sys_id (contract_sla.sys_id; "
+            "32-char hex)"
+        ),
+    )
+
+
+def _resolve_incident_sys_id_sla(
+    instance_url: str,
+    headers: Dict[str, str],
+    incident_id: str,
+) -> Optional[str]:
+    """Return the sys_id for an incident number, or passthrough if already a sys_id."""
+    if len(incident_id) == 32 and all(c in "0123456789abcdef" for c in incident_id):
+        return incident_id
+
+    url = f"{instance_url}{INCIDENT_TABLE}"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"number={incident_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id",
+            },
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        if not results:
+            return None
+        return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        return None
+
+
+def list_incident_slas(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List SLA tracking records (task_sla) scoped to the incident table.
+
+    This is a focused shortcut for monitoring incident SLA compliance.
+    Results are always filtered to ``table_name=incident``. An optional
+    ``incident_id`` narrows results to a single incident — accepts either
+    the INC number (e.g. INC0010001) or the raw sys_id. Additional filters
+    allow narrowing by breach state, stage, or a specific SLA definition.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListIncidentSLAsParams.
+
+    Returns:
+        Dictionary with ``success``, ``incident_slas`` (list), ``count``, and
+        pagination keys (``has_more``, ``next_offset``).
+    """
+    result = _unwrap_and_validate_params(params, ListIncidentSLAsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Always scope to the incident table
+    filters = ["table_name=incident"]
+
+    # Optional incident scope — resolve number → sys_id when needed
+    if validated.incident_id:
+        incident_sys_id = _resolve_incident_sys_id_sla(
+            instance_url, headers, validated.incident_id
+        )
+        if incident_sys_id is None:
+            return {
+                "success": False,
+                "message": f"Incident not found: {validated.incident_id}",
+            }
+        filters.append(f"task={incident_sys_id}")
+
+    if validated.has_breached is not None:
+        filters.append(
+            f"has_breached={'true' if validated.has_breached else 'false'}"
+        )
+    if validated.stage:
+        filters.append(f"stage={validated.stage}")
+    if validated.sla_sys_id:
+        filters.append(f"sla={validated.sla_sys_id}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(TASK_SLA_FIELDS),
+    )
+
+    url = f"{instance_url}{TASK_SLA_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        incident_slas = [
+            _format_task_sla(r) for r in response.json().get("result", [])
+        ]
+        return _paginated_list_response(
+            incident_slas, validated.limit, validated.offset, "incident_slas"
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing incident SLAs: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing incident SLAs: {_format_http_error(e)}",
         }

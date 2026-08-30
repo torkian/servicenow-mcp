@@ -11,6 +11,7 @@ from servicenow_mcp.tools.sla_tools import (
     _format_task_sla,
     get_sla,
     get_sla_breach,
+    list_incident_slas,
     list_sla_breach_definitions,
     list_sla_breaches,
     list_slas,
@@ -832,6 +833,224 @@ class TestResolveSLABreach(unittest.TestCase):
         self.assertEqual(breach["task"], "INC0012345")
         self.assertEqual(breach["sla"], "Priority 1 Response")
         self.assertEqual(breach["table_name"], "incident")
+
+
+# ---------------------------------------------------------------------------
+# list_incident_slas
+# ---------------------------------------------------------------------------
+
+FAKE_TASK_SYS_ID = "a" * 32
+FAKE_INCIDENT_SYS_ID = "c" * 32
+FAKE_INCIDENT_NUMBER = "INC0099001"
+
+FAKE_INCIDENT_SLA = {
+    "sys_id": FAKE_TASK_SYS_ID,
+    "task": {"display_value": "INC0099001", "value": FAKE_INCIDENT_SYS_ID},
+    "sla": {"display_value": "Priority 1 Response", "value": FAKE_SYS_ID},
+    "stage": "in_progress",
+    "has_breached": "false",
+    "breach_time": None,
+    "start_time": "2026-08-30 08:00:00",
+    "end_time": None,
+    "business_duration": "0:30:00",
+    "duration": "0:30:00",
+    "percentage": "50",
+    "table_name": "incident",
+    "sys_created_on": "2026-08-30 08:00:00",
+    "sys_updated_on": "2026-08-30 08:30:00",
+}
+
+
+class TestListIncidentSLAs(unittest.TestCase):
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_success_returns_incident_slas(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_INCIDENT_SLA]})
+        result = list_incident_slas(_make_auth_manager(), _make_config(), {})
+        self.assertTrue(result["success"])
+        self.assertIn("incident_slas", result)
+        self.assertEqual(len(result["incident_slas"]), 1)
+        self.assertEqual(result["incident_slas"][0]["table_name"], "incident")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_always_scopes_to_incident_table(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(_make_auth_manager(), _make_config(), {})
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("table_name=incident", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_incident_id_as_sys_id_passthrough(self, mock_req):
+        # When incident_id is already a 32-char hex sys_id, no lookup needed
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(
+            _make_auth_manager(), _make_config(), {"incident_id": FAKE_INCIDENT_SYS_ID}
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn(f"task={FAKE_INCIDENT_SYS_ID}", query)
+        # Only one HTTP call made (no resolver lookup)
+        self.assertEqual(mock_req.call_count, 1)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_incident_id_as_number_resolved(self, mock_req):
+        # First call: incident lookup; second call: task_sla list
+        lookup_resp = _make_response(
+            200, {"result": [{"sys_id": FAKE_INCIDENT_SYS_ID}]}
+        )
+        list_resp = _make_response(200, {"result": [FAKE_INCIDENT_SLA]})
+        mock_req.side_effect = [lookup_resp, list_resp]
+
+        result = list_incident_slas(
+            _make_auth_manager(), _make_config(), {"incident_id": FAKE_INCIDENT_NUMBER}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(mock_req.call_count, 2)
+        # Second call should scope task to the resolved sys_id
+        _, kwargs = mock_req.call_args_list[1]
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn(f"task={FAKE_INCIDENT_SYS_ID}", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_incident_not_found_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = list_incident_slas(
+            _make_auth_manager(), _make_config(), {"incident_id": FAKE_INCIDENT_NUMBER}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Incident not found", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_has_breached_true_filter(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(
+            _make_auth_manager(), _make_config(), {"has_breached": True}
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("has_breached=true", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_has_breached_false_filter(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(
+            _make_auth_manager(), _make_config(), {"has_breached": False}
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("has_breached=false", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_stage_filter(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(
+            _make_auth_manager(), _make_config(), {"stage": "breached"}
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("stage=breached", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_sla_sys_id_filter(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(
+            _make_auth_manager(), _make_config(), {"sla_sys_id": FAKE_SYS_ID}
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn(f"sla={FAKE_SYS_ID}", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_all_filters_combined(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(
+            _make_auth_manager(),
+            _make_config(),
+            {
+                "incident_id": FAKE_INCIDENT_SYS_ID,
+                "has_breached": True,
+                "stage": "breached",
+                "sla_sys_id": FAKE_SYS_ID,
+            },
+        )
+        _, kwargs = mock_req.call_args
+        query = kwargs.get("params", {}).get("sysparm_query", "")
+        self.assertIn("table_name=incident", query)
+        self.assertIn(f"task={FAKE_INCIDENT_SYS_ID}", query)
+        self.assertIn("has_breached=true", query)
+        self.assertIn("stage=breached", query)
+        self.assertIn(f"sla={FAKE_SYS_ID}", query)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_pagination_params_forwarded(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(
+            _make_auth_manager(), _make_config(), {"limit": 10, "offset": 20}
+        )
+        _, kwargs = mock_req.call_args
+        params = kwargs.get("params", {})
+        self.assertEqual(params.get("sysparm_limit"), 10)
+        self.assertEqual(params.get("sysparm_offset"), 20)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_response_includes_count_and_has_more(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_INCIDENT_SLA]})
+        result = list_incident_slas(_make_auth_manager(), _make_config(), {})
+        self.assertIn("count", result)
+        self.assertEqual(result["count"], 1)
+        self.assertIn("has_more", result)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = list_incident_slas(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing incident SLAs", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_uses_task_sla_table_url(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        list_incident_slas(_make_auth_manager(), _make_config(), {})
+        args, _ = mock_req.call_args
+        url = args[1]
+        self.assertIn("task_sla", url)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_reference_fields_normalised(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [FAKE_INCIDENT_SLA]})
+        result = list_incident_slas(_make_auth_manager(), _make_config(), {})
+        sla = result["incident_slas"][0]
+        self.assertEqual(sla["task"], "INC0099001")
+        self.assertEqual(sla["sla"], "Priority 1 Response")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_empty_result_returns_empty_list(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = list_incident_slas(_make_auth_manager(), _make_config(), {})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["incident_slas"], [])
+        self.assertEqual(result["count"], 0)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_resolver_http_error_treated_as_not_found(self, mock_req):
+        # When incident lookup raises a RequestException, treated as not found
+        mock_req.side_effect = requests.exceptions.ConnectionError("network error")
+        result = list_incident_slas(
+            _make_auth_manager(), _make_config(), {"incident_id": FAKE_INCIDENT_NUMBER}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Incident not found", result["message"])
+
+    def test_no_instance_url_returns_failure(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        auth_manager.instance_url = None
+        config = _make_config()
+        config.instance_url = None
+        result = list_incident_slas(auth_manager, config, {})
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
 
 
 if __name__ == "__main__":

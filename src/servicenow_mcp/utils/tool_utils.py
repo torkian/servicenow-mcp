@@ -821,6 +821,7 @@ from servicenow_mcp.tools.sctask_tools import (
 from servicenow_mcp.tools.sla_tools import (
     GetSLABreachParams,
     GetSLAParams,
+    ListIncidentSLAsParams,
     ListSLABreachDefinitionsParams,
     ListSLABreachesParams,
     ListSLAsParams,
@@ -834,6 +835,9 @@ from servicenow_mcp.tools.sla_tools import (
 )
 from servicenow_mcp.tools.sla_tools import (
     list_sla_breach_definitions as list_sla_breach_definitions_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    list_incident_slas as list_incident_slas_tool,
 )
 from servicenow_mcp.tools.sla_tools import (
     list_sla_breaches as list_sla_breaches_tool,
@@ -3336,6 +3340,19 @@ def get_tool_definitions(
                 "Filter by has_breached flag, stage (in_progress/breached/paused/completed), "
                 "source table (e.g. 'incident'), a specific task sys_id, or a specific "
                 "SLA definition sys_id. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "list_incident_slas": (
+            list_incident_slas_tool,
+            ListIncidentSLAsParams,
+            Dict[str, Any],
+            (
+                "List SLA tracking records (task_sla) scoped to the incident table. "
+                "A focused shortcut for monitoring incident SLA compliance. Optionally "
+                "narrows to a single incident by number (e.g. INC0010001) or sys_id. "
+                "Filter by has_breached flag, stage (in_progress/breached/paused/completed), "
+                "or a specific SLA definition sys_id. Supports pagination."
             ),
             "raw_dict",
         ),

@@ -83,6 +83,7 @@ service_desk:
   - list_sla_breach_definitions
   - list_slas
   - list_sla_breaches
+  - list_incident_slas
   - get_sla_breach
   - resolve_sla_breach
   # Notifications
@@ -388,6 +389,7 @@ system_administrator:
   - list_slas
   - get_sla
   - list_sla_breaches
+  - list_incident_slas
   - get_sla_breach
   - resolve_sla_breach
   # Generic Table CRUD
@@ -710,6 +712,7 @@ full:
   - list_slas
   - get_sla
   - list_sla_breaches
+  - list_incident_slas
   - get_sla_breach
   - resolve_sla_breach
   # Notification Tools

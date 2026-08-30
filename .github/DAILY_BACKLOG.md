@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_incident_slas tool (task_sla scoped to incident table; filters for has_breached/stage; pagination; registered in service_desk + full)
+1. Add get_incident_sla tool (GET single task_sla record scoped to incident; sys_id passthrough; 404/empty-result guards; registered in service_desk, system_administrator, full packages)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -149,3 +149,4 @@
 143. 2026-08-27 — Add list_problem_tasks_by_problem shortcut (wraps list_problem_tasks with problem_id param; mirrors list_change_request_tasks pattern; state/priority/assigned_to filters; reference fields normalised; registered in service_desk and full packages; 13 new tests; 3237 total tests; 96% problem_task_tools.py coverage)
 144. 2026-08-28 — Add archive_knowledge_article tool (PATCH kb_knowledge/{sys_id} with workflow_state=retired; optional retire_reason stored as work_notes; 404 guard; registered in knowledge_author and full packages; 8 new tests; 3245 total tests)
 145. 2026-08-29 — Add get_change_conflict tool (GET change_conflict/{sys_id}; GetChangeConflictParams model; 404 and empty-result guards; sysparm_display_value=all; registered in change_coordinator and full packages; 14 new tests; 3259 total tests; 95% coverage)
+146. 2026-08-30 — Add list_incident_slas tool (task_sla scoped to table_name=incident; optional incident number/sys_id resolver; has_breached/stage/sla_sys_id filters; pagination; registered in service_desk, system_administrator, full packages; 18 new tests; 3277 total tests)
