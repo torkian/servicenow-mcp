@@ -244,6 +244,7 @@ from servicenow_mcp.tools.sctask_tools import (
     update_sctask,
 )
 from servicenow_mcp.tools.sla_tools import (
+    get_incident_sla,
     get_sla,
     get_sla_breach,
     list_incident_slas,
@@ -661,6 +662,7 @@ __all__ = [
     "list_sla_breach_definitions",
     "list_sla_breaches",
     "list_incident_slas",
+    "get_incident_sla",
     "get_sla_breach",
     "resolve_sla_breach",
 

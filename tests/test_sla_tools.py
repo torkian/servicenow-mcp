@@ -9,6 +9,7 @@ from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.sla_tools import (
     _format_sla,
     _format_task_sla,
+    get_incident_sla,
     get_sla,
     get_sla_breach,
     list_incident_slas,
@@ -1051,6 +1052,203 @@ class TestListIncidentSLAs(unittest.TestCase):
         result = list_incident_slas(auth_manager, config, {})
         self.assertFalse(result["success"])
         self.assertIn("instance_url", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# get_incident_sla
+# ---------------------------------------------------------------------------
+
+FAKE_INCIDENT_TASK_SLA_SYS_ID = "f" * 32
+
+
+class TestGetIncidentSLA(unittest.TestCase):
+    def test_missing_task_sla_id_returns_failure(self):
+        result = get_incident_sla(_make_auth_manager(), _make_config(), {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_success_returns_incident_sla(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        self.assertTrue(result["success"])
+        self.assertIn("incident_sla", result)
+        self.assertEqual(result["incident_sla"]["stage"], "breached")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_success_formats_all_fields(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        sla = result["incident_sla"]
+        self.assertEqual(sla["task"], "INC0012345")
+        self.assertEqual(sla["sla"], "Priority 1 Response")
+        self.assertEqual(sla["has_breached"], "true")
+        self.assertEqual(sla["breach_time"], "2026-05-20 10:00:00")
+        self.assertEqual(sla["table_name"], "incident")
+        self.assertEqual(sla["percentage"], "110")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_404_returns_failure(self, mock_req):
+        resp = MagicMock()
+        resp.status_code = 404
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIn(FAKE_INCIDENT_TASK_SLA_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_empty_result_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": {}})
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_wrong_table_name_returns_failure(self, mock_req):
+        """Record exists but belongs to change_request, not incident."""
+        non_incident_record = {**FAKE_TASK_SLA, "table_name": "change_request"}
+        mock_req.return_value = _make_response(200, {"result": non_incident_record})
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("change_request", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_table_name_as_dict_incident_succeeds(self, mock_req):
+        """table_name returned as a reference dict with display_value=incident."""
+        dict_table_record = {
+            **FAKE_TASK_SLA,
+            "table_name": {"display_value": "incident", "value": "incident"},
+        }
+        mock_req.return_value = _make_response(200, {"result": dict_table_record})
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_table_name_as_dict_non_incident_fails(self, mock_req):
+        """table_name returned as a reference dict pointing to problem table."""
+        dict_table_record = {
+            **FAKE_TASK_SLA,
+            "table_name": {"display_value": "problem", "value": "problem"},
+        }
+        mock_req.return_value = _make_response(200, {"result": dict_table_record})
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("problem", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_http_error_returns_failure(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving incident SLA record", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_uses_direct_sys_id_url(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
+        get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        args, _ = mock_req.call_args
+        url = args[1]
+        self.assertTrue(url.endswith(f"/{FAKE_INCIDENT_TASK_SLA_SYS_ID}"))
+        self.assertIn("task_sla", url)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_display_value_requested(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
+        get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        _, kwargs = mock_req.call_args
+        params = kwargs.get("params", {})
+        self.assertEqual(params.get("sysparm_display_value"), "true")
+        self.assertEqual(params.get("sysparm_exclude_reference_link"), "true")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_fields_param_includes_task_sla_fields(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
+        get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        _, kwargs = mock_req.call_args
+        fields = kwargs.get("params", {}).get("sysparm_fields", "")
+        self.assertIn("has_breached", fields)
+        self.assertIn("breach_time", fields)
+        self.assertIn("stage", fields)
+        self.assertIn("table_name", fields)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_uses_get_method(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_TASK_SLA})
+        get_incident_sla(
+            _make_auth_manager(),
+            _make_config(),
+            {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID},
+        )
+        args, _ = mock_req.call_args
+        self.assertEqual(args[0], "GET")
+
+    def test_no_instance_url_returns_failure(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        auth_manager.instance_url = None
+        config = _make_config()
+        config.instance_url = None
+        result = get_incident_sla(
+            auth_manager, config, {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    def test_no_headers_returns_failure(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.get_headers.return_value = None
+        auth_manager.instance_url = "https://dev99999.service-now.com"
+        config = _make_config()
+        result = get_incident_sla(
+            auth_manager, config, {"task_sla_id": FAKE_INCIDENT_TASK_SLA_SYS_ID}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
 
 
 if __name__ == "__main__":

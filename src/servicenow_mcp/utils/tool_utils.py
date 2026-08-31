@@ -819,6 +819,7 @@ from servicenow_mcp.tools.sctask_tools import (
     update_sctask as update_sctask_tool,
 )
 from servicenow_mcp.tools.sla_tools import (
+    GetIncidentSLAParams,
     GetSLABreachParams,
     GetSLAParams,
     ListIncidentSLAsParams,
@@ -826,6 +827,9 @@ from servicenow_mcp.tools.sla_tools import (
     ListSLABreachesParams,
     ListSLAsParams,
     ResolveSLABreachParams,
+)
+from servicenow_mcp.tools.sla_tools import (
+    get_incident_sla as get_incident_sla_tool,
 )
 from servicenow_mcp.tools.sla_tools import (
     get_sla as get_sla_tool,
@@ -3353,6 +3357,20 @@ def get_tool_definitions(
                 "narrows to a single incident by number (e.g. INC0010001) or sys_id. "
                 "Filter by has_breached flag, stage (in_progress/breached/paused/completed), "
                 "or a specific SLA definition sys_id. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_incident_sla": (
+            get_incident_sla_tool,
+            GetIncidentSLAParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single SLA tracking record (task_sla) by sys_id, scoped to "
+                "the incident table. Validates that the record belongs to table_name=incident "
+                "and returns a 404-style failure if not found or if it belongs to a different "
+                "table. Returns breach status, stage, timing details (start_time, breach_time, "
+                "end_time), percentage elapsed, and the associated incident and SLA definition "
+                "references."
             ),
             "raw_dict",
         ),

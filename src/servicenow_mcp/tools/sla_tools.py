@@ -8,6 +8,9 @@ task_sla table via the /api/now/table/* endpoints.
 Also provides list_incident_slas — a focused shortcut that queries
 task_sla scoped to table_name=incident with optional incident number/
 sys_id lookup, has_breached flag, and stage filters.
+
+Also provides get_incident_sla — fetches a single task_sla record by
+sys_id and validates it belongs to table_name=incident.
 """
 
 import logging
@@ -758,4 +761,93 @@ def list_incident_slas(
         return {
             "success": False,
             "message": f"Error listing incident SLAs: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# get_incident_sla — fetch single task_sla record scoped to incident
+# ---------------------------------------------------------------------------
+
+
+class GetIncidentSLAParams(BaseModel):
+    """Parameters for retrieving a single incident SLA tracking record."""
+
+    task_sla_id: str = Field(
+        ...,
+        description="sys_id of the task_sla record to retrieve (32-char hex)",
+    )
+
+
+def get_incident_sla(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single SLA tracking record (task_sla) scoped to an incident.
+
+    Fetches the task_sla record by sys_id and validates that it belongs to
+    the incident table (``table_name=incident``). Returns 404 if the record
+    does not exist or is not scoped to an incident.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetIncidentSLAParams.
+
+    Returns:
+        Dictionary with ``success`` and ``incident_sla`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params, GetIncidentSLAParams, required_fields=["task_sla_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}{TASK_SLA_TABLE}/{validated.task_sla_id}"
+    query_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(TASK_SLA_FIELDS),
+    }
+
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Incident SLA record not found: {validated.task_sla_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {
+                "success": False,
+                "message": f"Incident SLA record not found: {validated.task_sla_id}",
+            }
+        # Validate the record is scoped to the incident table
+        table_name = record.get("table_name")
+        if isinstance(table_name, dict):
+            table_name = table_name.get("value") or table_name.get("display_value")
+        if table_name != "incident":
+            return {
+                "success": False,
+                "message": (
+                    f"SLA record {validated.task_sla_id} is not scoped to the "
+                    f"incident table (table_name={table_name!r})"
+                ),
+            }
+        return {"success": True, "incident_sla": _format_task_sla(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving incident SLA record: {e}")
+        return {
+            "success": False,
+            "message": f"Error retrieving incident SLA record: {_format_http_error(e)}",
         }
