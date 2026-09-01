@@ -971,6 +971,7 @@ from servicenow_mcp.tools.assessment_tools import (
     GetAssessmentMetricTypeParams,
     ListAssessmentInstancesParams,
     ListAssessmentMetricTypesParams,
+    UpdateAssessmentInstanceParams,
 )
 from servicenow_mcp.tools.assessment_tools import (
     create_assessment_instance as create_assessment_instance_tool,
@@ -981,6 +982,7 @@ from servicenow_mcp.tools.assessment_tools import (
     get_assessment_metric_type as get_assessment_metric_type_tool,
     list_assessment_instances as list_assessment_instances_tool,
     list_assessment_metric_types as list_assessment_metric_types_tool,
+    update_assessment_instance as update_assessment_instance_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
@@ -3905,6 +3907,21 @@ def get_tool_definitions(
                 "Returns a 404 error if the record does not exist. "
                 "Use with caution: deletion is permanent and removes the respondent's copy "
                 "of the survey/assessment along with any responses captured in the instance."
+            ),
+            "raw_dict",
+        ),
+        "update_assessment_instance": (
+            update_assessment_instance_tool,
+            UpdateAssessmentInstanceParams,
+            Dict[str, Any],
+            (
+                "Update an existing assessment instance in asmt_assessment_instance. "
+                "Applies a partial PATCH — only the fields supplied are changed. "
+                "instance_id (sys_id) is required; all other fields are optional: "
+                "state (draft/pending/in_progress/complete), due_date (YYYY-MM-DD), "
+                "user (respondent — sys_id or user_name), assigned_to (sys_id or user_name), "
+                "score (0–100 override). At least one optional field must be provided. "
+                "Returns a 404 error if the instance does not exist."
             ),
             "raw_dict",
         ),

@@ -663,6 +663,140 @@ def create_assessment_instance(
 
 
 # ---------------------------------------------------------------------------
+# update_assessment_instance
+# ---------------------------------------------------------------------------
+
+
+class UpdateAssessmentInstanceParams(BaseModel):
+    """Parameters for updating an existing assessment instance."""
+
+    instance_id: str = Field(
+        ...,
+        description="The sys_id of the asmt_assessment_instance record to update.",
+    )
+    state: Optional[str] = Field(
+        None,
+        description=(
+            "New state for the assessment instance. Typical values: 'draft', "
+            "'pending', 'in_progress', 'complete'."
+        ),
+    )
+    due_date: Optional[str] = Field(
+        None,
+        description="New due date in YYYY-MM-DD format.",
+    )
+    assigned_to: Optional[str] = Field(
+        None,
+        description="The sys_id or user_name of the user responsible for completing the assessment.",
+    )
+    user: Optional[str] = Field(
+        None,
+        description="The sys_id or user_name of the respondent.",
+    )
+    score: Optional[float] = Field(
+        None,
+        description="Override the assessment score (0–100). Use with caution.",
+    )
+
+    @field_validator("due_date", mode="before")
+    @classmethod
+    def validate_due_date(cls, v: Optional[str]) -> Optional[str]:
+        """Validate due_date as YYYY-MM-DD."""
+        if v is None:
+            return v
+        return validate_servicenow_date(v)
+
+
+def update_assessment_instance(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing assessment instance in asmt_assessment_instance.
+
+    Applies a partial PATCH to the record identified by ``instance_id``.
+    Only the fields present in the request body are changed; omitted optional
+    fields are left untouched.  ``user`` and ``assigned_to`` may be supplied
+    as sys_ids or as user_name strings and are resolved automatically.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdateAssessmentInstanceParams.
+
+    Returns:
+        Dictionary with ``success`` and ``instance`` keys on success.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        UpdateAssessmentInstanceParams,
+        required_fields=["instance_id"],
+    )
+    if not result["success"]:
+        return result
+    validated: UpdateAssessmentInstanceParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Build the PATCH body — only include fields the caller supplied.
+    body: Dict[str, Any] = {}
+
+    if validated.state is not None:
+        body["state"] = validated.state
+    if validated.due_date is not None:
+        body["due_date"] = validated.due_date
+    if validated.score is not None:
+        body["score"] = str(validated.score)
+
+    if validated.user is not None:
+        user_sys_id = _resolve_user_sys_id(instance_url, headers, validated.user)
+        if not user_sys_id:
+            return {"success": False, "message": f"User not found: {validated.user}"}
+        body["user"] = user_sys_id
+
+    if validated.assigned_to is not None:
+        assigned_sys_id = _resolve_user_sys_id(instance_url, headers, validated.assigned_to)
+        if not assigned_sys_id:
+            return {"success": False, "message": f"User not found: {validated.assigned_to}"}
+        body["assigned_to"] = assigned_sys_id
+
+    if not body:
+        return {
+            "success": False,
+            "message": "No fields to update. Provide at least one of: state, due_date, user, assigned_to, score.",
+        }
+
+    url = f"{instance_url}/api/now/table/{ASSESSMENT_INSTANCE_TABLE}/{validated.instance_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+    }
+    try:
+        response = _make_request(
+            "PATCH", url, headers=headers, json=body, params=query_params
+        )
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Assessment instance not found: {validated.instance_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "instance": _format_assessment_instance(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error("Error updating assessment instance: %s", e)
+        return {
+            "success": False,
+            "message": f"Error updating assessment instance: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
 # delete_assessment_instance
 # ---------------------------------------------------------------------------
 

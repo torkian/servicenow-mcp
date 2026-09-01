@@ -1631,3 +1631,271 @@ def test_export_assessment_responses_pagination_no_more(mock_req, auth_manager, 
     )
     assert result["has_more"] is False
     assert result["next_offset"] is None
+
+
+# ===========================================================================
+# update_assessment_instance
+# ===========================================================================
+
+from servicenow_mcp.tools.assessment_tools import (  # noqa: E402
+    UpdateAssessmentInstanceParams,
+    update_assessment_instance,
+)
+
+
+# ---------------------------------------------------------------------------
+# Param validation
+# ---------------------------------------------------------------------------
+
+def test_update_assessment_instance_params_requires_instance_id():
+    """instance_id is mandatory."""
+    with pytest.raises(Exception):
+        UpdateAssessmentInstanceParams()
+
+
+def test_update_assessment_instance_params_invalid_due_date():
+    """Non-YYYY-MM-DD due_date is rejected by the validator."""
+    with pytest.raises(Exception):
+        UpdateAssessmentInstanceParams(instance_id=INSTANCE_SYS_ID, due_date="31-12-2025")
+
+
+def test_update_assessment_instance_params_valid():
+    """All optional fields accepted together."""
+    p = UpdateAssessmentInstanceParams(
+        instance_id=INSTANCE_SYS_ID,
+        state="in_progress",
+        due_date="2026-01-15",
+        score=88.5,
+    )
+    assert p.instance_id == INSTANCE_SYS_ID
+    assert p.due_date == "2026-01-15"
+    assert p.score == 88.5
+
+
+# ---------------------------------------------------------------------------
+# No instance_url / no headers
+# ---------------------------------------------------------------------------
+
+def test_update_assessment_instance_no_instance_url(server_config):
+    """Returns failure when instance_url cannot be resolved."""
+    am = MagicMock()
+    am.instance_url = None
+    sc = MagicMock()
+    sc.instance_url = None
+    result = update_assessment_instance(
+        am, sc, {"instance_id": INSTANCE_SYS_ID, "state": "complete"}
+    )
+    assert result["success"] is False
+    assert "instance_url" in result["message"]
+
+
+def test_update_assessment_instance_no_headers(server_config):
+    """Returns failure when get_headers returns nothing."""
+    am = MagicMock()
+    am.instance_url = INSTANCE_URL
+    am.get_headers.return_value = None
+    result = update_assessment_instance(
+        am, server_config, {"instance_id": INSTANCE_SYS_ID, "state": "complete"}
+    )
+    assert result["success"] is False
+    assert "get_headers" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# Empty-body guard
+# ---------------------------------------------------------------------------
+
+def test_update_assessment_instance_no_fields_provided(auth_manager, server_config):
+    """At least one optional field must be present; otherwise return failure."""
+    result = update_assessment_instance(
+        auth_manager, server_config, {"instance_id": INSTANCE_SYS_ID}
+    )
+    assert result["success"] is False
+    assert "No fields to update" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# Happy path
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_success(mock_req, auth_manager, server_config):
+    """Successful PATCH returns updated instance dict."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_INSTANCE}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "state": "complete"},
+    )
+    assert result["success"] is True
+    assert result["instance"]["sys_id"] == INSTANCE_SYS_ID
+    # Verify PATCH was called with state in body
+    call_kwargs = mock_req.call_args
+    assert call_kwargs[0][0] == "PATCH"
+    assert call_kwargs[1]["json"]["state"] == "complete"
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_due_date(mock_req, auth_manager, server_config):
+    """due_date field is correctly forwarded in the PATCH body."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_INSTANCE}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "due_date": "2026-06-30"},
+    )
+    assert result["success"] is True
+    body = mock_req.call_args[1]["json"]
+    assert body["due_date"] == "2026-06-30"
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_score(mock_req, auth_manager, server_config):
+    """score is serialised to a string in the PATCH body."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_INSTANCE}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "score": 75.0},
+    )
+    assert result["success"] is True
+    body = mock_req.call_args[1]["json"]
+    assert body["score"] == "75.0"
+
+
+# ---------------------------------------------------------------------------
+# User / assigned_to resolution
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_user_sys_id_passthrough(mock_req, auth_manager, server_config):
+    """A 32-char hex user value is used as-is without a lookup call."""
+    user_sys_id = "f" * 32
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_INSTANCE}
+    mock_resp.raise_for_status = MagicMock()
+    mock_req.return_value = mock_resp
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "user": user_sys_id},
+    )
+    assert result["success"] is True
+    # Only one request: the PATCH itself (no lookup needed)
+    assert mock_req.call_count == 1
+    body = mock_req.call_args[1]["json"]
+    assert body["user"] == user_sys_id
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_user_name_lookup(mock_req, auth_manager, server_config):
+    """A user_name string triggers a sys_user lookup before the PATCH."""
+    user_sys_id = "a" * 32
+    lookup_resp = MagicMock()
+    lookup_resp.json.return_value = {"result": [{"sys_id": user_sys_id}]}
+    lookup_resp.raise_for_status = MagicMock()
+
+    patch_resp = MagicMock()
+    patch_resp.status_code = 200
+    patch_resp.json.return_value = {"result": RAW_INSTANCE}
+    patch_resp.raise_for_status = MagicMock()
+
+    mock_req.side_effect = [lookup_resp, patch_resp]
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "user": "jsmith"},
+    )
+    assert result["success"] is True
+    assert mock_req.call_count == 2
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_user_not_found(mock_req, auth_manager, server_config):
+    """Returns failure when user_name cannot be resolved."""
+    lookup_resp = MagicMock()
+    lookup_resp.json.return_value = {"result": []}
+    lookup_resp.raise_for_status = MagicMock()
+    mock_req.return_value = lookup_resp
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "user": "no_such_user"},
+    )
+    assert result["success"] is False
+    assert "User not found" in result["message"]
+
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_assigned_to_not_found(mock_req, auth_manager, server_config):
+    """Returns failure when assigned_to user_name cannot be resolved."""
+    lookup_resp = MagicMock()
+    lookup_resp.json.return_value = {"result": []}
+    lookup_resp.raise_for_status = MagicMock()
+    mock_req.return_value = lookup_resp
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "assigned_to": "ghost_user"},
+    )
+    assert result["success"] is False
+    assert "User not found" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# 404 guard
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_404(mock_req, auth_manager, server_config):
+    """404 response returns a meaningful failure message."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    mock_req.return_value = mock_resp
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "state": "complete"},
+    )
+    assert result["success"] is False
+    assert "not found" in result["message"].lower()
+
+
+# ---------------------------------------------------------------------------
+# Network error
+# ---------------------------------------------------------------------------
+
+@patch("servicenow_mcp.tools.assessment_tools._make_request")
+def test_update_assessment_instance_request_error(mock_req, auth_manager, server_config):
+    """Network exceptions are caught and returned as failure."""
+    import requests
+    mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+
+    result = update_assessment_instance(
+        auth_manager,
+        server_config,
+        {"instance_id": INSTANCE_SYS_ID, "state": "in_progress"},
+    )
+    assert result["success"] is False
+    assert "Error updating assessment instance" in result["message"]
