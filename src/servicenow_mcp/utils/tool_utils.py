@@ -984,6 +984,16 @@ from servicenow_mcp.tools.assessment_tools import (
     list_assessment_metric_types as list_assessment_metric_types_tool,
     update_assessment_instance as update_assessment_instance_tool,
 )
+from servicenow_mcp.tools.pa_tools import (
+    GetPAIndicatorParams,
+    ListPAIndicatorsParams,
+    ListPAScoresParams,
+)
+from servicenow_mcp.tools.pa_tools import (
+    get_pa_indicator as get_pa_indicator_tool,
+    list_pa_indicators as list_pa_indicators_tool,
+    list_pa_scores as list_pa_scores_tool,
+)
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
     ListSyslogEntriesParams,
@@ -3937,6 +3947,46 @@ def get_tool_definitions(
                 "so the query is bounded. metric_type and metric may be supplied as sys_id or name; "
                 "user may be supplied as sys_id or user_name. Set has_comments=true to restrict to "
                 "responses that include free-text feedback. Paginated with has_more/next_offset."
+            ),
+            "raw_dict",
+        ),
+        # Performance Analytics tools
+        "list_pa_indicators": (
+            list_pa_indicators_tool,
+            ListPAIndicatorsParams,
+            Dict[str, Any],
+            (
+                "List Performance Analytics indicator definitions from the pa_indicator table. "
+                "PA indicators are KPI definitions used by ServiceNow Performance Analytics; "
+                "each specifies a data source, aggregation formula, direction (maximise/minimise), "
+                "and collection frequency. "
+                "Supports filtering by name (substring), active flag, frequency, and indicator_group. "
+                "Returns paginated results ordered by name."
+            ),
+            "raw_dict",
+        ),
+        "get_pa_indicator": (
+            get_pa_indicator_tool,
+            GetPAIndicatorParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Performance Analytics indicator from pa_indicator by sys_id or exact name. "
+                "A 32-character hex string is treated as a sys_id; anything else triggers a name= lookup. "
+                "Returns description, indicator_group, unit, direction, frequency, active, formula, "
+                "condition, table, and timestamps."
+            ),
+            "raw_dict",
+        ),
+        "list_pa_scores": (
+            list_pa_scores_tool,
+            ListPAScoresParams,
+            Dict[str, Any],
+            (
+                "List Performance Analytics score records from the pa_score table. "
+                "Scores are the numeric values collected for a PA indicator over a given time period. "
+                "Filter by indicator (sys_id or exact name, auto-resolved) and optional "
+                "period_start/period_end date bounds (YYYY-MM-DD). "
+                "Returns paginated results ordered newest-first."
             ),
             "raw_dict",
         ),

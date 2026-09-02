@@ -419,6 +419,10 @@ system_administrator:
   - create_assessment_instance
   - export_assessment_results
   - export_assessment_responses
+  # Performance Analytics Tools
+  - list_pa_indicators
+  - get_pa_indicator
+  - list_pa_scores
 
 full:
   # Incident Management
@@ -754,3 +758,7 @@ full:
   - create_assessment_instance
   - export_assessment_results
   - export_assessment_responses
+  # Performance Analytics Tools
+  - list_pa_indicators
+  - get_pa_indicator
+  - list_pa_scores

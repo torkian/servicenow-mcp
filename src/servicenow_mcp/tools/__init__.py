@@ -308,6 +308,11 @@ from servicenow_mcp.tools.metric_tools import (
     list_metric_definitions,
     list_metric_values,
 )
+from servicenow_mcp.tools.pa_tools import (
+    get_pa_indicator,
+    list_pa_indicators,
+    list_pa_scores,
+)
 from servicenow_mcp.tools.user_preference_tools import (
     delete_user_preference,
     get_user_preference,
@@ -743,4 +748,9 @@ __all__ = [
     "create_assessment_instance",
     "export_assessment_results",
     "export_assessment_responses",
+
+    # Performance Analytics tools
+    "list_pa_indicators",
+    "get_pa_indicator",
+    "list_pa_scores",
 ]
