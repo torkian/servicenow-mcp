@@ -985,11 +985,13 @@ from servicenow_mcp.tools.assessment_tools import (
     update_assessment_instance as update_assessment_instance_tool,
 )
 from servicenow_mcp.tools.pa_tools import (
+    CreatePAIndicatorParams,
     GetPAIndicatorParams,
     ListPAIndicatorsParams,
     ListPAScoresParams,
 )
 from servicenow_mcp.tools.pa_tools import (
+    create_pa_indicator as create_pa_indicator_tool,
     get_pa_indicator as get_pa_indicator_tool,
     list_pa_indicators as list_pa_indicators_tool,
     list_pa_scores as list_pa_scores_tool,
@@ -3987,6 +3989,21 @@ def get_tool_definitions(
                 "Filter by indicator (sys_id or exact name, auto-resolved) and optional "
                 "period_start/period_end date bounds (YYYY-MM-DD). "
                 "Returns paginated results ordered newest-first."
+            ),
+            "raw_dict",
+        ),
+        "create_pa_indicator": (
+            create_pa_indicator_tool,
+            CreatePAIndicatorParams,
+            Dict[str, Any],
+            (
+                "Create a new Performance Analytics indicator in the pa_indicator table. "
+                "A PA indicator defines a KPI: source table, filter condition, aggregation formula "
+                "(e.g. 'count', 'avg(field)'), collection frequency, and optimisation direction "
+                "('1'/maximize = higher is better; '2'/minimize = lower is better). "
+                "The indicator must be collected via a PA job before scores are available. "
+                "Required: name. Optional: description, table, condition, formula, frequency, "
+                "direction, active, unit, indicator_group."
             ),
             "raw_dict",
         ),

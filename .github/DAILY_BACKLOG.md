@@ -1,11 +1,10 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add create_pa_indicator tool (POST pa_indicator)
-2. Add pa dashboard tools (list_pa_dashboards, get_pa_dashboard on pa_home_page table)
-3. Add pa widget tools (list_pa_widgets, get_pa_widget on pa_widget table)
-4. Add pa breakdown tools (list_pa_breakdowns, get_pa_breakdown on pa_breakdown table)
-5. Add pa job management tools (list_pa_jobs, trigger_pa_collection on pa_job table)
+1. Add pa dashboard tools (list_pa_dashboards, get_pa_dashboard on pa_home_page table)
+2. Add pa widget tools (list_pa_widgets, get_pa_widget on pa_widget table)
+3. Add pa breakdown tools (list_pa_breakdowns, get_pa_breakdown on pa_breakdown table)
+4. Add pa job management tools (list_pa_jobs, trigger_pa_collection on pa_job table)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -157,3 +156,4 @@
 147. 2026-08-31 — Add get_incident_sla tool (GET task_sla/{sys_id} with table_name=incident validation; 404/empty-result guards; dict table_name normalisation; registered in service_desk, system_administrator, full packages; 15 new tests; 3292 total tests)
 148. 2026-09-01 — Add update_assessment_instance tool (PATCH asmt_assessment_instance/{sys_id}; updatable fields: state/due_date/user/assigned_to/score; user+assigned_to accept sys_id or user_name with auto-resolution; empty-body guard; 404 guard; registered in system_administrator and full packages; 15 new tests; 3307 total tests; 95% total coverage)
 149. 2026-09-02 — Add Performance Analytics tools (list_pa_indicators, get_pa_indicator, list_pa_scores); pa_tools.py covers pa_indicator and pa_score tables; name/active/frequency/indicator_group filters; sys_id/name resolver on get and list_pa_scores; date range filter on scores; reference fields normalised; registered in system_administrator and full packages; 52 new tests; 3359 total tests; 100% pa_tools.py coverage
+150. 2026-09-03 — Add create_pa_indicator tool (POST pa_indicator); CreatePAIndicatorParams with 10 fields; direction alias normalisation (maximize/minimize → '1'/'2'); active serialised as string; None fields excluded from body; registered in system_administrator and full packages; 16 new tests; 3375 total tests

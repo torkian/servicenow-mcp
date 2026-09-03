@@ -5,12 +5,14 @@ import requests
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.pa_tools import (
+    CreatePAIndicatorParams,
     GetPAIndicatorParams,
     ListPAIndicatorsParams,
     ListPAScoresParams,
     _format_pa_indicator,
     _format_pa_score,
     _resolve_pa_indicator_sys_id,
+    create_pa_indicator,
     get_pa_indicator,
     list_pa_indicators,
     list_pa_scores,
@@ -569,3 +571,200 @@ class TestParamModels:
         assert p.indicator_id is None
         assert p.period_start is None
         assert p.period_end is None
+
+
+# ---------------------------------------------------------------------------
+# create_pa_indicator tests
+# ---------------------------------------------------------------------------
+
+RAW_CREATED_INDICATOR = {
+    "sys_id": "c" * 32,
+    "name": "New KPI",
+    "description": "A test KPI",
+    "indicator_group": {"display_value": "ITSM", "value": "b" * 32},
+    "unit": {"display_value": "Count", "value": "u" * 32},
+    "direction": "1",
+    "frequency": "daily",
+    "active": "true",
+    "formula": "count",
+    "condition": "active=true",
+    "table": "incident",
+    "sys_created_on": "2024-01-15 10:00:00",
+    "sys_updated_on": "2024-01-15 10:00:00",
+}
+
+
+class TestCreatePAIndicator:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_success_minimal(self, mock_req, auth_manager, server_config):
+        """Create with only the required name field."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        result = create_pa_indicator(auth_manager, server_config, {"name": "New KPI"})
+        assert result["success"] is True
+        assert result["indicator"]["name"] == "New KPI"
+        assert "created successfully" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_success_all_fields(self, mock_req, auth_manager, server_config):
+        """Create with all optional fields supplied."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        result = create_pa_indicator(
+            auth_manager,
+            server_config,
+            {
+                "name": "New KPI",
+                "description": "A test KPI",
+                "table": "incident",
+                "condition": "active=true",
+                "formula": "count",
+                "frequency": "daily",
+                "direction": "1",
+                "active": True,
+                "unit": "u" * 32,
+                "indicator_group": "b" * 32,
+            },
+        )
+        assert result["success"] is True
+        # Verify body was posted with all fields
+        call_json = mock_req.call_args[1]["json"]
+        assert call_json["name"] == "New KPI"
+        assert call_json["table"] == "incident"
+        assert call_json["formula"] == "count"
+        assert call_json["frequency"] == "daily"
+        assert call_json["direction"] == "1"
+        assert call_json["active"] == "true"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_direction_alias_maximize(self, mock_req, auth_manager, server_config):
+        """Direction alias 'maximize' is normalised to '1'."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        create_pa_indicator(
+            auth_manager, server_config, {"name": "KPI", "direction": "maximize"}
+        )
+        call_json = mock_req.call_args[1]["json"]
+        assert call_json["direction"] == "1"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_direction_alias_minimize(self, mock_req, auth_manager, server_config):
+        """Direction alias 'minimize' is normalised to '2'."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        create_pa_indicator(
+            auth_manager, server_config, {"name": "KPI", "direction": "minimize"}
+        )
+        call_json = mock_req.call_args[1]["json"]
+        assert call_json["direction"] == "2"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_direction_alias_minimise(self, mock_req, auth_manager, server_config):
+        """Direction alias 'minimise' (British) is normalised to '2'."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        create_pa_indicator(
+            auth_manager, server_config, {"name": "KPI", "direction": "minimise"}
+        )
+        call_json = mock_req.call_args[1]["json"]
+        assert call_json["direction"] == "2"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_active_false_serialised_as_string(self, mock_req, auth_manager, server_config):
+        """active=False is sent as the string 'false'."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        create_pa_indicator(auth_manager, server_config, {"name": "KPI", "active": False})
+        call_json = mock_req.call_args[1]["json"]
+        assert call_json["active"] == "false"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error(self, mock_req, auth_manager, server_config):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_resp.json.return_value = {}
+        mock_req.return_value = mock_resp
+        http_err = requests.exceptions.HTTPError(response=mock_resp)
+        mock_resp.raise_for_status.side_effect = http_err
+        result = create_pa_indicator(auth_manager, server_config, {"name": "KPI"})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_network_error(self, mock_req, auth_manager, server_config):
+        mock_req.side_effect = requests.exceptions.ConnectionError("offline")
+        result = create_pa_indicator(auth_manager, server_config, {"name": "KPI"})
+        assert result["success"] is False
+        assert "offline" in result["message"]
+
+    def test_missing_required_name(self, auth_manager, server_config):
+        result = create_pa_indicator(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, server_config):
+        am = MagicMock()
+        am.instance_url = None
+        server_config.instance_url = None
+        result = create_pa_indicator(am, server_config, {"name": "KPI"})
+        assert result["success"] is False
+
+    def test_no_headers(self, server_config):
+        am = MagicMock()
+        am.instance_url = "https://x.com"
+        am.get_headers.return_value = None
+        server_config.instance_url = None
+        result = create_pa_indicator(am, server_config, {"name": "KPI"})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_none_optional_fields_excluded_from_body(self, mock_req, auth_manager, server_config):
+        """Optional fields that are None should not appear in the POST body."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        create_pa_indicator(auth_manager, server_config, {"name": "KPI"})
+        call_json = mock_req.call_args[1]["json"]
+        assert "description" not in call_json
+        assert "table" not in call_json
+        assert "condition" not in call_json
+        assert "formula" not in call_json
+        assert "unit" not in call_json
+        assert "indicator_group" not in call_json
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_posts_to_correct_url(self, mock_req, auth_manager, server_config):
+        """Verify the request is a POST to the pa_indicator table endpoint."""
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_CREATED_INDICATOR}
+        mock_req.return_value = mock_resp
+        create_pa_indicator(auth_manager, server_config, {"name": "KPI"})
+        call_args = mock_req.call_args
+        assert call_args[0][0] == "POST"
+        assert "pa_indicator" in call_args[0][1]
+
+
+class TestCreatePAIndicatorParams:
+    def test_requires_name(self):
+        import pydantic
+        with pytest.raises((pydantic.ValidationError, Exception)):
+            CreatePAIndicatorParams()
+
+    def test_active_defaults_to_true(self):
+        p = CreatePAIndicatorParams(name="KPI")
+        assert p.active is True
+
+    def test_all_optional_fields_none(self):
+        p = CreatePAIndicatorParams(name="KPI")
+        assert p.description is None
+        assert p.table is None
+        assert p.condition is None
+        assert p.formula is None
+        assert p.frequency is None
+        assert p.direction is None
+        assert p.unit is None
+        assert p.indicator_group is None

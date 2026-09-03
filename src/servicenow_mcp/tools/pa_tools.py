@@ -1,10 +1,10 @@
 """
 Performance Analytics tools for the ServiceNow MCP server.
 
-Provides tools for querying Performance Analytics indicators (pa_indicator)
-and their collected scores (pa_score).  PA indicators are formula-driven KPIs
-that sit on top of ServiceNow data and are distinct from the field-level
-sys_metric gauges.
+Provides tools for querying and creating Performance Analytics indicators
+(pa_indicator) and their collected scores (pa_score).  PA indicators are
+formula-driven KPIs that sit on top of ServiceNow data and are distinct from
+the field-level sys_metric gauges.
 """
 
 import logging
@@ -92,6 +92,48 @@ class GetPAIndicatorParams(BaseModel):
             "A 32-character hex string is treated as a sys_id; anything else is "
             "resolved via a name= lookup on pa_indicator."
         ),
+    )
+
+
+class CreatePAIndicatorParams(BaseModel):
+    """Parameters for creating a new Performance Analytics indicator."""
+
+    name: str = Field(..., description="Unique display name for the indicator")
+    description: Optional[str] = Field(None, description="Free-text description of the indicator")
+    table: Optional[str] = Field(
+        None,
+        description="ServiceNow table the indicator draws data from (e.g. 'incident')",
+    )
+    condition: Optional[str] = Field(
+        None,
+        description="Encoded query string that filters records before aggregation",
+    )
+    formula: Optional[str] = Field(
+        None,
+        description="Aggregation formula (e.g. 'count', 'sum(field)', 'avg(field)')",
+    )
+    frequency: Optional[str] = Field(
+        None,
+        description=(
+            "Collection frequency. Common values: daily, weekly, monthly, quarterly, yearly"
+        ),
+    )
+    direction: Optional[str] = Field(
+        None,
+        description=(
+            "Optimisation direction. "
+            "Use '1' (or 'maximize') to indicate higher is better; "
+            "'2' (or 'minimize') for lower is better."
+        ),
+    )
+    active: Optional[bool] = Field(True, description="Whether the indicator is active (default true)")
+    unit: Optional[str] = Field(
+        None,
+        description="sys_id or display name of the unit record (pa_unit table)",
+    )
+    indicator_group: Optional[str] = Field(
+        None,
+        description="sys_id or display name of the indicator group (pa_indicator_group table)",
     )
 
 
@@ -396,6 +438,86 @@ def list_pa_scores(
         response.raise_for_status()
         scores = [_format_pa_score(r) for r in response.json().get("result", [])]
         return _paginated_list_response(scores, validated.limit, validated.offset, "scores")
+    except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def create_pa_indicator(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new Performance Analytics indicator in the pa_indicator table.
+
+    A PA indicator defines a KPI: the source table, filter condition, aggregation
+    formula, collection frequency, and optimisation direction.  The indicator
+    must be collected (manually or via a scheduled PA job) before scores appear.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreatePAIndicatorParams.
+
+    Returns:
+        Dictionary with ``success``, ``indicator`` (the created record), and
+        ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(params, CreatePAIndicatorParams, required_fields=["name"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Normalise direction aliases
+    direction_map = {"maximize": "1", "minimise": "2", "minimize": "2", "maximise": "1"}
+    direction_value = validated.direction
+    if direction_value is not None:
+        direction_value = direction_map.get(direction_value.lower(), direction_value)
+
+    body: Dict[str, Any] = {
+        "name": validated.name,
+        "active": "true" if validated.active else "false",
+    }
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.table is not None:
+        body["table"] = validated.table
+    if validated.condition is not None:
+        body["condition"] = validated.condition
+    if validated.formula is not None:
+        body["formula"] = validated.formula
+    if validated.frequency is not None:
+        body["frequency"] = validated.frequency
+    if direction_value is not None:
+        body["direction"] = direction_value
+    if validated.unit is not None:
+        body["unit"] = validated.unit
+    if validated.indicator_group is not None:
+        body["indicator_group"] = validated.indicator_group
+
+    url = f"{instance_url}/api/now/table/{PA_INDICATOR_TABLE}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_INDICATOR_FIELDS),
+    }
+    try:
+        response = _make_request("POST", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "indicator": _format_pa_indicator(data),
+            "message": f"PA indicator '{validated.name}' created successfully",
+        }
     except requests.exceptions.HTTPError as exc:
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
