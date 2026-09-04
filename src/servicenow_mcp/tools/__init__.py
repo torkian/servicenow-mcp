@@ -310,7 +310,9 @@ from servicenow_mcp.tools.metric_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator,
+    get_pa_dashboard,
     get_pa_indicator,
+    list_pa_dashboards,
     list_pa_indicators,
     list_pa_scores,
 )
@@ -755,4 +757,6 @@ __all__ = [
     "get_pa_indicator",
     "list_pa_scores",
     "create_pa_indicator",
+    "list_pa_dashboards",
+    "get_pa_dashboard",
 ]

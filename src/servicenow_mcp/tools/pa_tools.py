@@ -2,9 +2,9 @@
 Performance Analytics tools for the ServiceNow MCP server.
 
 Provides tools for querying and creating Performance Analytics indicators
-(pa_indicator) and their collected scores (pa_score).  PA indicators are
-formula-driven KPIs that sit on top of ServiceNow data and are distinct from
-the field-level sys_metric gauges.
+(pa_indicator), their collected scores (pa_score), and PA dashboards
+(pa_home_page).  PA indicators are formula-driven KPIs that sit on top of
+ServiceNow data and are distinct from the field-level sys_metric gauges.
 """
 
 import logging
@@ -31,6 +31,7 @@ logger = logging.getLogger(__name__)
 
 PA_INDICATOR_TABLE = "pa_indicator"
 PA_SCORE_TABLE = "pa_score"
+PA_DASHBOARD_TABLE = "pa_home_page"
 
 PA_INDICATOR_FIELDS = [
     "sys_id",
@@ -55,6 +56,17 @@ PA_SCORE_FIELDS = [
     "value",
     "breakdownvalue",
     "sys_created_on",
+]
+
+PA_DASHBOARD_FIELDS = [
+    "sys_id",
+    "title",
+    "description",
+    "owner",
+    "active",
+    "order",
+    "sys_created_on",
+    "sys_updated_on",
 ]
 
 
@@ -137,6 +149,32 @@ class CreatePAIndicatorParams(BaseModel):
     )
 
 
+class ListPADashboardsParams(BaseModel):
+    """Parameters for listing Performance Analytics dashboards."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of dashboards to return (default 20)")
+    offset: Optional[int] = Field(0, description="Offset for pagination")
+    title: Optional[str] = Field(None, description="Filter by dashboard title (substring match)")
+    active: Optional[bool] = Field(None, description="Filter by active flag (true=active only)")
+    owner: Optional[str] = Field(
+        None,
+        description="Filter by owner user name (substring match on user_name field)",
+    )
+
+
+class GetPADashboardParams(BaseModel):
+    """Parameters for retrieving a single Performance Analytics dashboard."""
+
+    dashboard_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA dashboard, or its exact title. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a title= lookup on pa_home_page."
+        ),
+    )
+
+
 class ListPAScoresParams(BaseModel):
     """Parameters for listing Performance Analytics scores."""
 
@@ -195,6 +233,20 @@ def _format_pa_indicator(record: Dict) -> Dict:
     }
 
 
+def _format_pa_dashboard(record: Dict) -> Dict:
+    """Normalise a raw pa_home_page record."""
+    return {
+        "sys_id": record.get("sys_id"),
+        "title": record.get("title"),
+        "description": record.get("description"),
+        "owner": _ref_display(record.get("owner")),
+        "active": record.get("active"),
+        "order": record.get("order"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
 def _format_pa_score(record: Dict) -> Dict:
     """Normalise a raw pa_score record."""
     return {
@@ -210,6 +262,41 @@ def _format_pa_score(record: Dict) -> Dict:
 # ---------------------------------------------------------------------------
 # Resolver helper
 # ---------------------------------------------------------------------------
+
+
+def _resolve_pa_dashboard_sys_id(
+    dashboard_id: str,
+    instance_url: str,
+    headers: Dict,
+) -> Optional[str]:
+    """Resolve a PA dashboard title to its sys_id.
+
+    If *dashboard_id* is a 32-character hex string it is returned unchanged.
+    Otherwise a GET against pa_home_page with ``title=<value>`` is performed
+    and the first match's sys_id returned.  Returns ``None`` when not found.
+    """
+    if len(dashboard_id) == 32 and all(c in "0123456789abcdefABCDEF" for c in dashboard_id):
+        return dashboard_id
+    url = f"{instance_url}/api/now/table/{PA_DASHBOARD_TABLE}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"title={dashboard_id}",
+                "sysparm_fields": "sys_id",
+                "sysparm_limit": "1",
+                "sysparm_exclude_reference_link": "true",
+            },
+        )
+        response.raise_for_status()
+        results = response.json().get("result", [])
+        if results:
+            return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        pass
+    return None
 
 
 def _resolve_pa_indicator_sys_id(
@@ -519,6 +606,126 @@ def create_pa_indicator(
             "message": f"PA indicator '{validated.name}' created successfully",
         }
     except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def list_pa_dashboards(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List Performance Analytics dashboards from the pa_home_page table.
+
+    PA dashboards aggregate widgets and indicator tiles into a single view.
+    Each dashboard has an owner, an optional order for display sorting, and
+    an active flag.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListPADashboardsParams.
+
+    Returns:
+        Dictionary with ``success``, ``dashboards`` (list), ``count``,
+        and optional ``has_more``/``next_offset`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ListPADashboardsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts: List[str] = []
+    if validated.title:
+        query_parts.append(f"titleLIKE{validated.title}")
+    if validated.active is not None:
+        query_parts.append(f"active={'true' if validated.active else 'false'}")
+    if validated.owner:
+        query_parts.append(f"owner.user_nameLIKE{validated.owner}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=False,
+        order_by="title",
+        fields=",".join(PA_DASHBOARD_FIELDS),
+    )
+    query_params["sysparm_display_value"] = "all"
+
+    url = f"{instance_url}/api/now/table/{PA_DASHBOARD_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        dashboards = [_format_pa_dashboard(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(dashboards, validated.limit, validated.offset, "dashboards")
+    except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def get_pa_dashboard(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single Performance Analytics dashboard by sys_id or exact title.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetPADashboardParams.
+
+    Returns:
+        Dictionary with ``success`` and ``dashboard`` keys, or an error message.
+    """
+    result = _unwrap_and_validate_params(params, GetPADashboardParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_dashboard_sys_id(validated.dashboard_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA dashboard not found: {validated.dashboard_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_DASHBOARD_TABLE}/{sys_id}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_fields": ",".join(PA_DASHBOARD_FIELDS),
+                "sysparm_display_value": "all",
+            },
+        )
+        response.raise_for_status()
+        data = response.json().get("result")
+        if not data:
+            return {"success": False, "message": f"PA dashboard not found: {sys_id}"}
+        return {"success": True, "dashboard": _format_pa_dashboard(data)}
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA dashboard not found: {sys_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}

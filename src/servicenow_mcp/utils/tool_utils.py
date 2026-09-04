@@ -986,13 +986,17 @@ from servicenow_mcp.tools.assessment_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     CreatePAIndicatorParams,
+    GetPADashboardParams,
     GetPAIndicatorParams,
+    ListPADashboardsParams,
     ListPAIndicatorsParams,
     ListPAScoresParams,
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
+    get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
+    list_pa_dashboards as list_pa_dashboards_tool,
     list_pa_indicators as list_pa_indicators_tool,
     list_pa_scores as list_pa_scores_tool,
 )
@@ -4004,6 +4008,32 @@ def get_tool_definitions(
                 "The indicator must be collected via a PA job before scores are available. "
                 "Required: name. Optional: description, table, condition, formula, frequency, "
                 "direction, active, unit, indicator_group."
+            ),
+            "raw_dict",
+        ),
+        "list_pa_dashboards": (
+            list_pa_dashboards_tool,
+            ListPADashboardsParams,
+            Dict[str, Any],
+            (
+                "List Performance Analytics dashboards from the pa_home_page table. "
+                "PA dashboards aggregate widgets and indicator tiles into a single view. "
+                "Supports filtering by title substring, active flag, and owner user_name. "
+                "Results are ordered by title and include has_more/next_offset for pagination. "
+                "Optional: title, active, owner, limit (default 20), offset."
+            ),
+            "raw_dict",
+        ),
+        "get_pa_dashboard": (
+            get_pa_dashboard_tool,
+            GetPADashboardParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Performance Analytics dashboard from pa_home_page by sys_id or exact title. "
+                "Pass a 32-character hex sys_id for a direct lookup, or a title string which is "
+                "resolved to a sys_id automatically. Returns dashboard metadata including title, "
+                "description, owner, active flag, and order. "
+                "Required: dashboard_id (sys_id or exact title)."
             ),
             "raw_dict",
         ),

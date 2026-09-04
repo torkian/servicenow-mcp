@@ -424,6 +424,8 @@ system_administrator:
   - get_pa_indicator
   - list_pa_scores
   - create_pa_indicator
+  - list_pa_dashboards
+  - get_pa_dashboard
 
 full:
   # Incident Management
@@ -764,3 +766,5 @@ full:
   - get_pa_indicator
   - list_pa_scores
   - create_pa_indicator
+  - list_pa_dashboards
+  - get_pa_dashboard

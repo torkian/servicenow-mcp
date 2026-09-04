@@ -768,3 +768,326 @@ class TestCreatePAIndicatorParams:
         assert p.direction is None
         assert p.unit is None
         assert p.indicator_group is None
+
+# ---------------------------------------------------------------------------
+# PA Dashboard fixtures
+# ---------------------------------------------------------------------------
+
+DASHBOARD_SYS_ID = "d" * 32
+
+RAW_DASHBOARD = {
+    "sys_id": DASHBOARD_SYS_ID,
+    "title": "ITSM Overview",
+    "description": "Key ITSM metrics dashboard",
+    "owner": {"display_value": "admin", "value": "e" * 32},
+    "active": "true",
+    "order": "100",
+    "sys_created_on": "2024-01-01 00:00:00",
+    "sys_updated_on": "2024-06-01 00:00:00",
+}
+
+
+# ---------------------------------------------------------------------------
+# _format_pa_dashboard
+# ---------------------------------------------------------------------------
+
+
+class TestFormatPADashboard:
+    def test_basic_fields(self):
+        from servicenow_mcp.tools.pa_tools import _format_pa_dashboard
+        result = _format_pa_dashboard(RAW_DASHBOARD)
+        assert result["sys_id"] == DASHBOARD_SYS_ID
+        assert result["title"] == "ITSM Overview"
+        assert result["description"] == "Key ITSM metrics dashboard"
+        assert result["owner"] == "admin"
+        assert result["active"] == "true"
+        assert result["order"] == "100"
+        assert result["created_on"] == "2024-01-01 00:00:00"
+        assert result["updated_on"] == "2024-06-01 00:00:00"
+
+    def test_owner_string(self):
+        from servicenow_mcp.tools.pa_tools import _format_pa_dashboard
+        rec = dict(RAW_DASHBOARD)
+        rec["owner"] = "admin"
+        result = _format_pa_dashboard(rec)
+        assert result["owner"] == "admin"
+
+    def test_missing_fields(self):
+        from servicenow_mcp.tools.pa_tools import _format_pa_dashboard
+        result = _format_pa_dashboard({})
+        assert result["sys_id"] is None
+        assert result["title"] is None
+        assert result["owner"] is None
+
+
+# ---------------------------------------------------------------------------
+# _resolve_pa_dashboard_sys_id
+# ---------------------------------------------------------------------------
+
+
+class TestResolvePADashboardSysId:
+    def test_hex_sys_id_returned_directly(self):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_dashboard_sys_id
+        result = _resolve_pa_dashboard_sys_id(DASHBOARD_SYS_ID, "https://x.com", {})
+        assert result == DASHBOARD_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_resolved_to_sys_id(self, mock_req):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_dashboard_sys_id
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [{"sys_id": DASHBOARD_SYS_ID}]}
+        mock_req.return_value = mock_resp
+        result = _resolve_pa_dashboard_sys_id("ITSM Overview", "https://x.com", {})
+        assert result == DASHBOARD_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_not_found_returns_none(self, mock_req):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_dashboard_sys_id
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = _resolve_pa_dashboard_sys_id("Unknown Dashboard", "https://x.com", {})
+        assert result is None
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_error_returns_none(self, mock_req):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_dashboard_sys_id
+        mock_req.side_effect = requests.exceptions.RequestException("network error")
+        result = _resolve_pa_dashboard_sys_id("Some Dashboard", "https://x.com", {})
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# list_pa_dashboards
+# ---------------------------------------------------------------------------
+
+
+class TestListPADashboards:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_returns_dashboards(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [RAW_DASHBOARD]}
+        mock_req.return_value = mock_resp
+        result = list_pa_dashboards(auth_manager, server_config, {"limit": 10, "offset": 0})
+        assert result["success"] is True
+        assert len(result["dashboards"]) == 1
+        assert result["dashboards"][0]["title"] == "ITSM Overview"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_title_filter(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_dashboards(auth_manager, server_config, {"title": "ITSM"})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "titleLIKEITSM" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_active_filter_true(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_dashboards(auth_manager, server_config, {"active": True})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "active=true" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_owner_filter(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_dashboards(auth_manager, server_config, {"owner": "jsmith"})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "owner.user_nameLIKEjsmith" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        resp = MagicMock()
+        resp.status_code = 500
+        resp.json.return_value = {}
+        mock_req.return_value = resp
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
+        result = list_pa_dashboards(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_connection_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = list_pa_dashboards(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        am = MagicMock()
+        am.instance_url = None
+        am.get_headers.return_value = {}
+        server_config.instance_url = None
+        result = list_pa_dashboards(am, server_config, {})
+        assert result["success"] is False
+
+    def test_no_headers(self, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        am = MagicMock()
+        am.instance_url = "https://x.com"
+        am.get_headers.return_value = None
+        server_config.instance_url = None
+        result = list_pa_dashboards(am, server_config, {})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_has_more_pagination(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        mock_resp = MagicMock()
+        # Return exactly limit records so has_more=True is set
+        mock_resp.json.return_value = {"result": [RAW_DASHBOARD] * 5}
+        mock_req.return_value = mock_resp
+        result = list_pa_dashboards(auth_manager, server_config, {"limit": 5, "offset": 0})
+        assert result["success"] is True
+        assert result.get("has_more") is True
+        assert result.get("next_offset") == 5
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_no_filters(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_dashboards
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_dashboards(auth_manager, server_config, {})
+        assert result["success"] is True
+        assert result["dashboards"] == []
+
+
+# ---------------------------------------------------------------------------
+# get_pa_dashboard
+# ---------------------------------------------------------------------------
+
+
+class TestGetPADashboard:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_get_by_sys_id(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_DASHBOARD}
+        mock_req.return_value = mock_resp
+        result = get_pa_dashboard(auth_manager, server_config, {"dashboard_id": DASHBOARD_SYS_ID})
+        assert result["success"] is True
+        assert result["dashboard"]["title"] == "ITSM Overview"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_get_by_title(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        # First call resolves name, second fetches the record
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": [{"sys_id": DASHBOARD_SYS_ID}]}
+        get_resp = MagicMock()
+        get_resp.json.return_value = {"result": RAW_DASHBOARD}
+        mock_req.side_effect = [resolve_resp, get_resp]
+        result = get_pa_dashboard(auth_manager, server_config, {"dashboard_id": "ITSM Overview"})
+        assert result["success"] is True
+        assert result["dashboard"]["sys_id"] == DASHBOARD_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_title_not_found(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = get_pa_dashboard(auth_manager, server_config, {"dashboard_id": "Nonexistent"})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_empty_result(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": None}
+        mock_req.return_value = mock_resp
+        result = get_pa_dashboard(auth_manager, server_config, {"dashboard_id": DASHBOARD_SYS_ID})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_404_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        resp = MagicMock()
+        resp.status_code = 404
+        resp.json.return_value = {}
+        mock_req.return_value = resp
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
+        result = get_pa_dashboard(auth_manager, server_config, {"dashboard_id": DASHBOARD_SYS_ID})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error_non_404(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        resp = MagicMock()
+        resp.status_code = 500
+        resp.json.return_value = {"error": {"message": "Internal Server Error", "detail": ""}}
+        mock_req.return_value = resp
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
+        result = get_pa_dashboard(auth_manager, server_config, {"dashboard_id": DASHBOARD_SYS_ID})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_connection_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        # First call (resolve sys_id) returns successfully
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": [{"sys_id": DASHBOARD_SYS_ID}]}
+        mock_req.side_effect = [resolve_resp, requests.exceptions.ConnectionError("timeout")]
+        result = get_pa_dashboard(auth_manager, server_config, {"dashboard_id": "ITSM Overview"})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        am = MagicMock()
+        am.instance_url = None
+        am.get_headers.return_value = {}
+        server_config.instance_url = None
+        result = get_pa_dashboard(am, server_config, {"dashboard_id": DASHBOARD_SYS_ID})
+        assert result["success"] is False
+
+    def test_no_headers(self, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_dashboard
+        am = MagicMock()
+        am.instance_url = "https://x.com"
+        am.get_headers.return_value = None
+        server_config.instance_url = None
+        result = get_pa_dashboard(am, server_config, {"dashboard_id": DASHBOARD_SYS_ID})
+        assert result["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# ListPADashboardsParams / GetPADashboardParams model validation
+# ---------------------------------------------------------------------------
+
+
+class TestPADashboardParams:
+    def test_list_defaults(self):
+        from servicenow_mcp.tools.pa_tools import ListPADashboardsParams
+        p = ListPADashboardsParams()
+        assert p.limit == 20
+        assert p.offset == 0
+        assert p.title is None
+        assert p.active is None
+        assert p.owner is None
+
+    def test_get_requires_dashboard_id(self):
+        from servicenow_mcp.tools.pa_tools import GetPADashboardParams
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            GetPADashboardParams()
+
+    def test_get_with_sys_id(self):
+        from servicenow_mcp.tools.pa_tools import GetPADashboardParams
+        p = GetPADashboardParams(dashboard_id=DASHBOARD_SYS_ID)
+        assert p.dashboard_id == DASHBOARD_SYS_ID
