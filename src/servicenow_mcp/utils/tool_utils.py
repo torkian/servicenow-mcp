@@ -988,17 +988,21 @@ from servicenow_mcp.tools.pa_tools import (
     CreatePAIndicatorParams,
     GetPADashboardParams,
     GetPAIndicatorParams,
+    GetPAWidgetParams,
     ListPADashboardsParams,
     ListPAIndicatorsParams,
     ListPAScoresParams,
+    ListPAWidgetsParams,
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
     get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
+    get_pa_widget as get_pa_widget_tool,
     list_pa_dashboards as list_pa_dashboards_tool,
     list_pa_indicators as list_pa_indicators_tool,
     list_pa_scores as list_pa_scores_tool,
+    list_pa_widgets as list_pa_widgets_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
@@ -4034,6 +4038,35 @@ def get_tool_definitions(
                 "resolved to a sys_id automatically. Returns dashboard metadata including title, "
                 "description, owner, active flag, and order. "
                 "Required: dashboard_id (sys_id or exact title)."
+            ),
+            "raw_dict",
+        ),
+        "list_pa_widgets": (
+            list_pa_widgets_tool,
+            ListPAWidgetsParams,
+            Dict[str, Any],
+            (
+                "List Performance Analytics widgets from the pa_widget table. "
+                "PA widgets are the individual visualisation elements (charts, scorecards, "
+                "breakdowns) placed on PA dashboards. "
+                "Supports filtering by name (substring), active flag, widget_type, "
+                "indicator (sys_id or exact name, auto-resolved), and dashboard "
+                "(sys_id or exact title, auto-resolved). "
+                "Returns paginated results ordered by name with has_more/next_offset."
+            ),
+            "raw_dict",
+        ),
+        "get_pa_widget": (
+            get_pa_widget_tool,
+            GetPAWidgetParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Performance Analytics widget from pa_widget by sys_id or exact name. "
+                "Pass a 32-character hex sys_id for a direct lookup, or a name string which is "
+                "resolved to a sys_id automatically. Returns widget metadata including name, "
+                "description, indicator, widget_type, active flag, home_page (dashboard), "
+                "breakdown, color, and timestamps. "
+                "Required: widget_id (sys_id or exact name)."
             ),
             "raw_dict",
         ),

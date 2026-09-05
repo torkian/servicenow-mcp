@@ -1091,3 +1091,420 @@ class TestPADashboardParams:
         from servicenow_mcp.tools.pa_tools import GetPADashboardParams
         p = GetPADashboardParams(dashboard_id=DASHBOARD_SYS_ID)
         assert p.dashboard_id == DASHBOARD_SYS_ID
+
+
+# ---------------------------------------------------------------------------
+# Widget fixtures
+# ---------------------------------------------------------------------------
+
+WIDGET_SYS_ID = "e" * 32
+
+RAW_WIDGET = {
+    "sys_id": WIDGET_SYS_ID,
+    "name": "Open Incidents Chart",
+    "description": "Bar chart of open incidents by priority",
+    "indicator": {"display_value": "Incident Count", "value": SYS_ID_32},
+    "widget_type": "chart",
+    "active": "true",
+    "home_page": {"display_value": "ITSM Overview", "value": DASHBOARD_SYS_ID},
+    "breakdown": {"display_value": "Priority", "value": "bk" * 16},
+    "color": "blue",
+    "sys_created_on": "2024-02-01 00:00:00",
+    "sys_updated_on": "2024-07-01 00:00:00",
+}
+
+
+# ---------------------------------------------------------------------------
+# _format_pa_widget
+# ---------------------------------------------------------------------------
+
+
+class TestFormatPAWidget:
+    def test_basic_fields(self):
+        from servicenow_mcp.tools.pa_tools import _format_pa_widget
+        result = _format_pa_widget(RAW_WIDGET)
+        assert result["sys_id"] == WIDGET_SYS_ID
+        assert result["name"] == "Open Incidents Chart"
+        assert result["description"] == "Bar chart of open incidents by priority"
+        assert result["widget_type"] == "chart"
+        assert result["active"] == "true"
+        assert result["color"] == "blue"
+        assert result["created_on"] == "2024-02-01 00:00:00"
+        assert result["updated_on"] == "2024-07-01 00:00:00"
+
+    def test_reference_fields_extracted(self):
+        from servicenow_mcp.tools.pa_tools import _format_pa_widget
+        result = _format_pa_widget(RAW_WIDGET)
+        assert result["indicator"] == "Incident Count"
+        assert result["home_page"] == "ITSM Overview"
+        assert result["breakdown"] == "Priority"
+
+    def test_string_reference_fields(self):
+        from servicenow_mcp.tools.pa_tools import _format_pa_widget
+        rec = {**RAW_WIDGET, "indicator": "Inc Count", "home_page": "My DB", "breakdown": None}
+        result = _format_pa_widget(rec)
+        assert result["indicator"] == "Inc Count"
+        assert result["home_page"] == "My DB"
+        assert result["breakdown"] is None
+
+    def test_empty_record(self):
+        from servicenow_mcp.tools.pa_tools import _format_pa_widget
+        result = _format_pa_widget({})
+        assert result["sys_id"] is None
+        assert result["name"] is None
+
+
+# ---------------------------------------------------------------------------
+# _resolve_pa_widget_sys_id
+# ---------------------------------------------------------------------------
+
+
+class TestResolvePAWidgetSysId:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_hex_passthrough(self, mock_req):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_widget_sys_id
+        result = _resolve_pa_widget_sys_id(WIDGET_SYS_ID, "https://x.com", {})
+        assert result == WIDGET_SYS_ID
+        mock_req.assert_not_called()
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_lookup_found(self, mock_req):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_widget_sys_id
+        resp = MagicMock()
+        resp.json.return_value = {"result": [{"sys_id": WIDGET_SYS_ID}]}
+        mock_req.return_value = resp
+        result = _resolve_pa_widget_sys_id("Open Incidents Chart", "https://x.com", {})
+        assert result == WIDGET_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_lookup_not_found(self, mock_req):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_widget_sys_id
+        resp = MagicMock()
+        resp.json.return_value = {"result": []}
+        mock_req.return_value = resp
+        result = _resolve_pa_widget_sys_id("Unknown Widget", "https://x.com", {})
+        assert result is None
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_exception_returns_none(self, mock_req):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_widget_sys_id
+        mock_req.side_effect = requests.exceptions.RequestException("network error")
+        result = _resolve_pa_widget_sys_id("Some Widget", "https://x.com", {})
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# list_pa_widgets
+# ---------------------------------------------------------------------------
+
+
+class TestListPAWidgets:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_returns_widgets(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [RAW_WIDGET]}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"limit": 10, "offset": 0})
+        assert result["success"] is True
+        assert len(result["widgets"]) == 1
+        assert result["widgets"][0]["name"] == "Open Incidents Chart"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_filter(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"name": "Incident"})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "nameLIKEIncident" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_active_filter_true(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"active": True})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "active=true" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_active_filter_false(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"active": False})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "active=false" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_widget_type_filter(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"widget_type": "chart"})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "widget_type=chart" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_indicator_id_filter_by_sys_id(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [RAW_WIDGET]}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"indicator_id": SYS_ID_32})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert f"indicator={SYS_ID_32}" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_indicator_id_filter_by_name(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        # First call resolves indicator name, second lists widgets
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": [{"sys_id": SYS_ID_32}]}
+        list_resp = MagicMock()
+        list_resp.json.return_value = {"result": [RAW_WIDGET]}
+        mock_req.side_effect = [resolve_resp, list_resp]
+        result = list_pa_widgets(auth_manager, server_config, {"indicator_id": "Incident Count"})
+        assert result["success"] is True
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_indicator_not_found(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": []}
+        mock_req.return_value = resolve_resp
+        result = list_pa_widgets(auth_manager, server_config, {"indicator_id": "Unknown Indicator"})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_dashboard_id_filter_by_sys_id(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [RAW_WIDGET]}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"dashboard_id": DASHBOARD_SYS_ID})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert f"home_page={DASHBOARD_SYS_ID}" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_dashboard_id_filter_by_title(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": [{"sys_id": DASHBOARD_SYS_ID}]}
+        list_resp = MagicMock()
+        list_resp.json.return_value = {"result": [RAW_WIDGET]}
+        mock_req.side_effect = [resolve_resp, list_resp]
+        result = list_pa_widgets(auth_manager, server_config, {"dashboard_id": "ITSM Overview"})
+        assert result["success"] is True
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_dashboard_not_found(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": []}
+        mock_req.return_value = resolve_resp
+        result = list_pa_widgets(auth_manager, server_config, {"dashboard_id": "Unknown Dashboard"})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        resp = MagicMock()
+        resp.status_code = 500
+        resp.json.return_value = {}
+        mock_req.return_value = resp
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
+        result = list_pa_widgets(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_connection_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+        result = list_pa_widgets(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        am = MagicMock()
+        am.instance_url = None
+        am.get_headers.return_value = {}
+        server_config.instance_url = None
+        result = list_pa_widgets(am, server_config, {})
+        assert result["success"] is False
+
+    def test_no_headers(self, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        am = MagicMock()
+        am.instance_url = "https://x.com"
+        am.get_headers.return_value = None
+        server_config.instance_url = None
+        result = list_pa_widgets(am, server_config, {})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_has_more_pagination(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [RAW_WIDGET] * 5}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {"limit": 5, "offset": 0})
+        assert result["success"] is True
+        assert result.get("has_more") is True
+        assert result.get("next_offset") == 5
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_no_filters(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import list_pa_widgets
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_widgets(auth_manager, server_config, {})
+        assert result["success"] is True
+        assert result["widgets"] == []
+
+
+# ---------------------------------------------------------------------------
+# get_pa_widget
+# ---------------------------------------------------------------------------
+
+
+class TestGetPAWidget:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_get_by_sys_id(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_WIDGET}
+        mock_req.return_value = mock_resp
+        result = get_pa_widget(auth_manager, server_config, {"widget_id": WIDGET_SYS_ID})
+        assert result["success"] is True
+        assert result["widget"]["name"] == "Open Incidents Chart"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_get_by_name(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": [{"sys_id": WIDGET_SYS_ID}]}
+        get_resp = MagicMock()
+        get_resp.json.return_value = {"result": RAW_WIDGET}
+        mock_req.side_effect = [resolve_resp, get_resp]
+        result = get_pa_widget(auth_manager, server_config, {"widget_id": "Open Incidents Chart"})
+        assert result["success"] is True
+        assert result["widget"]["sys_id"] == WIDGET_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_not_found(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = get_pa_widget(auth_manager, server_config, {"widget_id": "Nonexistent"})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_empty_result(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": None}
+        mock_req.return_value = mock_resp
+        result = get_pa_widget(auth_manager, server_config, {"widget_id": WIDGET_SYS_ID})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_404_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        resp = MagicMock()
+        resp.status_code = 404
+        resp.json.return_value = {}
+        mock_req.return_value = resp
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
+        result = get_pa_widget(auth_manager, server_config, {"widget_id": WIDGET_SYS_ID})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error_non_404(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        resp = MagicMock()
+        resp.status_code = 500
+        resp.json.return_value = {"error": {"message": "Internal Server Error", "detail": ""}}
+        mock_req.return_value = resp
+        resp.raise_for_status.side_effect = requests.exceptions.HTTPError(response=resp)
+        result = get_pa_widget(auth_manager, server_config, {"widget_id": WIDGET_SYS_ID})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_connection_error(self, mock_req, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": [{"sys_id": WIDGET_SYS_ID}]}
+        mock_req.side_effect = [resolve_resp, requests.exceptions.ConnectionError("timeout")]
+        result = get_pa_widget(auth_manager, server_config, {"widget_id": "Open Incidents Chart"})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        am = MagicMock()
+        am.instance_url = None
+        am.get_headers.return_value = {}
+        server_config.instance_url = None
+        result = get_pa_widget(am, server_config, {"widget_id": WIDGET_SYS_ID})
+        assert result["success"] is False
+
+    def test_no_headers(self, server_config):
+        from servicenow_mcp.tools.pa_tools import get_pa_widget
+        am = MagicMock()
+        am.instance_url = "https://x.com"
+        am.get_headers.return_value = None
+        server_config.instance_url = None
+        result = get_pa_widget(am, server_config, {"widget_id": WIDGET_SYS_ID})
+        assert result["success"] is False
+
+    def test_missing_widget_id(self):
+        from servicenow_mcp.tools.pa_tools import GetPAWidgetParams
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            GetPAWidgetParams()
+
+
+# ---------------------------------------------------------------------------
+# ListPAWidgetsParams / GetPAWidgetParams model validation
+# ---------------------------------------------------------------------------
+
+
+class TestPAWidgetParams:
+    def test_list_defaults(self):
+        from servicenow_mcp.tools.pa_tools import ListPAWidgetsParams
+        p = ListPAWidgetsParams()
+        assert p.limit == 20
+        assert p.offset == 0
+        assert p.name is None
+        assert p.active is None
+        assert p.widget_type is None
+        assert p.indicator_id is None
+        assert p.dashboard_id is None
+
+    def test_get_requires_widget_id(self):
+        from servicenow_mcp.tools.pa_tools import GetPAWidgetParams
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            GetPAWidgetParams()
+
+    def test_get_with_sys_id(self):
+        from servicenow_mcp.tools.pa_tools import GetPAWidgetParams
+        p = GetPAWidgetParams(widget_id=WIDGET_SYS_ID)
+        assert p.widget_id == WIDGET_SYS_ID
