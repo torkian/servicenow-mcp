@@ -33,6 +33,7 @@ PA_INDICATOR_TABLE = "pa_indicator"
 PA_SCORE_TABLE = "pa_score"
 PA_DASHBOARD_TABLE = "pa_home_page"
 PA_WIDGET_TABLE = "pa_widget"
+PA_BREAKDOWN_TABLE = "pa_breakdown"
 
 PA_INDICATOR_FIELDS = [
     "sys_id",
@@ -80,6 +81,18 @@ PA_WIDGET_FIELDS = [
     "home_page",
     "breakdown",
     "color",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+PA_BREAKDOWN_FIELDS = [
+    "sys_id",
+    "name",
+    "active",
+    "table",
+    "field",
+    "filter_condition",
+    "calculated_from",
     "sys_created_on",
     "sys_updated_on",
 ]
@@ -230,6 +243,36 @@ class GetPAWidgetParams(BaseModel):
     )
 
 
+class ListPABreakdownsParams(BaseModel):
+    """Parameters for listing Performance Analytics breakdowns."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of breakdowns to return (default 20)")
+    offset: Optional[int] = Field(0, description="Offset for pagination")
+    name: Optional[str] = Field(None, description="Filter by breakdown name (substring match)")
+    active: Optional[bool] = Field(None, description="Filter by active flag (true=active only)")
+    table: Optional[str] = Field(
+        None,
+        description="Filter by the source table the breakdown operates on (e.g. 'incident')",
+    )
+    field: Optional[str] = Field(
+        None,
+        description="Filter by the field name used as the breakdown dimension",
+    )
+
+
+class GetPABreakdownParams(BaseModel):
+    """Parameters for retrieving a single Performance Analytics breakdown."""
+
+    breakdown_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA breakdown, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_breakdown."
+        ),
+    )
+
+
 class ListPAScoresParams(BaseModel):
     """Parameters for listing Performance Analytics scores."""
 
@@ -331,6 +374,21 @@ def _format_pa_score(record: Dict) -> Dict:
     }
 
 
+def _format_pa_breakdown(record: Dict) -> Dict:
+    """Normalise a raw pa_breakdown record."""
+    return {
+        "sys_id": record.get("sys_id"),
+        "name": record.get("name"),
+        "active": record.get("active"),
+        "table": _ref_display(record.get("table")),
+        "field": record.get("field"),
+        "filter_condition": record.get("filter_condition"),
+        "calculated_from": _ref_display(record.get("calculated_from")),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
 # ---------------------------------------------------------------------------
 # Resolver helper
 # ---------------------------------------------------------------------------
@@ -427,6 +485,41 @@ def _resolve_pa_widget_sys_id(
             headers=headers,
             params={
                 "sysparm_query": f"name={widget_id}",
+                "sysparm_fields": "sys_id",
+                "sysparm_limit": "1",
+                "sysparm_exclude_reference_link": "true",
+            },
+        )
+        response.raise_for_status()
+        results = response.json().get("result", [])
+        if results:
+            return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        pass
+    return None
+
+
+def _resolve_pa_breakdown_sys_id(
+    breakdown_id: str,
+    instance_url: str,
+    headers: Dict,
+) -> Optional[str]:
+    """Resolve a PA breakdown name to its sys_id.
+
+    If *breakdown_id* is a 32-character hex string it is returned unchanged.
+    Otherwise a GET against pa_breakdown with ``name=<value>`` is performed
+    and the first match's sys_id returned.  Returns ``None`` when not found.
+    """
+    if len(breakdown_id) == 32 and all(c in "0123456789abcdefABCDEF" for c in breakdown_id):
+        return breakdown_id
+    url = f"{instance_url}/api/now/table/{PA_BREAKDOWN_TABLE}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"name={breakdown_id}",
                 "sysparm_fields": "sys_id",
                 "sysparm_limit": "1",
                 "sysparm_exclude_reference_link": "true",
@@ -969,6 +1062,132 @@ def get_pa_widget(
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             return {"success": False, "message": f"PA widget not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def list_pa_breakdowns(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List Performance Analytics breakdowns from the pa_breakdown table.
+
+    PA breakdowns are dimension definitions that segment indicator scores
+    into categories (e.g. by Priority, Category, Assignment Group).  Each
+    breakdown references a source table and a field used as the grouping key.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListPABreakdownsParams.
+
+    Returns:
+        Dictionary with ``success``, ``breakdowns`` (list), ``count``,
+        and optional ``has_more``/``next_offset`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ListPABreakdownsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts: List[str] = []
+    if validated.name:
+        query_parts.append(f"nameLIKE{validated.name}")
+    if validated.active is not None:
+        query_parts.append(f"active={'true' if validated.active else 'false'}")
+    if validated.table:
+        query_parts.append(f"table={validated.table}")
+    if validated.field:
+        query_parts.append(f"fieldLIKE{validated.field}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=False,
+        order_by="name",
+        fields=",".join(PA_BREAKDOWN_FIELDS),
+    )
+    query_params["sysparm_display_value"] = "all"
+
+    url = f"{instance_url}/api/now/table/{PA_BREAKDOWN_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        breakdowns = [_format_pa_breakdown(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(breakdowns, validated.limit, validated.offset, "breakdowns")
+    except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def get_pa_breakdown(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single Performance Analytics breakdown by sys_id or exact name.
+
+    PA breakdowns define how indicator scores are segmented into categories.
+    Pass the sys_id directly for a guaranteed single-record lookup, or supply
+    the exact breakdown name which is resolved to a sys_id automatically.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetPABreakdownParams.
+
+    Returns:
+        Dictionary with ``success`` and ``breakdown`` keys, or an error message.
+    """
+    result = _unwrap_and_validate_params(params, GetPABreakdownParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_breakdown_sys_id(validated.breakdown_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA breakdown not found: {validated.breakdown_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_BREAKDOWN_TABLE}/{sys_id}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_fields": ",".join(PA_BREAKDOWN_FIELDS),
+                "sysparm_display_value": "all",
+            },
+        )
+        response.raise_for_status()
+        data = response.json().get("result")
+        if not data:
+            return {"success": False, "message": f"PA breakdown not found: {sys_id}"}
+        return {"success": True, "breakdown": _format_pa_breakdown(data)}
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA breakdown not found: {sys_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}

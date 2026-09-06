@@ -1508,3 +1508,369 @@ class TestPAWidgetParams:
         from servicenow_mcp.tools.pa_tools import GetPAWidgetParams
         p = GetPAWidgetParams(widget_id=WIDGET_SYS_ID)
         assert p.widget_id == WIDGET_SYS_ID
+
+
+# ===========================================================================
+# PA Breakdown tools
+# ===========================================================================
+
+from servicenow_mcp.tools.pa_tools import (
+    GetPABreakdownParams,
+    ListPABreakdownsParams,
+    _format_pa_breakdown,
+    _resolve_pa_breakdown_sys_id,
+    get_pa_breakdown,
+    list_pa_breakdowns,
+)
+
+BREAKDOWN_SYS_ID = "b" * 32
+
+RAW_BREAKDOWN = {
+    "sys_id": BREAKDOWN_SYS_ID,
+    "name": "Priority",
+    "active": "true",
+    "table": {"display_value": "Incident", "value": "incident"},
+    "field": "priority",
+    "filter_condition": "active=true",
+    "calculated_from": {"display_value": "Base Breakdown", "value": "c" * 32},
+    "sys_created_on": "2024-01-01 00:00:00",
+    "sys_updated_on": "2024-06-01 00:00:00",
+}
+
+
+# ---------------------------------------------------------------------------
+# _format_pa_breakdown
+# ---------------------------------------------------------------------------
+
+
+class TestFormatPABreakdown:
+    def test_basic_fields(self):
+        result = _format_pa_breakdown(RAW_BREAKDOWN)
+        assert result["sys_id"] == BREAKDOWN_SYS_ID
+        assert result["name"] == "Priority"
+        assert result["active"] == "true"
+        assert result["field"] == "priority"
+        assert result["filter_condition"] == "active=true"
+        assert result["created_on"] == "2024-01-01 00:00:00"
+        assert result["updated_on"] == "2024-06-01 00:00:00"
+
+    def test_reference_fields_extracted(self):
+        result = _format_pa_breakdown(RAW_BREAKDOWN)
+        assert result["table"] == "Incident"
+        assert result["calculated_from"] == "Base Breakdown"
+
+    def test_string_reference_fields(self):
+        rec = {**RAW_BREAKDOWN, "table": "incident", "calculated_from": "Some Breakdown"}
+        result = _format_pa_breakdown(rec)
+        assert result["table"] == "incident"
+        assert result["calculated_from"] == "Some Breakdown"
+
+    def test_missing_fields_return_none(self):
+        result = _format_pa_breakdown({})
+        assert result["sys_id"] is None
+        assert result["name"] is None
+        assert result["table"] is None
+        assert result["calculated_from"] is None
+
+
+# ---------------------------------------------------------------------------
+# _resolve_pa_breakdown_sys_id
+# ---------------------------------------------------------------------------
+
+
+class TestResolvePABreakdownSysId:
+    def test_passthrough_32_hex(self):
+        result = _resolve_pa_breakdown_sys_id(BREAKDOWN_SYS_ID, "https://inst.sn.com", {})
+        assert result == BREAKDOWN_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_lookup_success(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [{"sys_id": BREAKDOWN_SYS_ID}]}
+        mock_req.return_value = mock_resp
+        result = _resolve_pa_breakdown_sys_id("Priority", "https://inst.sn.com", {})
+        assert result == BREAKDOWN_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_lookup_not_found(self, mock_req):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = _resolve_pa_breakdown_sys_id("Unknown Breakdown", "https://inst.sn.com", {})
+        assert result is None
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_name_lookup_request_exception(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("network error")
+        result = _resolve_pa_breakdown_sys_id("Priority", "https://inst.sn.com", {})
+        assert result is None
+
+
+# ---------------------------------------------------------------------------
+# list_pa_breakdowns
+# ---------------------------------------------------------------------------
+
+
+@pytest.fixture
+def bd_auth():
+    am = MagicMock()
+    am.instance_url = "https://instance.service-now.com"
+    am.get_headers.return_value = {"Authorization": "Bearer token"}
+    return am
+
+
+@pytest.fixture
+def bd_config():
+    sc = MagicMock()
+    sc.instance_url = None
+    return sc
+
+
+class TestListPABreakdowns:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_success_empty(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {})
+        assert result["success"] is True
+        assert result["breakdowns"] == []
+        assert result["count"] == 0
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_success_with_records(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": [RAW_BREAKDOWN]}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {})
+        assert result["success"] is True
+        assert len(result["breakdowns"]) == 1
+        assert result["breakdowns"][0]["name"] == "Priority"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_filter_by_name(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {"name": "Priority"})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "nameLIKEPriority" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_filter_by_active_true(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {"active": True})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "active=true" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_filter_by_active_false(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {"active": False})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "active=false" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_filter_by_table(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {"table": "incident"})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "table=incident" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_filter_by_field(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": []}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {"field": "priority"})
+        assert result["success"] is True
+        call_params = mock_req.call_args[1]["params"]
+        assert "fieldLIKEpriority" in call_params.get("sysparm_query", "")
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_pagination_has_more(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        records = [dict(RAW_BREAKDOWN, sys_id=f"{i}" * 32) for i in range(5)]
+        mock_resp.json.return_value = {"result": records}
+        mock_req.return_value = mock_resp
+        result = list_pa_breakdowns(bd_auth, bd_config, {"limit": 3, "offset": 0})
+        # _paginated_list_response with 5 records and limit=3 → has_more
+        assert result["success"] is True
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        mock_req.return_value = mock_resp
+        mock_resp.raise_for_status.side_effect = requests.exceptions.HTTPError(
+            response=mock_resp
+        )
+        result = list_pa_breakdowns(bd_auth, bd_config, {})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_exception(self, mock_req, bd_auth, bd_config):
+        mock_req.side_effect = requests.exceptions.ConnectionError("down")
+        result = list_pa_breakdowns(bd_auth, bd_config, {})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, bd_config):
+        am = MagicMock()
+        am.instance_url = None
+        am.get_headers.return_value = {"Authorization": "Bearer token"}
+        bd_config.instance_url = None
+        result = list_pa_breakdowns(am, bd_config, {})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_no_headers(self, bd_auth, bd_config):
+        bd_auth.get_headers.return_value = None
+        result = list_pa_breakdowns(bd_auth, bd_config, {})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+    def test_invalid_params(self, bd_auth, bd_config):
+        result = list_pa_breakdowns(bd_auth, bd_config, {"limit": "bad"})
+        assert result["success"] is False
+
+
+# ---------------------------------------------------------------------------
+# get_pa_breakdown
+# ---------------------------------------------------------------------------
+
+
+class TestGetPABreakdown:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_success_by_sys_id(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": RAW_BREAKDOWN}
+        mock_req.return_value = mock_resp
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": BREAKDOWN_SYS_ID})
+        assert result["success"] is True
+        assert result["breakdown"]["name"] == "Priority"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_success_by_name(self, mock_req, bd_auth, bd_config):
+        # First call: resolver lookup; second call: direct GET
+        lookup_resp = MagicMock()
+        lookup_resp.json.return_value = {"result": [{"sys_id": BREAKDOWN_SYS_ID}]}
+        get_resp = MagicMock()
+        get_resp.json.return_value = {"result": RAW_BREAKDOWN}
+        mock_req.side_effect = [lookup_resp, get_resp]
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": "Priority"})
+        assert result["success"] is True
+        assert result["breakdown"]["name"] == "Priority"
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_not_found_by_name(self, mock_req, bd_auth, bd_config):
+        lookup_resp = MagicMock()
+        lookup_resp.json.return_value = {"result": []}
+        mock_req.return_value = lookup_resp
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": "Unknown"})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_empty_result(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.json.return_value = {"result": None}
+        mock_req.return_value = mock_resp
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_404_error(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        err = requests.exceptions.HTTPError(response=mock_resp)
+        mock_resp.raise_for_status.side_effect = err
+        mock_req.return_value = mock_resp
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error_non_404(self, mock_req, bd_auth, bd_config):
+        mock_resp = MagicMock()
+        mock_resp.status_code = 500
+        mock_resp.json.return_value = {"error": {"message": "Internal Error", "detail": "boom"}}
+        err = requests.exceptions.HTTPError(response=mock_resp)
+        mock_resp.raise_for_status.side_effect = err
+        mock_req.return_value = mock_resp
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_exception(self, mock_req, bd_auth, bd_config):
+        mock_req.side_effect = requests.exceptions.ConnectionError("down")
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+
+    def test_missing_required_param(self, bd_auth, bd_config):
+        result = get_pa_breakdown(bd_auth, bd_config, {})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, bd_config):
+        am = MagicMock()
+        am.instance_url = None
+        am.get_headers.return_value = {"Authorization": "Bearer token"}
+        bd_config.instance_url = None
+        result = get_pa_breakdown(am, bd_config, {"breakdown_id": BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_no_headers(self, bd_auth, bd_config):
+        bd_auth.get_headers.return_value = None
+        result = get_pa_breakdown(bd_auth, bd_config, {"breakdown_id": BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# ListPABreakdownsParams / GetPABreakdownParams validation
+# ---------------------------------------------------------------------------
+
+
+class TestPABreakdownParams:
+    def test_list_defaults(self):
+        p = ListPABreakdownsParams()
+        assert p.limit == 20
+        assert p.offset == 0
+        assert p.name is None
+        assert p.active is None
+        assert p.table is None
+        assert p.field is None
+
+    def test_list_with_all_fields(self):
+        p = ListPABreakdownsParams(
+            limit=10, offset=5, name="Cat", active=True, table="incident", field="category"
+        )
+        assert p.limit == 10
+        assert p.name == "Cat"
+        assert p.active is True
+        assert p.table == "incident"
+        assert p.field == "category"
+
+    def test_get_requires_breakdown_id(self):
+        from pydantic import ValidationError
+        with pytest.raises(ValidationError):
+            GetPABreakdownParams()
+
+    def test_get_with_sys_id(self):
+        p = GetPABreakdownParams(breakdown_id=BREAKDOWN_SYS_ID)
+        assert p.breakdown_id == BREAKDOWN_SYS_ID
+
+    def test_get_with_name(self):
+        p = GetPABreakdownParams(breakdown_id="Priority")
+        assert p.breakdown_id == "Priority"

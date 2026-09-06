@@ -986,9 +986,11 @@ from servicenow_mcp.tools.assessment_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     CreatePAIndicatorParams,
+    GetPABreakdownParams,
     GetPADashboardParams,
     GetPAIndicatorParams,
     GetPAWidgetParams,
+    ListPABreakdownsParams,
     ListPADashboardsParams,
     ListPAIndicatorsParams,
     ListPAScoresParams,
@@ -996,9 +998,11 @@ from servicenow_mcp.tools.pa_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
+    get_pa_breakdown as get_pa_breakdown_tool,
     get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
     get_pa_widget as get_pa_widget_tool,
+    list_pa_breakdowns as list_pa_breakdowns_tool,
     list_pa_dashboards as list_pa_dashboards_tool,
     list_pa_indicators as list_pa_indicators_tool,
     list_pa_scores as list_pa_scores_tool,
@@ -4067,6 +4071,33 @@ def get_tool_definitions(
                 "description, indicator, widget_type, active flag, home_page (dashboard), "
                 "breakdown, color, and timestamps. "
                 "Required: widget_id (sys_id or exact name)."
+            ),
+            "raw_dict",
+        ),
+        "list_pa_breakdowns": (
+            list_pa_breakdowns_tool,
+            ListPABreakdownsParams,
+            Dict[str, Any],
+            (
+                "List Performance Analytics breakdown definitions from the pa_breakdown table. "
+                "PA breakdowns are dimension definitions (e.g. Priority, Category, Assignment Group) "
+                "that segment indicator scores into categories. "
+                "Supports filtering by name substring, active flag, source table, and field name. "
+                "Results are ordered by name and include has_more/next_offset for pagination. "
+                "Optional: name, active, table, field, limit (default 20), offset."
+            ),
+            "raw_dict",
+        ),
+        "get_pa_breakdown": (
+            get_pa_breakdown_tool,
+            GetPABreakdownParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Performance Analytics breakdown from pa_breakdown by sys_id or exact name. "
+                "Pass a 32-character hex sys_id for a direct lookup, or a breakdown name string which is "
+                "resolved to a sys_id automatically. Returns breakdown metadata including name, "
+                "active flag, source table, field, filter_condition, calculated_from, and timestamps. "
+                "Required: breakdown_id (sys_id or exact name)."
             ),
             "raw_dict",
         ),
