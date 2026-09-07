@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add pa job management tools (list_pa_jobs, trigger_pa_collection on pa_job table)
+1. Add more PA coverage: update/delete pa_indicator, list pa_targets, or pa collection schedule tools
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -157,3 +157,4 @@
 151. 2026-09-04 — Add pa_home_page dashboard tools (list_pa_dashboards, get_pa_dashboard); title/active/owner filters; _resolve_pa_dashboard_sys_id resolver; _format_pa_dashboard normaliser; registered in system_administrator and full packages; 29 new tests; 3404 total tests; 100% pa_tools.py coverage
 152. 2026-09-05 — Add pa_widget tools (list_pa_widgets, get_pa_widget); name/active/widget_type/indicator/dashboard filters on list; _resolve_pa_widget_sys_id resolver; _format_pa_widget normaliser; indicator and dashboard ID auto-resolved from name; registered in system_administrator and full packages; 38 new tests; 3442 total tests; 99% pa_tools.py coverage
 153. 2026-09-06 — Add pa_breakdown tools (list_pa_breakdowns, get_pa_breakdown on pa_breakdown table); name/active/table/field filters on list; _resolve_pa_breakdown_sys_id resolver; _format_pa_breakdown normaliser; registered in system_administrator and full packages; 36 new tests; 3478 total tests; 95% total coverage
+154. 2026-09-07 — Add PA job management tools (list_pa_jobs, get_pa_job, trigger_pa_collection on pa_job table); name/active/run_type/last_run_status/indicator filters on list; _resolve_pa_job_sys_id resolver; _format_pa_job normaliser; trigger_pa_collection PATCHes run_now=true; registered in system_administrator and full packages; 46 new tests; 3524 total tests; 95% total coverage

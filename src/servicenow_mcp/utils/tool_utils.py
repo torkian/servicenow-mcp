@@ -989,24 +989,30 @@ from servicenow_mcp.tools.pa_tools import (
     GetPABreakdownParams,
     GetPADashboardParams,
     GetPAIndicatorParams,
+    GetPAJobParams,
     GetPAWidgetParams,
     ListPABreakdownsParams,
     ListPADashboardsParams,
     ListPAIndicatorsParams,
+    ListPAJobsParams,
     ListPAScoresParams,
     ListPAWidgetsParams,
+    TriggerPACollectionParams,
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
     get_pa_breakdown as get_pa_breakdown_tool,
     get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
+    get_pa_job as get_pa_job_tool,
     get_pa_widget as get_pa_widget_tool,
     list_pa_breakdowns as list_pa_breakdowns_tool,
     list_pa_dashboards as list_pa_dashboards_tool,
     list_pa_indicators as list_pa_indicators_tool,
+    list_pa_jobs as list_pa_jobs_tool,
     list_pa_scores as list_pa_scores_tool,
     list_pa_widgets as list_pa_widgets_tool,
+    trigger_pa_collection as trigger_pa_collection_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
@@ -4098,6 +4104,49 @@ def get_tool_definitions(
                 "resolved to a sys_id automatically. Returns breakdown metadata including name, "
                 "active flag, source table, field, filter_condition, calculated_from, and timestamps. "
                 "Required: breakdown_id (sys_id or exact name)."
+            ),
+            "raw_dict",
+        ),
+        "list_pa_jobs": (
+            list_pa_jobs_tool,
+            ListPAJobsParams,
+            Dict[str, Any],
+            (
+                "List Performance Analytics data collection jobs from the pa_job table. "
+                "PA jobs are the scheduled or on-demand processes that collect indicator scores. "
+                "Each job records its last and next run times and the linked indicator. "
+                "Supports filtering by name substring, active flag, run_type, last_run_status, "
+                "and indicator (sys_id or name auto-resolved). "
+                "Results are ordered by name and include has_more/next_offset for pagination. "
+                "Optional: name, active, run_type, last_run_status, indicator_id, limit (default 20), offset."
+            ),
+            "raw_dict",
+        ),
+        "get_pa_job": (
+            get_pa_job_tool,
+            GetPAJobParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Performance Analytics collection job from pa_job by sys_id or exact name. "
+                "Pass a 32-character hex sys_id for a direct lookup, or a job name string which is "
+                "resolved to a sys_id automatically. Returns job metadata including name, active flag, "
+                "run_type, run_time, last_run_time, next_run_time, last_run_status, indicator, "
+                "breakdown, and timestamps. "
+                "Required: job_id (sys_id or exact name)."
+            ),
+            "raw_dict",
+        ),
+        "trigger_pa_collection": (
+            trigger_pa_collection_tool,
+            TriggerPACollectionParams,
+            Dict[str, Any],
+            (
+                "Trigger an immediate Performance Analytics data collection run for a pa_job. "
+                "Sets run_now=true on the job record, which ServiceNow interprets as a manual "
+                "collection trigger. The job is identified by sys_id or exact name; the name is "
+                "resolved to a sys_id automatically before triggering. "
+                "Returns success, message, and job_sys_id. "
+                "Required: job_id (sys_id or exact name of the PA collection job)."
             ),
             "raw_dict",
         ),

@@ -430,6 +430,9 @@ system_administrator:
   - get_pa_widget
   - list_pa_breakdowns
   - get_pa_breakdown
+  - list_pa_jobs
+  - get_pa_job
+  - trigger_pa_collection
 
 full:
   # Incident Management
@@ -776,3 +779,6 @@ full:
   - get_pa_widget
   - list_pa_breakdowns
   - get_pa_breakdown
+  - list_pa_jobs
+  - get_pa_job
+  - trigger_pa_collection

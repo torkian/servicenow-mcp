@@ -313,12 +313,15 @@ from servicenow_mcp.tools.pa_tools import (
     get_pa_breakdown,
     get_pa_dashboard,
     get_pa_indicator,
+    get_pa_job,
     get_pa_widget,
     list_pa_breakdowns,
     list_pa_dashboards,
     list_pa_indicators,
+    list_pa_jobs,
     list_pa_scores,
     list_pa_widgets,
+    trigger_pa_collection,
 )
 from servicenow_mcp.tools.user_preference_tools import (
     delete_user_preference,
@@ -767,4 +770,7 @@ __all__ = [
     "get_pa_widget",
     "list_pa_breakdowns",
     "get_pa_breakdown",
+    "list_pa_jobs",
+    "get_pa_job",
+    "trigger_pa_collection",
 ]

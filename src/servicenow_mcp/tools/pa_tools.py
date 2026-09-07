@@ -97,6 +97,23 @@ PA_BREAKDOWN_FIELDS = [
     "sys_updated_on",
 ]
 
+PA_JOB_TABLE = "pa_job"
+
+PA_JOB_FIELDS = [
+    "sys_id",
+    "name",
+    "active",
+    "run_type",
+    "run_time",
+    "last_run_time",
+    "next_run_time",
+    "last_run_status",
+    "indicator",
+    "breakdown",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
 
 # ---------------------------------------------------------------------------
 # Parameter models
@@ -273,6 +290,60 @@ class GetPABreakdownParams(BaseModel):
     )
 
 
+class ListPAJobsParams(BaseModel):
+    """Parameters for listing Performance Analytics collection jobs."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of jobs to return (default 20)")
+    offset: Optional[int] = Field(0, description="Offset for pagination")
+    name: Optional[str] = Field(None, description="Filter by job name (substring match)")
+    active: Optional[bool] = Field(None, description="Filter by active flag (true=active only)")
+    run_type: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by run type. Common values: daily, weekly, monthly, on_demand"
+        ),
+    )
+    last_run_status: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by the status of the most recent run. "
+            "Common values: success, failed, running"
+        ),
+    )
+    indicator_id: Optional[str] = Field(
+        None,
+        description=(
+            "Filter by PA indicator; accepts sys_id or exact name (auto-resolved to sys_id)."
+        ),
+    )
+
+
+class GetPAJobParams(BaseModel):
+    """Parameters for retrieving a single Performance Analytics collection job."""
+
+    job_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA job, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_job."
+        ),
+    )
+
+
+class TriggerPACollectionParams(BaseModel):
+    """Parameters for triggering a Performance Analytics data collection job."""
+
+    job_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA job to trigger, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_job."
+        ),
+    )
+
+
 class ListPAScoresParams(BaseModel):
     """Parameters for listing Performance Analytics scores."""
 
@@ -384,6 +455,24 @@ def _format_pa_breakdown(record: Dict) -> Dict:
         "field": record.get("field"),
         "filter_condition": record.get("filter_condition"),
         "calculated_from": _ref_display(record.get("calculated_from")),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def _format_pa_job(record: Dict) -> Dict:
+    """Normalise a raw pa_job record."""
+    return {
+        "sys_id": record.get("sys_id"),
+        "name": record.get("name"),
+        "active": record.get("active"),
+        "run_type": record.get("run_type"),
+        "run_time": record.get("run_time"),
+        "last_run_time": record.get("last_run_time"),
+        "next_run_time": record.get("next_run_time"),
+        "last_run_status": record.get("last_run_status"),
+        "indicator": _ref_display(record.get("indicator")),
+        "breakdown": _ref_display(record.get("breakdown")),
         "created_on": record.get("sys_created_on"),
         "updated_on": record.get("sys_updated_on"),
     }
@@ -520,6 +609,41 @@ def _resolve_pa_breakdown_sys_id(
             headers=headers,
             params={
                 "sysparm_query": f"name={breakdown_id}",
+                "sysparm_fields": "sys_id",
+                "sysparm_limit": "1",
+                "sysparm_exclude_reference_link": "true",
+            },
+        )
+        response.raise_for_status()
+        results = response.json().get("result", [])
+        if results:
+            return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        pass
+    return None
+
+
+def _resolve_pa_job_sys_id(
+    job_id: str,
+    instance_url: str,
+    headers: Dict,
+) -> Optional[str]:
+    """Resolve a PA job name to its sys_id.
+
+    If *job_id* is a 32-character hex string it is returned unchanged.
+    Otherwise a GET against pa_job with ``name=<value>`` is performed
+    and the first match's sys_id returned.  Returns ``None`` when not found.
+    """
+    if len(job_id) == 32 and all(c in "0123456789abcdefABCDEF" for c in job_id):
+        return job_id
+    url = f"{instance_url}/api/now/table/{PA_JOB_TABLE}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"name={job_id}",
                 "sysparm_fields": "sys_id",
                 "sysparm_limit": "1",
                 "sysparm_exclude_reference_link": "true",
@@ -1188,6 +1312,196 @@ def get_pa_breakdown(
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             return {"success": False, "message": f"PA breakdown not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def list_pa_jobs(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List Performance Analytics data collection jobs from the pa_job table.
+
+    PA jobs are the scheduled or on-demand processes that collect indicator scores.
+    Each job is linked to one or more indicators and optionally a breakdown, and
+    records its last and next scheduled run times.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListPAJobsParams.
+
+    Returns:
+        Dictionary with ``success``, ``jobs`` (list), ``count``,
+        and optional ``has_more``/``next_offset`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ListPAJobsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts: List[str] = []
+    if validated.name:
+        query_parts.append(f"nameLIKE{validated.name}")
+    if validated.active is not None:
+        query_parts.append(f"active={'true' if validated.active else 'false'}")
+    if validated.run_type:
+        query_parts.append(f"run_type={validated.run_type}")
+    if validated.last_run_status:
+        query_parts.append(f"last_run_status={validated.last_run_status}")
+    if validated.indicator_id:
+        ind_sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+        if not ind_sys_id:
+            return {
+                "success": False,
+                "message": f"PA indicator not found: {validated.indicator_id}",
+            }
+        query_parts.append(f"indicator={ind_sys_id}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=False,
+        order_by="name",
+        fields=",".join(PA_JOB_FIELDS),
+    )
+    query_params["sysparm_display_value"] = "all"
+
+    url = f"{instance_url}/api/now/table/{PA_JOB_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        jobs = [_format_pa_job(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(jobs, validated.limit, validated.offset, "jobs")
+    except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def get_pa_job(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single Performance Analytics collection job by sys_id or exact name.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetPAJobParams.
+
+    Returns:
+        Dictionary with ``success`` and ``job`` keys, or an error message.
+    """
+    result = _unwrap_and_validate_params(params, GetPAJobParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_job_sys_id(validated.job_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA job not found: {validated.job_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_JOB_TABLE}/{sys_id}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_fields": ",".join(PA_JOB_FIELDS),
+                "sysparm_display_value": "all",
+            },
+        )
+        response.raise_for_status()
+        data = response.json().get("result")
+        if not data:
+            return {"success": False, "message": f"PA job not found: {sys_id}"}
+        return {"success": True, "job": _format_pa_job(data)}
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA job not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def trigger_pa_collection(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Trigger an immediate Performance Analytics data collection run.
+
+    Issues a PATCH to the pa_job record setting run_now=true, which ServiceNow
+    interprets as a manual collection trigger.  The job is identified by sys_id
+    or exact name.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching TriggerPACollectionParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``job_sys_id`` keys.
+    """
+    result = _unwrap_and_validate_params(params, TriggerPACollectionParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_job_sys_id(validated.job_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA job not found: {validated.job_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_JOB_TABLE}/{sys_id}"
+    try:
+        response = _make_request(
+            "PATCH",
+            url,
+            headers=headers,
+            json={"run_now": "true"},
+        )
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"PA collection job triggered successfully: {sys_id}",
+            "job_sys_id": sys_id,
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA job not found: {sys_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}
