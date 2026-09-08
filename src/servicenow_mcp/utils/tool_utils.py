@@ -986,6 +986,7 @@ from servicenow_mcp.tools.assessment_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     CreatePAIndicatorParams,
+    DeletePAIndicatorParams,
     GetPABreakdownParams,
     GetPADashboardParams,
     GetPAIndicatorParams,
@@ -998,9 +999,11 @@ from servicenow_mcp.tools.pa_tools import (
     ListPAScoresParams,
     ListPAWidgetsParams,
     TriggerPACollectionParams,
+    UpdatePAIndicatorParams,
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
+    delete_pa_indicator as delete_pa_indicator_tool,
     get_pa_breakdown as get_pa_breakdown_tool,
     get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
@@ -1013,6 +1016,7 @@ from servicenow_mcp.tools.pa_tools import (
     list_pa_scores as list_pa_scores_tool,
     list_pa_widgets as list_pa_widgets_tool,
     trigger_pa_collection as trigger_pa_collection_tool,
+    update_pa_indicator as update_pa_indicator_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
@@ -4022,6 +4026,34 @@ def get_tool_definitions(
                 "The indicator must be collected via a PA job before scores are available. "
                 "Required: name. Optional: description, table, condition, formula, frequency, "
                 "direction, active, unit, indicator_group."
+            ),
+            "raw_dict",
+        ),
+        "update_pa_indicator": (
+            update_pa_indicator_tool,
+            UpdatePAIndicatorParams,
+            Dict[str, Any],
+            (
+                "Update an existing Performance Analytics indicator in the pa_indicator table. "
+                "Accepts a sys_id or exact indicator name (auto-resolved to sys_id). "
+                "All update fields are optional — only provided fields are changed. "
+                "Direction aliases 'maximize'/'minimise' are normalised to '1'/'2'. "
+                "Returns the updated indicator record. "
+                "Required: indicator_id. Optional: name, description, table, condition, formula, "
+                "frequency, direction, active, unit, indicator_group."
+            ),
+            "raw_dict",
+        ),
+        "delete_pa_indicator": (
+            delete_pa_indicator_tool,
+            DeletePAIndicatorParams,
+            Dict[str, Any],
+            (
+                "Delete a Performance Analytics indicator from the pa_indicator table. "
+                "Accepts a sys_id or exact indicator name (auto-resolved to sys_id). "
+                "Returns success on HTTP 204/200 or a 404 error if the indicator is not found. "
+                "Removing an indicator does not delete its historical pa_score records. "
+                "Required: indicator_id (sys_id or exact name)."
             ),
             "raw_dict",
         ),

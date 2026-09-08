@@ -344,6 +344,69 @@ class TriggerPACollectionParams(BaseModel):
     )
 
 
+class UpdatePAIndicatorParams(BaseModel):
+    """Parameters for updating an existing Performance Analytics indicator."""
+
+    indicator_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA indicator to update, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_indicator."
+        ),
+    )
+    name: Optional[str] = Field(None, description="New display name for the indicator")
+    description: Optional[str] = Field(None, description="Updated free-text description")
+    table: Optional[str] = Field(
+        None,
+        description="ServiceNow table the indicator draws data from (e.g. 'incident')",
+    )
+    condition: Optional[str] = Field(
+        None,
+        description="Encoded query string that filters records before aggregation",
+    )
+    formula: Optional[str] = Field(
+        None,
+        description="Aggregation formula (e.g. 'count', 'sum(field)', 'avg(field)')",
+    )
+    frequency: Optional[str] = Field(
+        None,
+        description=(
+            "Collection frequency. Common values: daily, weekly, monthly, quarterly, yearly"
+        ),
+    )
+    direction: Optional[str] = Field(
+        None,
+        description=(
+            "Optimisation direction. "
+            "Use '1' (or 'maximize') to indicate higher is better; "
+            "'2' (or 'minimize') for lower is better."
+        ),
+    )
+    active: Optional[bool] = Field(None, description="Whether the indicator is active")
+    unit: Optional[str] = Field(
+        None,
+        description="sys_id or display name of the unit record (pa_unit table)",
+    )
+    indicator_group: Optional[str] = Field(
+        None,
+        description="sys_id or display name of the indicator group (pa_indicator_group table)",
+    )
+
+
+class DeletePAIndicatorParams(BaseModel):
+    """Parameters for deleting a Performance Analytics indicator."""
+
+    indicator_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA indicator to delete, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_indicator."
+        ),
+    )
+
+
 class ListPAScoresParams(BaseModel):
     """Parameters for listing Performance Analytics scores."""
 
@@ -1442,6 +1505,160 @@ def get_pa_job(
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             return {"success": False, "message": f"PA job not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def update_pa_indicator(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing Performance Analytics indicator.
+
+    Issues a PATCH to pa_indicator/{sys_id} with only the fields supplied in
+    *params*.  Empty-body calls (no updatable field provided) are rejected
+    before reaching the API.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdatePAIndicatorParams.
+
+    Returns:
+        Dictionary with ``success``, ``indicator``, and ``message`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, UpdatePAIndicatorParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA indicator not found: {validated.indicator_id}",
+        }
+
+    # Normalise direction aliases
+    direction_map = {"maximize": "1", "minimise": "2", "minimize": "2", "maximise": "1"}
+    direction_value = validated.direction
+    if direction_value is not None:
+        direction_value = direction_map.get(direction_value.lower(), direction_value)
+
+    body: Dict[str, Any] = {}
+    if validated.name is not None:
+        body["name"] = validated.name
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.table is not None:
+        body["table"] = validated.table
+    if validated.condition is not None:
+        body["condition"] = validated.condition
+    if validated.formula is not None:
+        body["formula"] = validated.formula
+    if validated.frequency is not None:
+        body["frequency"] = validated.frequency
+    if direction_value is not None:
+        body["direction"] = direction_value
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.unit is not None:
+        body["unit"] = validated.unit
+    if validated.indicator_group is not None:
+        body["indicator_group"] = validated.indicator_group
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{PA_INDICATOR_TABLE}/{sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_INDICATOR_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "indicator": _format_pa_indicator(data),
+            "message": f"PA indicator '{sys_id}' updated successfully",
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA indicator not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def delete_pa_indicator(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a Performance Analytics indicator by sys_id or exact name.
+
+    Issues a DELETE to pa_indicator/{sys_id}.  Returns success on HTTP 204
+    (no content) or 200.  Returns a 404 error when the indicator is not found.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeletePAIndicatorParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``indicator_sys_id`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, DeletePAIndicatorParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA indicator not found: {validated.indicator_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_INDICATOR_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code in (200, 204):
+            return {
+                "success": True,
+                "message": f"PA indicator '{sys_id}' deleted successfully",
+                "indicator_sys_id": sys_id,
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"PA indicator '{sys_id}' deleted successfully",
+            "indicator_sys_id": sys_id,
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA indicator not found: {sys_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}
