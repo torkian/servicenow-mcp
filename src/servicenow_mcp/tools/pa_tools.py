@@ -407,6 +407,80 @@ class DeletePAIndicatorParams(BaseModel):
     )
 
 
+class UpdatePADashboardParams(BaseModel):
+    """Parameters for updating an existing Performance Analytics dashboard."""
+
+    dashboard_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA dashboard to update, or its exact title. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a title= lookup on pa_home_page."
+        ),
+    )
+    title: Optional[str] = Field(None, description="New display title for the dashboard")
+    description: Optional[str] = Field(None, description="Updated free-text description")
+    active: Optional[bool] = Field(None, description="Whether the dashboard is active")
+    order: Optional[int] = Field(None, description="Display order for the dashboard")
+    owner: Optional[str] = Field(
+        None,
+        description="sys_id or user_name of the new dashboard owner",
+    )
+
+
+class DeletePADashboardParams(BaseModel):
+    """Parameters for deleting a Performance Analytics dashboard."""
+
+    dashboard_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA dashboard to delete, or its exact title. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a title= lookup on pa_home_page."
+        ),
+    )
+
+
+class UpdatePABreakdownParams(BaseModel):
+    """Parameters for updating an existing Performance Analytics breakdown."""
+
+    breakdown_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA breakdown to update, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_breakdown."
+        ),
+    )
+    name: Optional[str] = Field(None, description="New display name for the breakdown")
+    active: Optional[bool] = Field(None, description="Whether the breakdown is active")
+    table: Optional[str] = Field(
+        None,
+        description="Source table the breakdown dimension is drawn from (e.g. 'incident')",
+    )
+    field: Optional[str] = Field(
+        None,
+        description="Field on the source table used as the breakdown dimension",
+    )
+    filter_condition: Optional[str] = Field(
+        None,
+        description="Encoded query string that pre-filters records before grouping",
+    )
+
+
+class DeletePABreakdownParams(BaseModel):
+    """Parameters for deleting a Performance Analytics breakdown."""
+
+    breakdown_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA breakdown to delete, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_breakdown."
+        ),
+    )
+
+
 class ListPAScoresParams(BaseModel):
     """Parameters for listing Performance Analytics scores."""
 
@@ -1719,6 +1793,282 @@ def trigger_pa_collection(
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             return {"success": False, "message": f"PA job not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def update_pa_dashboard(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing Performance Analytics dashboard.
+
+    Issues a PATCH to pa_home_page/{sys_id} with only the fields supplied in
+    *params*.  Empty-body calls (no updatable field provided) are rejected
+    before reaching the API.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdatePADashboardParams.
+
+    Returns:
+        Dictionary with ``success``, ``dashboard``, and ``message`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, UpdatePADashboardParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_dashboard_sys_id(validated.dashboard_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA dashboard not found: {validated.dashboard_id}",
+        }
+
+    body: Dict[str, Any] = {}
+    if validated.title is not None:
+        body["title"] = validated.title
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.order is not None:
+        body["order"] = str(validated.order)
+    if validated.owner is not None:
+        body["owner"] = validated.owner
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{PA_DASHBOARD_TABLE}/{sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_DASHBOARD_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "dashboard": _format_pa_dashboard(data),
+            "message": f"PA dashboard '{sys_id}' updated successfully",
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA dashboard not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def delete_pa_dashboard(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a Performance Analytics dashboard by sys_id or exact title.
+
+    Issues a DELETE to pa_home_page/{sys_id}.  Returns success on HTTP 204
+    (no content) or 200.  Returns a 404 error when the dashboard is not found.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeletePADashboardParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``dashboard_sys_id`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, DeletePADashboardParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_dashboard_sys_id(validated.dashboard_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA dashboard not found: {validated.dashboard_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_DASHBOARD_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code in (200, 204):
+            return {
+                "success": True,
+                "message": f"PA dashboard '{sys_id}' deleted successfully",
+                "dashboard_sys_id": sys_id,
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"PA dashboard '{sys_id}' deleted successfully",
+            "dashboard_sys_id": sys_id,
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA dashboard not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def update_pa_breakdown(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing Performance Analytics breakdown.
+
+    Issues a PATCH to pa_breakdown/{sys_id} with only the fields supplied in
+    *params*.  Empty-body calls (no updatable field provided) are rejected
+    before reaching the API.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdatePABreakdownParams.
+
+    Returns:
+        Dictionary with ``success``, ``breakdown``, and ``message`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, UpdatePABreakdownParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_breakdown_sys_id(validated.breakdown_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA breakdown not found: {validated.breakdown_id}",
+        }
+
+    body: Dict[str, Any] = {}
+    if validated.name is not None:
+        body["name"] = validated.name
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.table is not None:
+        body["table"] = validated.table
+    if validated.field is not None:
+        body["field"] = validated.field
+    if validated.filter_condition is not None:
+        body["filter_condition"] = validated.filter_condition
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{PA_BREAKDOWN_TABLE}/{sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_BREAKDOWN_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "breakdown": _format_pa_breakdown(data),
+            "message": f"PA breakdown '{sys_id}' updated successfully",
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA breakdown not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def delete_pa_breakdown(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a Performance Analytics breakdown by sys_id or exact name.
+
+    Issues a DELETE to pa_breakdown/{sys_id}.  Returns success on HTTP 204
+    (no content) or 200.  Returns a 404 error when the breakdown is not found.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeletePABreakdownParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``breakdown_sys_id`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, DeletePABreakdownParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_breakdown_sys_id(validated.breakdown_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA breakdown not found: {validated.breakdown_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_BREAKDOWN_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code in (200, 204):
+            return {
+                "success": True,
+                "message": f"PA breakdown '{sys_id}' deleted successfully",
+                "breakdown_sys_id": sys_id,
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"PA breakdown '{sys_id}' deleted successfully",
+            "breakdown_sys_id": sys_id,
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA breakdown not found: {sys_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}

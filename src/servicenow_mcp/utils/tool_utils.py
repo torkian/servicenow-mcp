@@ -986,6 +986,8 @@ from servicenow_mcp.tools.assessment_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     CreatePAIndicatorParams,
+    DeletePABreakdownParams,
+    DeletePADashboardParams,
     DeletePAIndicatorParams,
     GetPABreakdownParams,
     GetPADashboardParams,
@@ -999,10 +1001,14 @@ from servicenow_mcp.tools.pa_tools import (
     ListPAScoresParams,
     ListPAWidgetsParams,
     TriggerPACollectionParams,
+    UpdatePABreakdownParams,
+    UpdatePADashboardParams,
     UpdatePAIndicatorParams,
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
+    delete_pa_breakdown as delete_pa_breakdown_tool,
+    delete_pa_dashboard as delete_pa_dashboard_tool,
     delete_pa_indicator as delete_pa_indicator_tool,
     get_pa_breakdown as get_pa_breakdown_tool,
     get_pa_dashboard as get_pa_dashboard_tool,
@@ -1016,6 +1022,8 @@ from servicenow_mcp.tools.pa_tools import (
     list_pa_scores as list_pa_scores_tool,
     list_pa_widgets as list_pa_widgets_tool,
     trigger_pa_collection as trigger_pa_collection_tool,
+    update_pa_breakdown as update_pa_breakdown_tool,
+    update_pa_dashboard as update_pa_dashboard_tool,
     update_pa_indicator as update_pa_indicator_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
@@ -4179,6 +4187,60 @@ def get_tool_definitions(
                 "resolved to a sys_id automatically before triggering. "
                 "Returns success, message, and job_sys_id. "
                 "Required: job_id (sys_id or exact name of the PA collection job)."
+            ),
+            "raw_dict",
+        ),
+        "update_pa_dashboard": (
+            update_pa_dashboard_tool,
+            UpdatePADashboardParams,
+            Dict[str, Any],
+            (
+                "Update an existing Performance Analytics dashboard (pa_home_page record). "
+                "Accepts the dashboard sys_id or exact title; the title is resolved to a sys_id "
+                "automatically. Provide at least one of: title, description, active, order, owner. "
+                "Calls PATCH on pa_home_page/{sys_id} and returns the updated dashboard record. "
+                "Returns success, dashboard (updated fields), and message. "
+                "Required: dashboard_id. Optional: title, description, active, order, owner."
+            ),
+            "raw_dict",
+        ),
+        "delete_pa_dashboard": (
+            delete_pa_dashboard_tool,
+            DeletePADashboardParams,
+            Dict[str, Any],
+            (
+                "Delete a Performance Analytics dashboard (pa_home_page record) by sys_id or exact title. "
+                "The title is resolved to a sys_id automatically before deletion. "
+                "Returns success, message, and dashboard_sys_id on success, "
+                "or a 404 error message when the dashboard is not found. "
+                "Required: dashboard_id (sys_id or exact title)."
+            ),
+            "raw_dict",
+        ),
+        "update_pa_breakdown": (
+            update_pa_breakdown_tool,
+            UpdatePABreakdownParams,
+            Dict[str, Any],
+            (
+                "Update an existing Performance Analytics breakdown (pa_breakdown record). "
+                "Accepts the breakdown sys_id or exact name; the name is resolved to a sys_id "
+                "automatically. Provide at least one of: name, active, table, field, filter_condition. "
+                "Calls PATCH on pa_breakdown/{sys_id} and returns the updated breakdown record. "
+                "Returns success, breakdown (updated fields), and message. "
+                "Required: breakdown_id. Optional: name, active, table, field, filter_condition."
+            ),
+            "raw_dict",
+        ),
+        "delete_pa_breakdown": (
+            delete_pa_breakdown_tool,
+            DeletePABreakdownParams,
+            Dict[str, Any],
+            (
+                "Delete a Performance Analytics breakdown (pa_breakdown record) by sys_id or exact name. "
+                "The name is resolved to a sys_id automatically before deletion. "
+                "Returns success, message, and breakdown_sys_id on success, "
+                "or a 404 error message when the breakdown is not found. "
+                "Required: breakdown_id (sys_id or exact name)."
             ),
             "raw_dict",
         ),

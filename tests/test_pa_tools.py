@@ -1874,3 +1874,661 @@ class TestPABreakdownParams:
     def test_get_with_name(self):
         p = GetPABreakdownParams(breakdown_id="Priority")
         assert p.breakdown_id == "Priority"
+
+
+# ---------------------------------------------------------------------------
+# update_pa_dashboard / delete_pa_dashboard
+# ---------------------------------------------------------------------------
+
+# Use distinct names to avoid collision with module-level DASHBOARD_SYS_ID / RAW_DASHBOARD
+UPD_DASHBOARD_SYS_ID = "9" * 32  # 32-char hex → resolver returns directly, no extra API call
+
+UPD_RAW_DASHBOARD = {
+    "sys_id": UPD_DASHBOARD_SYS_ID,
+    "title": "My PA Dashboard",
+    "description": "PA overview",
+    "owner": {"display_value": "Admin", "value": "e" * 32},
+    "active": "true",
+    "order": "10",
+    "sys_created_on": "2024-01-01 00:00:00",
+    "sys_updated_on": "2024-06-01 00:00:00",
+}
+
+
+def _mock_upd_dashboard_resp(raw=None, status=200):
+    if raw is None:
+        raw = UPD_RAW_DASHBOARD
+    resp = MagicMock()
+    resp.status_code = status
+    resp.json.return_value = {"result": raw}
+    resp.raise_for_status = MagicMock()
+    return resp
+
+
+@pytest.fixture
+def dash_auth():
+    am = MagicMock()
+    am.instance_url = "https://instance.service-now.com"
+    am.get_headers.return_value = {"Authorization": "Bearer token"}
+    return am
+
+
+@pytest.fixture
+def dash_config():
+    sc = MagicMock()
+    sc.instance_url = None
+    return sc
+
+
+class TestUpdatePADashboard:
+    def test_update_title_by_sys_id(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        # UPD_DASHBOARD_SYS_ID is 32-char hex → resolver returns it directly (no extra call)
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_dashboard_resp()
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": UPD_DASHBOARD_SYS_ID, "title": "New Title"},
+            )
+        assert result["success"] is True
+        assert "dashboard" in result
+        assert "updated" in result["message"]
+        call_args = mock_req.call_args
+        assert call_args[0][0] == "PATCH"
+        assert UPD_DASHBOARD_SYS_ID in call_args[0][1]
+        assert call_args[1]["json"]["title"] == "New Title"
+
+    def test_update_active_false(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_dashboard_resp()
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": UPD_DASHBOARD_SYS_ID, "active": False},
+            )
+        assert result["success"] is True
+        assert mock_req.call_args[1]["json"]["active"] == "false"
+
+    def test_update_active_true(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_dashboard_resp()
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": UPD_DASHBOARD_SYS_ID, "active": True},
+            )
+        assert result["success"] is True
+        assert mock_req.call_args[1]["json"]["active"] == "true"
+
+    def test_update_order(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_dashboard_resp()
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": UPD_DASHBOARD_SYS_ID, "order": 5},
+            )
+        assert result["success"] is True
+        assert mock_req.call_args[1]["json"]["order"] == "5"
+
+    def test_update_owner(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_dashboard_resp()
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": UPD_DASHBOARD_SYS_ID, "owner": "admin"},
+            )
+        assert result["success"] is True
+        assert mock_req.call_args[1]["json"]["owner"] == "admin"
+
+    def test_no_fields_rejects(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        result = update_pa_dashboard(
+            dash_auth, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID}
+        )
+        assert result["success"] is False
+        assert "No fields" in result["message"]
+
+    def test_dashboard_not_found_by_name(self, dash_auth, dash_config):
+        """Name-based lookup that returns no results → not found."""
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.side_effect = [
+                # resolver GET returns empty list
+                MagicMock(status_code=200, json=MagicMock(return_value={"result": []}),
+                           raise_for_status=MagicMock()),
+            ]
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": "Not A Dashboard", "title": "x"},
+            )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    def test_404_on_patch_name_lookup(self, dash_auth, dash_config):
+        """Name-based lookup succeeds, PATCH raises 404."""
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        http_err = requests.exceptions.HTTPError(response=MagicMock(status_code=404))
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.side_effect = [
+                # first call: resolver finds the dashboard by name
+                MagicMock(
+                    status_code=200,
+                    json=MagicMock(return_value={"result": [{"sys_id": UPD_DASHBOARD_SYS_ID}]}),
+                    raise_for_status=MagicMock(),
+                ),
+                # second call: PATCH raises 404
+                http_err,
+            ]
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": "My PA Dashboard", "title": "New"},
+            )
+        assert result["success"] is False
+
+    def test_no_instance_url(self, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        am = MagicMock()
+        am.instance_url = None
+        dash_config.instance_url = None
+        result = update_pa_dashboard(am, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID, "title": "x"})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_no_headers(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        dash_auth.get_headers.return_value = None
+        result = update_pa_dashboard(dash_auth, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID, "title": "x"})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+    def test_request_exception_direct_sys_id(self, dash_auth, dash_config):
+        """PATCH raises ConnectionError for a direct sys_id call (no resolver call)."""
+        from servicenow_mcp.tools.pa_tools import update_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            # Only one call: the PATCH itself (sys_id bypasses resolver)
+            mock_req.side_effect = requests.exceptions.ConnectionError("timeout")
+            result = update_pa_dashboard(
+                dash_auth, dash_config,
+                {"dashboard_id": UPD_DASHBOARD_SYS_ID, "title": "x"},
+            )
+        assert result["success"] is False
+        assert "timeout" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# delete_pa_dashboard
+# ---------------------------------------------------------------------------
+
+
+class TestDeletePADashboard:
+    def test_delete_by_sys_id_204(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_dashboard
+
+        del_resp = MagicMock()
+        del_resp.status_code = 204
+        del_resp.raise_for_status = MagicMock()
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = del_resp
+            result = delete_pa_dashboard(
+                dash_auth, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID}
+            )
+        assert result["success"] is True
+        assert result["dashboard_sys_id"] == UPD_DASHBOARD_SYS_ID
+        assert mock_req.call_args[0][0] == "DELETE"
+
+    def test_delete_by_sys_id_200(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_dashboard
+
+        del_resp = MagicMock()
+        del_resp.status_code = 200
+        del_resp.raise_for_status = MagicMock()
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = del_resp
+            result = delete_pa_dashboard(
+                dash_auth, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID}
+            )
+        assert result["success"] is True
+
+    def test_delete_not_found_by_name(self, dash_auth, dash_config):
+        """Name-based lookup returns empty list → not found."""
+        from servicenow_mcp.tools.pa_tools import delete_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = MagicMock(
+                status_code=200,
+                json=MagicMock(return_value={"result": []}),
+                raise_for_status=MagicMock(),
+            )
+            result = delete_pa_dashboard(
+                dash_auth, dash_config, {"dashboard_id": "Ghost Dashboard"}
+            )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    def test_delete_404_http_error_name_lookup(self, dash_auth, dash_config):
+        """Name-based lookup succeeds, DELETE raises 404."""
+        from servicenow_mcp.tools.pa_tools import delete_pa_dashboard
+
+        http_err = requests.exceptions.HTTPError(response=MagicMock(status_code=404))
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.side_effect = [
+                MagicMock(
+                    status_code=200,
+                    json=MagicMock(return_value={"result": [{"sys_id": UPD_DASHBOARD_SYS_ID}]}),
+                    raise_for_status=MagicMock(),
+                ),
+                http_err,
+            ]
+            result = delete_pa_dashboard(
+                dash_auth, dash_config, {"dashboard_id": "My PA Dashboard"}
+            )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    def test_delete_no_instance_url(self, dash_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_dashboard
+
+        am = MagicMock()
+        am.instance_url = None
+        dash_config.instance_url = None
+        result = delete_pa_dashboard(am, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_delete_no_headers(self, dash_auth, dash_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_dashboard
+
+        dash_auth.get_headers.return_value = None
+        result = delete_pa_dashboard(dash_auth, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+    def test_delete_network_error_direct_sys_id(self, dash_auth, dash_config):
+        """DELETE raises ConnectionError for a direct sys_id (no resolver call)."""
+        from servicenow_mcp.tools.pa_tools import delete_pa_dashboard
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            # Only one call: the DELETE itself (sys_id bypasses resolver)
+            mock_req.side_effect = requests.exceptions.ConnectionError("network failure")
+            result = delete_pa_dashboard(
+                dash_auth, dash_config, {"dashboard_id": UPD_DASHBOARD_SYS_ID}
+            )
+        assert result["success"] is False
+        assert "network failure" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# update_pa_breakdown
+# ---------------------------------------------------------------------------
+
+UPD_BREAKDOWN_SYS_ID = "8" * 32  # distinct 32-char hex to avoid collisions
+
+UPD_RAW_BREAKDOWN = {
+    "sys_id": UPD_BREAKDOWN_SYS_ID,
+    "name": "Priority",
+    "active": "true",
+    "table": "incident",
+    "field": "priority",
+    "filter_condition": "",
+    "calculated_from": {"display_value": "", "value": ""},
+    "sys_created_on": "2024-01-01 00:00:00",
+    "sys_updated_on": "2024-06-01 00:00:00",
+}
+
+
+def _mock_upd_breakdown_resp(raw=None, status=200):
+    if raw is None:
+        raw = UPD_RAW_BREAKDOWN
+    resp = MagicMock()
+    resp.status_code = status
+    resp.json.return_value = {"result": raw}
+    resp.raise_for_status = MagicMock()
+    return resp
+
+
+@pytest.fixture
+def bd2_auth():
+    am = MagicMock()
+    am.instance_url = "https://instance.service-now.com"
+    am.get_headers.return_value = {"Authorization": "Bearer token"}
+    return am
+
+
+@pytest.fixture
+def bd2_config():
+    sc = MagicMock()
+    sc.instance_url = None
+    return sc
+
+
+class TestUpdatePABreakdown:
+    def test_update_name_by_sys_id(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        # UPD_BREAKDOWN_SYS_ID is 32-char hex → resolver returns it directly
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_breakdown_resp()
+            result = update_pa_breakdown(
+                bd2_auth, bd2_config,
+                {"breakdown_id": UPD_BREAKDOWN_SYS_ID, "name": "Urgency"},
+            )
+        assert result["success"] is True
+        assert "breakdown" in result
+        assert mock_req.call_args[1]["json"]["name"] == "Urgency"
+
+    def test_update_active_false(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_breakdown_resp()
+            result = update_pa_breakdown(
+                bd2_auth, bd2_config,
+                {"breakdown_id": UPD_BREAKDOWN_SYS_ID, "active": False},
+            )
+        assert result["success"] is True
+        assert mock_req.call_args[1]["json"]["active"] == "false"
+
+    def test_update_table_and_field(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_breakdown_resp()
+            result = update_pa_breakdown(
+                bd2_auth, bd2_config,
+                {"breakdown_id": UPD_BREAKDOWN_SYS_ID, "table": "problem", "field": "state"},
+            )
+        assert result["success"] is True
+        body = mock_req.call_args[1]["json"]
+        assert body["table"] == "problem"
+        assert body["field"] == "state"
+
+    def test_update_filter_condition(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = _mock_upd_breakdown_resp()
+            result = update_pa_breakdown(
+                bd2_auth, bd2_config,
+                {"breakdown_id": UPD_BREAKDOWN_SYS_ID, "filter_condition": "active=true"},
+            )
+        assert result["success"] is True
+        assert mock_req.call_args[1]["json"]["filter_condition"] == "active=true"
+
+    def test_no_fields_rejects(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        result = update_pa_breakdown(bd2_auth, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+        assert "No fields" in result["message"]
+
+    def test_breakdown_not_found_by_name(self, bd2_auth, bd2_config):
+        """Name-based lookup returns empty list → not found."""
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = MagicMock(
+                status_code=200,
+                json=MagicMock(return_value={"result": []}),
+                raise_for_status=MagicMock(),
+            )
+            result = update_pa_breakdown(
+                bd2_auth, bd2_config,
+                {"breakdown_id": "Ghost Breakdown", "name": "x"},
+            )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    def test_404_on_patch_name_lookup(self, bd2_auth, bd2_config):
+        """Name-based lookup succeeds, PATCH raises 404."""
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        http_err = requests.exceptions.HTTPError(response=MagicMock(status_code=404))
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.side_effect = [
+                MagicMock(
+                    status_code=200,
+                    json=MagicMock(return_value={"result": [{"sys_id": UPD_BREAKDOWN_SYS_ID}]}),
+                    raise_for_status=MagicMock(),
+                ),
+                http_err,
+            ]
+            result = update_pa_breakdown(
+                bd2_auth, bd2_config,
+                {"breakdown_id": "Priority", "name": "Urgency"},
+            )
+        assert result["success"] is False
+
+    def test_no_instance_url(self, bd2_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        am = MagicMock()
+        am.instance_url = None
+        bd2_config.instance_url = None
+        result = update_pa_breakdown(am, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID, "name": "x"})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_no_headers(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        bd2_auth.get_headers.return_value = None
+        result = update_pa_breakdown(bd2_auth, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID, "name": "x"})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+    def test_request_exception_direct_sys_id(self, bd2_auth, bd2_config):
+        """PATCH raises Timeout for a direct sys_id call (no resolver call)."""
+        from servicenow_mcp.tools.pa_tools import update_pa_breakdown
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            # Only one call: the PATCH itself (sys_id bypasses resolver)
+            mock_req.side_effect = requests.exceptions.Timeout("timed out")
+            result = update_pa_breakdown(
+                bd2_auth, bd2_config,
+                {"breakdown_id": UPD_BREAKDOWN_SYS_ID, "name": "x"},
+            )
+        assert result["success"] is False
+        assert "timed out" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# delete_pa_breakdown
+# ---------------------------------------------------------------------------
+
+
+class TestDeletePABreakdown:
+    def test_delete_by_sys_id_204(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_breakdown
+
+        del_resp = MagicMock()
+        del_resp.status_code = 204
+        del_resp.raise_for_status = MagicMock()
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = del_resp
+            result = delete_pa_breakdown(
+                bd2_auth, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID}
+            )
+        assert result["success"] is True
+        assert result["breakdown_sys_id"] == UPD_BREAKDOWN_SYS_ID
+        assert mock_req.call_args[0][0] == "DELETE"
+
+    def test_delete_by_sys_id_200(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_breakdown
+
+        del_resp = MagicMock()
+        del_resp.status_code = 200
+        del_resp.raise_for_status = MagicMock()
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = del_resp
+            result = delete_pa_breakdown(
+                bd2_auth, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID}
+            )
+        assert result["success"] is True
+
+    def test_delete_not_found_by_name(self, bd2_auth, bd2_config):
+        """Name-based lookup returns empty list → not found."""
+        from servicenow_mcp.tools.pa_tools import delete_pa_breakdown
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.return_value = MagicMock(
+                status_code=200,
+                json=MagicMock(return_value={"result": []}),
+                raise_for_status=MagicMock(),
+            )
+            result = delete_pa_breakdown(
+                bd2_auth, bd2_config, {"breakdown_id": "Ghost Breakdown"}
+            )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    def test_delete_404_http_error_name_lookup(self, bd2_auth, bd2_config):
+        """Name-based lookup succeeds, DELETE raises 404."""
+        from servicenow_mcp.tools.pa_tools import delete_pa_breakdown
+
+        http_err = requests.exceptions.HTTPError(response=MagicMock(status_code=404))
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            mock_req.side_effect = [
+                MagicMock(
+                    status_code=200,
+                    json=MagicMock(return_value={"result": [{"sys_id": UPD_BREAKDOWN_SYS_ID}]}),
+                    raise_for_status=MagicMock(),
+                ),
+                http_err,
+            ]
+            result = delete_pa_breakdown(
+                bd2_auth, bd2_config, {"breakdown_id": "Priority"}
+            )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    def test_delete_no_instance_url(self, bd2_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_breakdown
+
+        am = MagicMock()
+        am.instance_url = None
+        bd2_config.instance_url = None
+        result = delete_pa_breakdown(am, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_delete_no_headers(self, bd2_auth, bd2_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_breakdown
+
+        bd2_auth.get_headers.return_value = None
+        result = delete_pa_breakdown(bd2_auth, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+    def test_delete_network_error_direct_sys_id(self, bd2_auth, bd2_config):
+        """DELETE raises ConnectionError for a direct sys_id (no resolver call)."""
+        from servicenow_mcp.tools.pa_tools import delete_pa_breakdown
+
+        with patch("servicenow_mcp.tools.pa_tools._make_request") as mock_req:
+            # Only one call: the DELETE itself (sys_id bypasses resolver)
+            mock_req.side_effect = requests.exceptions.ConnectionError("network failure")
+            result = delete_pa_breakdown(
+                bd2_auth, bd2_config, {"breakdown_id": UPD_BREAKDOWN_SYS_ID}
+            )
+        assert result["success"] is False
+        assert "network failure" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# UpdatePADashboardParams / DeletePADashboardParams validation
+# ---------------------------------------------------------------------------
+
+
+class TestPADashboardMutationParams:
+    def test_update_requires_dashboard_id(self):
+        from pydantic import ValidationError
+        from servicenow_mcp.tools.pa_tools import UpdatePADashboardParams
+
+        with pytest.raises(ValidationError):
+            UpdatePADashboardParams()
+
+    def test_update_all_optional_fields(self):
+        from servicenow_mcp.tools.pa_tools import UpdatePADashboardParams
+
+        p = UpdatePADashboardParams(
+            dashboard_id=UPD_DASHBOARD_SYS_ID,
+            title="New",
+            description="desc",
+            active=True,
+            order=3,
+            owner="admin",
+        )
+        assert p.title == "New"
+        assert p.description == "desc"
+        assert p.active is True
+        assert p.order == 3
+        assert p.owner == "admin"
+
+    def test_delete_requires_dashboard_id(self):
+        from pydantic import ValidationError
+        from servicenow_mcp.tools.pa_tools import DeletePADashboardParams
+
+        with pytest.raises(ValidationError):
+            DeletePADashboardParams()
+
+    def test_delete_accepts_sys_id(self):
+        from servicenow_mcp.tools.pa_tools import DeletePADashboardParams
+
+        p = DeletePADashboardParams(dashboard_id=UPD_DASHBOARD_SYS_ID)
+        assert p.dashboard_id == UPD_DASHBOARD_SYS_ID
+
+
+# ---------------------------------------------------------------------------
+# UpdatePABreakdownParams / DeletePABreakdownParams validation
+# ---------------------------------------------------------------------------
+
+
+class TestPABreakdownMutationParams:
+    def test_update_requires_breakdown_id(self):
+        from pydantic import ValidationError
+        from servicenow_mcp.tools.pa_tools import UpdatePABreakdownParams
+
+        with pytest.raises(ValidationError):
+            UpdatePABreakdownParams()
+
+    def test_update_all_optional_fields(self):
+        from servicenow_mcp.tools.pa_tools import UpdatePABreakdownParams
+
+        p = UpdatePABreakdownParams(
+            breakdown_id=UPD_BREAKDOWN_SYS_ID,
+            name="Severity",
+            active=False,
+            table="problem",
+            field="severity",
+            filter_condition="active=true",
+        )
+        assert p.name == "Severity"
+        assert p.active is False
+        assert p.table == "problem"
+        assert p.field == "severity"
+        assert p.filter_condition == "active=true"
+
+    def test_delete_requires_breakdown_id(self):
+        from pydantic import ValidationError
+        from servicenow_mcp.tools.pa_tools import DeletePABreakdownParams
+
+        with pytest.raises(ValidationError):
+            DeletePABreakdownParams()
+
+    def test_delete_accepts_name(self):
+        from servicenow_mcp.tools.pa_tools import DeletePABreakdownParams
+
+        p = DeletePABreakdownParams(breakdown_id="Priority")
+        assert p.breakdown_id == "Priority"

@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add more PA coverage: update/delete pa_dashboard, update/delete pa_breakdown, or list_pa_targets tools
+1. Add list_pa_targets tool (pa_target table; filters for indicator/active/date range; target value tracking)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -159,3 +159,4 @@
 153. 2026-09-06 — Add pa_breakdown tools (list_pa_breakdowns, get_pa_breakdown on pa_breakdown table); name/active/table/field filters on list; _resolve_pa_breakdown_sys_id resolver; _format_pa_breakdown normaliser; registered in system_administrator and full packages; 36 new tests; 3478 total tests; 95% total coverage
 154. 2026-09-07 — Add PA job management tools (list_pa_jobs, get_pa_job, trigger_pa_collection on pa_job table); name/active/run_type/last_run_status/indicator filters on list; _resolve_pa_job_sys_id resolver; _format_pa_job normaliser; trigger_pa_collection PATCHes run_now=true; registered in system_administrator and full packages; 46 new tests; 3524 total tests; 95% total coverage
 155. 2026-09-08 — Add update_pa_indicator and delete_pa_indicator tools (PATCH/DELETE pa_indicator/{sys_id}; direction alias normalisation; empty-body guard; 404 guards; name/sys_id resolver on both; registered in system_administrator and full packages; 29 new tests; 3553 total tests; 95% total coverage)
+156. 2026-09-09 — Add update_pa_dashboard, delete_pa_dashboard, update_pa_breakdown, delete_pa_breakdown tools (PATCH/DELETE on pa_home_page and pa_breakdown tables; sys_id/name resolver; empty-body guards; 404 guards; 4 new Pydantic param models; registered in system_administrator and full packages; 57 new tests; 3596 total tests; 95% total coverage)

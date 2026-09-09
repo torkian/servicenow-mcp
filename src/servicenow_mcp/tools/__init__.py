@@ -310,6 +310,8 @@ from servicenow_mcp.tools.metric_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator,
+    delete_pa_breakdown,
+    delete_pa_dashboard,
     delete_pa_indicator,
     get_pa_breakdown,
     get_pa_dashboard,
@@ -323,6 +325,8 @@ from servicenow_mcp.tools.pa_tools import (
     list_pa_scores,
     list_pa_widgets,
     trigger_pa_collection,
+    update_pa_breakdown,
+    update_pa_dashboard,
     update_pa_indicator,
 )
 from servicenow_mcp.tools.user_preference_tools import (
@@ -770,10 +774,14 @@ __all__ = [
     "delete_pa_indicator",
     "list_pa_dashboards",
     "get_pa_dashboard",
+    "update_pa_dashboard",
+    "delete_pa_dashboard",
     "list_pa_widgets",
     "get_pa_widget",
     "list_pa_breakdowns",
     "get_pa_breakdown",
+    "update_pa_breakdown",
+    "delete_pa_breakdown",
     "list_pa_jobs",
     "get_pa_job",
     "trigger_pa_collection",
