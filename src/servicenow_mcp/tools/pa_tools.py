@@ -98,6 +98,7 @@ PA_BREAKDOWN_FIELDS = [
 ]
 
 PA_JOB_TABLE = "pa_job"
+PA_TARGET_TABLE = "pa_target"
 
 PA_JOB_FIELDS = [
     "sys_id",
@@ -110,6 +111,18 @@ PA_JOB_FIELDS = [
     "last_run_status",
     "indicator",
     "breakdown",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+PA_TARGET_FIELDS = [
+    "sys_id",
+    "indicator",
+    "target",
+    "minimum",
+    "maximum",
+    "period",
+    "active",
     "sys_created_on",
     "sys_updated_on",
 ]
@@ -508,6 +521,43 @@ class ListPAScoresParams(BaseModel):
         return validate_servicenow_date(v)
 
 
+class ListPATargetsParams(BaseModel):
+    """Parameters for listing Performance Analytics targets."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of targets to return (default 20)")
+    offset: Optional[int] = Field(0, description="Offset for pagination")
+    indicator_id: Optional[str] = Field(
+        None,
+        description=(
+            "sys_id or exact name of the PA indicator to filter by. "
+            "Names are resolved to a sys_id automatically."
+        ),
+    )
+    active: Optional[bool] = Field(None, description="Filter by active flag (true=active only)")
+    created_after: Optional[str] = Field(
+        None,
+        description="Return targets created on or after this date (YYYY-MM-DD)",
+    )
+    created_before: Optional[str] = Field(
+        None,
+        description="Return targets created on or before this date (YYYY-MM-DD)",
+    )
+
+    @field_validator("created_after", "created_before", mode="before")
+    @classmethod
+    def _validate_date_fields(cls, v):
+        return validate_servicenow_date(v)
+
+
+class GetPATargetParams(BaseModel):
+    """Parameters for retrieving a single Performance Analytics target."""
+
+    target_id: str = Field(
+        ...,
+        description="sys_id of the PA target record.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Formatters
 # ---------------------------------------------------------------------------
@@ -610,6 +660,21 @@ def _format_pa_job(record: Dict) -> Dict:
         "last_run_status": record.get("last_run_status"),
         "indicator": _ref_display(record.get("indicator")),
         "breakdown": _ref_display(record.get("breakdown")),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def _format_pa_target(record: Dict) -> Dict:
+    """Normalise a raw pa_target record."""
+    return {
+        "sys_id": record.get("sys_id"),
+        "indicator": _ref_display(record.get("indicator")),
+        "target": record.get("target"),
+        "minimum": record.get("minimum"),
+        "maximum": record.get("maximum"),
+        "period": _ref_display(record.get("period")),
+        "active": record.get("active"),
         "created_on": record.get("sys_created_on"),
         "updated_on": record.get("sys_updated_on"),
     }
@@ -2069,6 +2134,129 @@ def delete_pa_breakdown(
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             return {"success": False, "message": f"PA breakdown not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+def list_pa_targets(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List Performance Analytics target records from the pa_target table.
+
+    PA targets define the desired, minimum, and maximum values for a PA
+    indicator over a given period.  They can be filtered by indicator
+    (name or sys_id), active state, and creation date range.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListPATargetsParams.
+
+    Returns:
+        Dictionary with ``success``, ``targets`` (list), ``count``,
+        and optional ``has_more``/``next_offset`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ListPATargetsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts: List[str] = []
+
+    if validated.indicator_id:
+        sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+        if not sys_id:
+            return {
+                "success": False,
+                "message": f"PA indicator not found: {validated.indicator_id}",
+            }
+        query_parts.append(f"indicator={sys_id}")
+
+    if validated.active is not None:
+        query_parts.append(f"active={'true' if validated.active else 'false'}")
+
+    if validated.created_after:
+        query_parts.append(f"sys_created_on>={validated.created_after}")
+    if validated.created_before:
+        query_parts.append(f"sys_created_on<={validated.created_before}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=False,
+        fields=",".join(PA_TARGET_FIELDS),
+    )
+    query_params["sysparm_display_value"] = "all"
+
+    url = f"{instance_url}/api/now/table/{PA_TARGET_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        targets = [_format_pa_target(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(targets, validated.limit, validated.offset, "targets")
+    except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def get_pa_target(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single Performance Analytics target by sys_id.
+
+    PA targets store desired, minimum, and maximum KPI values for a given
+    indicator and time period.  Pass the sys_id of the target record to
+    retrieve its full details.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetPATargetParams.
+
+    Returns:
+        Dictionary with ``success`` and ``target`` on success,
+        or ``success=False`` and ``message`` on failure.
+    """
+    result = _unwrap_and_validate_params(params, GetPATargetParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    url = f"{instance_url}/api/now/table/{PA_TARGET_TABLE}/{validated.target_id}"
+    query_params = {
+        "sysparm_display_value": "all",
+        "sysparm_fields": ",".join(PA_TARGET_FIELDS),
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        data = response.json().get("result")
+        if not data:
+            return {"success": False, "message": f"PA target not found: {validated.target_id}"}
+        return {"success": True, "target": _format_pa_target(data)}
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA target not found: {validated.target_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}

@@ -439,6 +439,8 @@ system_administrator:
   - list_pa_jobs
   - get_pa_job
   - trigger_pa_collection
+  - list_pa_targets
+  - get_pa_target
 
 full:
   # Incident Management
@@ -794,3 +796,5 @@ full:
   - list_pa_jobs
   - get_pa_job
   - trigger_pa_collection
+  - list_pa_targets
+  - get_pa_target

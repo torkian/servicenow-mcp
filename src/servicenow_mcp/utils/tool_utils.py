@@ -993,12 +993,14 @@ from servicenow_mcp.tools.pa_tools import (
     GetPADashboardParams,
     GetPAIndicatorParams,
     GetPAJobParams,
+    GetPATargetParams,
     GetPAWidgetParams,
     ListPABreakdownsParams,
     ListPADashboardsParams,
     ListPAIndicatorsParams,
     ListPAJobsParams,
     ListPAScoresParams,
+    ListPATargetsParams,
     ListPAWidgetsParams,
     TriggerPACollectionParams,
     UpdatePABreakdownParams,
@@ -1014,12 +1016,14 @@ from servicenow_mcp.tools.pa_tools import (
     get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
     get_pa_job as get_pa_job_tool,
+    get_pa_target as get_pa_target_tool,
     get_pa_widget as get_pa_widget_tool,
     list_pa_breakdowns as list_pa_breakdowns_tool,
     list_pa_dashboards as list_pa_dashboards_tool,
     list_pa_indicators as list_pa_indicators_tool,
     list_pa_jobs as list_pa_jobs_tool,
     list_pa_scores as list_pa_scores_tool,
+    list_pa_targets as list_pa_targets_tool,
     list_pa_widgets as list_pa_widgets_tool,
     trigger_pa_collection as trigger_pa_collection_tool,
     update_pa_breakdown as update_pa_breakdown_tool,
@@ -4241,6 +4245,32 @@ def get_tool_definitions(
                 "Returns success, message, and breakdown_sys_id on success, "
                 "or a 404 error message when the breakdown is not found. "
                 "Required: breakdown_id (sys_id or exact name)."
+            ),
+            "raw_dict",
+        ),
+        "list_pa_targets": (
+            list_pa_targets_tool,
+            ListPATargetsParams,
+            Dict[str, Any],
+            (
+                "List Performance Analytics target records from the pa_target table. "
+                "PA targets define desired, minimum, and maximum KPI values for an indicator "
+                "over a given time period. "
+                "Filter by indicator (sys_id or name auto-resolved), active state, "
+                "and creation date range (created_after / created_before as YYYY-MM-DD). "
+                "Returns targets list with count and pagination keys."
+            ),
+            "raw_dict",
+        ),
+        "get_pa_target": (
+            get_pa_target_tool,
+            GetPATargetParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Performance Analytics target record by sys_id from pa_target. "
+                "Returns the target, minimum, maximum, indicator, and period fields. "
+                "Returns 404 error when the sys_id is not found. "
+                "Required: target_id (sys_id)."
             ),
             "raw_dict",
         ),
