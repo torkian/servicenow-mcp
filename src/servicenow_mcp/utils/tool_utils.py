@@ -986,9 +986,11 @@ from servicenow_mcp.tools.assessment_tools import (
 )
 from servicenow_mcp.tools.pa_tools import (
     CreatePAIndicatorParams,
+    CreatePATargetParams,
     DeletePABreakdownParams,
     DeletePADashboardParams,
     DeletePAIndicatorParams,
+    DeletePATargetParams,
     GetPABreakdownParams,
     GetPADashboardParams,
     GetPAIndicatorParams,
@@ -1006,12 +1008,15 @@ from servicenow_mcp.tools.pa_tools import (
     UpdatePABreakdownParams,
     UpdatePADashboardParams,
     UpdatePAIndicatorParams,
+    UpdatePATargetParams,
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
+    create_pa_target as create_pa_target_tool,
     delete_pa_breakdown as delete_pa_breakdown_tool,
     delete_pa_dashboard as delete_pa_dashboard_tool,
     delete_pa_indicator as delete_pa_indicator_tool,
+    delete_pa_target as delete_pa_target_tool,
     get_pa_breakdown as get_pa_breakdown_tool,
     get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
@@ -1029,6 +1034,7 @@ from servicenow_mcp.tools.pa_tools import (
     update_pa_breakdown as update_pa_breakdown_tool,
     update_pa_dashboard as update_pa_dashboard_tool,
     update_pa_indicator as update_pa_indicator_tool,
+    update_pa_target as update_pa_target_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
@@ -4270,6 +4276,44 @@ def get_tool_definitions(
                 "Retrieve a single Performance Analytics target record by sys_id from pa_target. "
                 "Returns the target, minimum, maximum, indicator, and period fields. "
                 "Returns 404 error when the sys_id is not found. "
+                "Required: target_id (sys_id)."
+            ),
+            "raw_dict",
+        ),
+        "create_pa_target": (
+            create_pa_target_tool,
+            CreatePATargetParams,
+            Dict[str, Any],
+            (
+                "Create a new Performance Analytics target record in pa_target. "
+                "A PA target stores the desired, minimum, and maximum KPI values for an indicator "
+                "over a given period. "
+                "Required: indicator_id (sys_id or name, auto-resolved). "
+                "Optional: target, minimum, maximum, period (sys_id or display name), active."
+            ),
+            "raw_dict",
+        ),
+        "update_pa_target": (
+            update_pa_target_tool,
+            UpdatePATargetParams,
+            Dict[str, Any],
+            (
+                "Update an existing Performance Analytics target record in pa_target. "
+                "Issues PATCH to pa_target/{sys_id} with only the supplied fields. "
+                "Required: target_id (sys_id). "
+                "Optional: indicator_id (auto-resolved), target, minimum, maximum, period, active. "
+                "Returns 404 error when the target is not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_pa_target": (
+            delete_pa_target_tool,
+            DeletePATargetParams,
+            Dict[str, Any],
+            (
+                "Delete a Performance Analytics target record from pa_target by sys_id. "
+                "Issues DELETE to pa_target/{sys_id}. "
+                "Returns 404 error when the target is not found. "
                 "Required: target_id (sys_id)."
             ),
             "raw_dict",

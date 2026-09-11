@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add create_pa_target, update_pa_target, delete_pa_target tools (pa_target table; complete CRUD for KPI target records)
+(empty — all items completed; will add new improvements next run)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -161,3 +161,4 @@
 155. 2026-09-08 — Add update_pa_indicator and delete_pa_indicator tools (PATCH/DELETE pa_indicator/{sys_id}; direction alias normalisation; empty-body guard; 404 guards; name/sys_id resolver on both; registered in system_administrator and full packages; 29 new tests; 3553 total tests; 95% total coverage)
 156. 2026-09-09 — Add update_pa_dashboard, delete_pa_dashboard, update_pa_breakdown, delete_pa_breakdown tools (PATCH/DELETE on pa_home_page and pa_breakdown tables; sys_id/name resolver; empty-body guards; 404 guards; 4 new Pydantic param models; registered in system_administrator and full packages; 57 new tests; 3596 total tests; 95% total coverage)
 157. 2026-09-10 — Add list_pa_targets and get_pa_target tools (pa_target table; indicator name/sys_id resolver on list; active and date-range filters; get_pa_target by sys_id with 404 guard; 32 new tests; 3628 total tests; registered in system_administrator and full packages)
+158. 2026-09-11 — Add create_pa_target, update_pa_target, delete_pa_target tools (pa_target table; complete CRUD; indicator name/sys_id resolver on create; empty-body guard on update; 404 guards; registered in system_administrator and full packages; 33 new tests; 3661 total tests; 95% total coverage)

@@ -2953,3 +2953,486 @@ class TestGetPATarget:
         assert result["success"] is True
         assert result["target"]["indicator"] == "Incident Count"
         assert result["target"]["period"] == "Q1 2024"
+
+
+# ---------------------------------------------------------------------------
+# create_pa_target
+# ---------------------------------------------------------------------------
+
+
+class TestCreatePATarget:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_creates_target_with_all_fields(self, mock_req, auth_manager, server_config):
+        # First call: resolve indicator sys_id; second call: POST
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": [{"sys_id": SYS_ID_32}]}
+        resolve_resp.raise_for_status = MagicMock()
+        create_resp = MagicMock()
+        create_resp.json.return_value = {"result": RAW_TARGET}
+        create_resp.raise_for_status = MagicMock()
+        mock_req.side_effect = [resolve_resp, create_resp]
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(
+            auth_manager,
+            server_config,
+            {
+                "indicator_id": "Incident Count",
+                "target": "50",
+                "minimum": "10",
+                "maximum": "100",
+                "period": "p" * 32,
+                "active": True,
+            },
+        )
+        assert result["success"] is True
+        assert result["target"]["target"] == "50"
+        assert "created" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_creates_target_with_sys_id_indicator(self, mock_req, auth_manager, server_config):
+        create_resp = MagicMock()
+        create_resp.json.return_value = {"result": RAW_TARGET}
+        create_resp.raise_for_status = MagicMock()
+        mock_req.return_value = create_resp
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(
+            auth_manager,
+            server_config,
+            {"indicator_id": SYS_ID_32, "target": "75"},
+        )
+        assert result["success"] is True
+        assert result["target"]["sys_id"] == TARGET_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_indicator_not_found(self, mock_req, auth_manager, server_config):
+        resolve_resp = MagicMock()
+        resolve_resp.json.return_value = {"result": []}
+        resolve_resp.raise_for_status = MagicMock()
+        mock_req.return_value = resolve_resp
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(
+            auth_manager,
+            server_config,
+            {"indicator_id": "Unknown Indicator"},
+        )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    def test_missing_indicator_id(self, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error(self, mock_req, auth_manager, server_config):
+        mock_http_resp = MagicMock()
+        mock_http_resp.status_code = 400
+        exc = requests.exceptions.HTTPError(response=mock_http_resp)
+        fail_resp = MagicMock()
+        fail_resp.raise_for_status = MagicMock(side_effect=exc)
+        mock_req.return_value = fail_resp
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(
+            auth_manager, server_config, {"indicator_id": SYS_ID_32}
+        )
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_exception(self, mock_req, auth_manager, server_config):
+        mock_req.side_effect = requests.exceptions.ConnectionError("down")
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(
+            auth_manager, server_config, {"indicator_id": SYS_ID_32}
+        )
+        assert result["success"] is False
+        assert "down" in result["message"]
+
+    def test_no_instance_url(self, server_config):
+        am = MagicMock()
+        am.instance_url = None
+        sc = MagicMock()
+        sc.instance_url = None
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(am, sc, {"indicator_id": SYS_ID_32})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_no_headers(self, auth_manager, server_config):
+        auth_manager.get_headers.return_value = None
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(auth_manager, server_config, {"indicator_id": SYS_ID_32})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_inactive_target(self, mock_req, auth_manager, server_config):
+        create_resp = MagicMock()
+        create_resp.json.return_value = {"result": {**RAW_TARGET, "active": "false"}}
+        create_resp.raise_for_status = MagicMock()
+        mock_req.return_value = create_resp
+
+        from servicenow_mcp.tools.pa_tools import create_pa_target
+
+        result = create_pa_target(
+            auth_manager, server_config, {"indicator_id": SYS_ID_32, "active": False}
+        )
+        assert result["success"] is True
+        assert result["target"]["active"] == "false"
+
+
+# ---------------------------------------------------------------------------
+# update_pa_target
+# ---------------------------------------------------------------------------
+
+
+class TestUpdatePATarget:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_updates_target_value(self, mock_req, auth_manager, server_config):
+        patch_resp = MagicMock()
+        patch_resp.json.return_value = {"result": {**RAW_TARGET, "target": "75"}}
+        patch_resp.raise_for_status = MagicMock()
+        mock_req.return_value = patch_resp
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager,
+            server_config,
+            {"target_id": TARGET_SYS_ID, "target": "75"},
+        )
+        assert result["success"] is True
+        assert result["target"]["target"] == "75"
+        assert "updated" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_updates_all_fields(self, mock_req, auth_manager, server_config):
+        resolve_ind_resp = MagicMock()
+        resolve_ind_resp.json.return_value = {"result": [{"sys_id": SYS_ID_32}]}
+        resolve_ind_resp.raise_for_status = MagicMock()
+        patch_resp = MagicMock()
+        patch_resp.json.return_value = {"result": RAW_TARGET}
+        patch_resp.raise_for_status = MagicMock()
+        # indicator resolver is called first (name lookup), then the PATCH
+        mock_req.side_effect = [resolve_ind_resp, patch_resp]
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager,
+            server_config,
+            {
+                "target_id": TARGET_SYS_ID,
+                "indicator_id": "New Indicator",
+                "target": "90",
+                "minimum": "20",
+                "maximum": "150",
+                "period": "p" * 32,
+                "active": False,
+            },
+        )
+        assert result["success"] is True
+
+    def test_missing_target_id(self, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    def test_no_fields_to_update(self, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID}
+        )
+        assert result["success"] is False
+        assert "No fields" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_target_id_used_directly_in_url(self, mock_req, auth_manager, server_config):
+        # target_id is used directly without resolution; any string is accepted
+        patch_resp = MagicMock()
+        patch_resp.json.return_value = {"result": RAW_TARGET}
+        patch_resp.raise_for_status = MagicMock()
+        mock_req.return_value = patch_resp
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager, server_config, {"target_id": "some_sys_id", "target": "50"}
+        )
+        assert result["success"] is True
+        called_url = mock_req.call_args[0][1]
+        assert "some_sys_id" in called_url
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_indicator_not_found_during_update(self, mock_req, auth_manager, server_config):
+        resolve_ind_resp = MagicMock()
+        resolve_ind_resp.json.return_value = {"result": []}
+        resolve_ind_resp.raise_for_status = MagicMock()
+        mock_req.return_value = resolve_ind_resp
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager,
+            server_config,
+            {"target_id": TARGET_SYS_ID, "indicator_id": "Unknown"},
+        )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_404_error(self, mock_req, auth_manager, server_config):
+        mock_http_resp = MagicMock()
+        mock_http_resp.status_code = 404
+        exc = requests.exceptions.HTTPError(response=mock_http_resp)
+        fail_resp = MagicMock()
+        fail_resp.raise_for_status = MagicMock(side_effect=exc)
+        mock_req.return_value = fail_resp
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID, "target": "80"}
+        )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error_non_404(self, mock_req, auth_manager, server_config):
+        mock_http_resp = MagicMock()
+        mock_http_resp.status_code = 500
+        exc = requests.exceptions.HTTPError(response=mock_http_resp)
+        fail_resp = MagicMock()
+        fail_resp.raise_for_status = MagicMock(side_effect=exc)
+        mock_req.return_value = fail_resp
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID, "target": "80"}
+        )
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_exception(self, mock_req, auth_manager, server_config):
+        mock_req.side_effect = requests.exceptions.ConnectionError("fail")
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID, "target": "80"}
+        )
+        assert result["success"] is False
+        assert "fail" in result["message"]
+
+    def test_no_instance_url(self, server_config):
+        am = MagicMock()
+        am.instance_url = None
+        sc = MagicMock()
+        sc.instance_url = None
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(am, sc, {"target_id": TARGET_SYS_ID, "target": "80"})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_no_headers(self, auth_manager, server_config):
+        auth_manager.get_headers.return_value = None
+
+        from servicenow_mcp.tools.pa_tools import update_pa_target
+
+        result = update_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID, "target": "80"}
+        )
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# delete_pa_target
+# ---------------------------------------------------------------------------
+
+
+class TestDeletePATarget:
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_deletes_target_204(self, mock_req, auth_manager, server_config):
+        delete_resp = MagicMock()
+        delete_resp.status_code = 204
+        mock_req.return_value = delete_resp
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID}
+        )
+        assert result["success"] is True
+        assert result["target_sys_id"] == TARGET_SYS_ID
+        assert "deleted" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_deletes_target_200(self, mock_req, auth_manager, server_config):
+        delete_resp = MagicMock()
+        delete_resp.status_code = 200
+        mock_req.return_value = delete_resp
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID}
+        )
+        assert result["success"] is True
+        assert result["target_sys_id"] == TARGET_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_target_id_used_directly_in_url(self, mock_req, auth_manager, server_config):
+        # target_id is used directly without resolution
+        delete_resp = MagicMock()
+        delete_resp.status_code = 204
+        mock_req.return_value = delete_resp
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(
+            auth_manager, server_config, {"target_id": "some_target_id"}
+        )
+        assert result["success"] is True
+        called_url = mock_req.call_args[0][1]
+        assert "some_target_id" in called_url
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_404_error(self, mock_req, auth_manager, server_config):
+        mock_http_resp = MagicMock()
+        mock_http_resp.status_code = 404
+        exc = requests.exceptions.HTTPError(response=mock_http_resp)
+        fail_resp = MagicMock()
+        fail_resp.status_code = 404
+        fail_resp.raise_for_status = MagicMock(side_effect=exc)
+        mock_req.return_value = fail_resp
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID}
+        )
+        assert result["success"] is False
+        assert "not found" in result["message"]
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_http_error_non_404(self, mock_req, auth_manager, server_config):
+        mock_http_resp = MagicMock()
+        mock_http_resp.status_code = 500
+        exc = requests.exceptions.HTTPError(response=mock_http_resp)
+        fail_resp = MagicMock()
+        fail_resp.status_code = 500
+        fail_resp.raise_for_status = MagicMock(side_effect=exc)
+        mock_req.return_value = fail_resp
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID}
+        )
+        assert result["success"] is False
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_exception(self, mock_req, auth_manager, server_config):
+        mock_req.side_effect = requests.exceptions.ConnectionError("fail")
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(
+            auth_manager, server_config, {"target_id": TARGET_SYS_ID}
+        )
+        assert result["success"] is False
+        assert "fail" in result["message"]
+
+    def test_missing_target_id(self, auth_manager, server_config):
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(auth_manager, server_config, {})
+        assert result["success"] is False
+
+    def test_no_instance_url(self, server_config):
+        am = MagicMock()
+        am.instance_url = None
+        sc = MagicMock()
+        sc.instance_url = None
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(am, sc, {"target_id": TARGET_SYS_ID})
+        assert result["success"] is False
+        assert "instance_url" in result["message"]
+
+    def test_no_headers(self, auth_manager, server_config):
+        auth_manager.get_headers.return_value = None
+
+        from servicenow_mcp.tools.pa_tools import delete_pa_target
+
+        result = delete_pa_target(auth_manager, server_config, {"target_id": TARGET_SYS_ID})
+        assert result["success"] is False
+        assert "get_headers" in result["message"]
+
+
+# ---------------------------------------------------------------------------
+# _resolve_pa_target_sys_id
+# ---------------------------------------------------------------------------
+
+
+class TestResolvePATargetSysId:
+    def test_hex_string_returned_directly(self):
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_target_sys_id
+
+        # SYS_ID_32 = "a"*32 is a valid hex string
+        result = _resolve_pa_target_sys_id(SYS_ID_32, "https://example.service-now.com", {})
+        assert result == SYS_ID_32
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_non_hex_lookup_succeeds(self, mock_req):
+        resp = MagicMock()
+        resp.json.return_value = {"result": [{"sys_id": TARGET_SYS_ID}]}
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_target_sys_id
+
+        result = _resolve_pa_target_sys_id("nonhex_id", "https://example.service-now.com", {})
+        assert result == TARGET_SYS_ID
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_non_hex_lookup_not_found(self, mock_req):
+        resp = MagicMock()
+        resp.json.return_value = {"result": []}
+        resp.raise_for_status = MagicMock()
+        mock_req.return_value = resp
+
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_target_sys_id
+
+        result = _resolve_pa_target_sys_id("nonhex_id", "https://example.service-now.com", {})
+        assert result is None
+
+    @patch("servicenow_mcp.tools.pa_tools._make_request")
+    def test_request_exception_returns_none(self, mock_req):
+        mock_req.side_effect = requests.exceptions.ConnectionError("fail")
+
+        from servicenow_mcp.tools.pa_tools import _resolve_pa_target_sys_id
+
+        result = _resolve_pa_target_sys_id("nonhex_id", "https://example.service-now.com", {})
+        assert result is None

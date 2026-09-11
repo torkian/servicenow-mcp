@@ -558,6 +558,62 @@ class GetPATargetParams(BaseModel):
     )
 
 
+class CreatePATargetParams(BaseModel):
+    """Parameters for creating a new Performance Analytics target record."""
+
+    indicator_id: str = Field(
+        ...,
+        description=(
+            "sys_id or exact name of the PA indicator this target is associated with. "
+            "Names are resolved to a sys_id automatically."
+        ),
+    )
+    target: Optional[str] = Field(None, description="Desired KPI value for the target period")
+    minimum: Optional[str] = Field(None, description="Minimum acceptable KPI value")
+    maximum: Optional[str] = Field(None, description="Maximum acceptable KPI value")
+    period: Optional[str] = Field(
+        None,
+        description="sys_id or display name of the period record (pa_period table)",
+    )
+    active: Optional[bool] = Field(True, description="Whether the target is active (default true)")
+
+
+class UpdatePATargetParams(BaseModel):
+    """Parameters for updating an existing Performance Analytics target record."""
+
+    target_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA target record to update. "
+            "A 32-character hex string is treated as a sys_id."
+        ),
+    )
+    indicator_id: Optional[str] = Field(
+        None,
+        description=(
+            "sys_id or exact name of the PA indicator to reassign this target to. "
+            "Names are resolved to a sys_id automatically."
+        ),
+    )
+    target: Optional[str] = Field(None, description="New desired KPI value")
+    minimum: Optional[str] = Field(None, description="New minimum acceptable KPI value")
+    maximum: Optional[str] = Field(None, description="New maximum acceptable KPI value")
+    period: Optional[str] = Field(
+        None,
+        description="sys_id or display name of the new period record",
+    )
+    active: Optional[bool] = Field(None, description="Whether the target should be active")
+
+
+class DeletePATargetParams(BaseModel):
+    """Parameters for deleting a Performance Analytics target record."""
+
+    target_id: str = Field(
+        ...,
+        description="sys_id of the PA target record to delete.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Formatters
 # ---------------------------------------------------------------------------
@@ -846,6 +902,43 @@ def _resolve_pa_job_sys_id(
             headers=headers,
             params={
                 "sysparm_query": f"name={job_id}",
+                "sysparm_fields": "sys_id",
+                "sysparm_limit": "1",
+                "sysparm_exclude_reference_link": "true",
+            },
+        )
+        response.raise_for_status()
+        results = response.json().get("result", [])
+        if results:
+            return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        pass
+    return None
+
+
+def _resolve_pa_target_sys_id(
+    target_id: str,
+    instance_url: str,
+    headers: Dict,
+) -> Optional[str]:
+    """Resolve a PA target identifier to its sys_id.
+
+    If *target_id* is a 32-character hex string it is returned unchanged.
+    Otherwise a GET against pa_target with ``sys_id=<value>`` lookup is
+    attempted and the first match's sys_id returned.  Returns ``None``
+    when not found.
+    """
+    if len(target_id) == 32 and all(c in "0123456789abcdefABCDEF" for c in target_id):
+        return target_id
+    # For non-hex values try a direct lookup by sys_id query
+    url = f"{instance_url}/api/now/table/{PA_TARGET_TABLE}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"sys_id={target_id}",
                 "sysparm_fields": "sys_id",
                 "sysparm_limit": "1",
                 "sysparm_exclude_reference_link": "true",
@@ -2257,6 +2350,214 @@ def get_pa_target(
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             return {"success": False, "message": f"PA target not found: {validated.target_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+def create_pa_target(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new Performance Analytics target record in the pa_target table.
+
+    A PA target stores the desired, minimum, and maximum KPI values for an
+    indicator over a given period.  The indicator is resolved from name or
+    sys_id automatically.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreatePATargetParams.
+
+    Returns:
+        Dictionary with ``success``, ``target`` (the created record), and
+        ``message`` keys.
+    """
+    result = _unwrap_and_validate_params(params, CreatePATargetParams, required_fields=["indicator_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    indicator_sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+    if not indicator_sys_id:
+        return {
+            "success": False,
+            "message": f"PA indicator not found: {validated.indicator_id}",
+        }
+
+    body: Dict[str, Any] = {
+        "indicator": indicator_sys_id,
+        "active": "true" if validated.active else "false",
+    }
+    if validated.target is not None:
+        body["target"] = validated.target
+    if validated.minimum is not None:
+        body["minimum"] = validated.minimum
+    if validated.maximum is not None:
+        body["maximum"] = validated.maximum
+    if validated.period is not None:
+        body["period"] = validated.period
+
+    url = f"{instance_url}/api/now/table/{PA_TARGET_TABLE}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_TARGET_FIELDS),
+    }
+    try:
+        response = _make_request("POST", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "target": _format_pa_target(data),
+            "message": "PA target created successfully",
+        }
+    except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def update_pa_target(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing Performance Analytics target record.
+
+    Issues a PATCH to pa_target/{sys_id} with only the fields supplied in
+    *params*.  Empty-body calls (no updatable field provided) are rejected
+    before reaching the API.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdatePATargetParams.
+
+    Returns:
+        Dictionary with ``success``, ``target``, and ``message`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, UpdatePATargetParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = validated.target_id
+
+    body: Dict[str, Any] = {}
+    if validated.indicator_id is not None:
+        indicator_sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+        if not indicator_sys_id:
+            return {
+                "success": False,
+                "message": f"PA indicator not found: {validated.indicator_id}",
+            }
+        body["indicator"] = indicator_sys_id
+    if validated.target is not None:
+        body["target"] = validated.target
+    if validated.minimum is not None:
+        body["minimum"] = validated.minimum
+    if validated.maximum is not None:
+        body["maximum"] = validated.maximum
+    if validated.period is not None:
+        body["period"] = validated.period
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{PA_TARGET_TABLE}/{sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_TARGET_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "target": _format_pa_target(data),
+            "message": f"PA target '{sys_id}' updated successfully",
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA target not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def delete_pa_target(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a Performance Analytics target record by sys_id.
+
+    Issues a DELETE to pa_target/{sys_id}.  Returns success on HTTP 204
+    (no content) or 200.  Returns a 404 error when the target is not found.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeletePATargetParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``target_sys_id`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, DeletePATargetParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = validated.target_id
+
+    url = f"{instance_url}/api/now/table/{PA_TARGET_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code in (200, 204):
+            return {
+                "success": True,
+                "message": f"PA target '{sys_id}' deleted successfully",
+                "target_sys_id": sys_id,
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"PA target '{sys_id}' deleted successfully",
+            "target_sys_id": sys_id,
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA target not found: {sys_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}
