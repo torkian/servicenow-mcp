@@ -273,6 +273,96 @@ class GetPAWidgetParams(BaseModel):
     )
 
 
+class CreatePAWidgetParams(BaseModel):
+    """Parameters for creating a new Performance Analytics widget."""
+
+    name: str = Field(..., description="Unique display name for the widget")
+    indicator_id: str = Field(
+        ...,
+        description=(
+            "PA indicator to visualise; accepts sys_id or exact name "
+            "(auto-resolved to sys_id)."
+        ),
+    )
+    widget_type: Optional[str] = Field(
+        None,
+        description=(
+            "Visual type of the widget. Common values: chart, scorecard, breakdown, "
+            "trend, dial, gauge."
+        ),
+    )
+    dashboard_id: Optional[str] = Field(
+        None,
+        description=(
+            "PA dashboard (home_page) to attach this widget to; accepts sys_id or "
+            "exact title (auto-resolved to sys_id)."
+        ),
+    )
+    breakdown_id: Optional[str] = Field(
+        None,
+        description=(
+            "PA breakdown to segment the widget data; accepts sys_id or exact name "
+            "(auto-resolved to sys_id)."
+        ),
+    )
+    description: Optional[str] = Field(None, description="Free-text description of the widget")
+    color: Optional[str] = Field(
+        None,
+        description="Colour for the widget visualisation (e.g. '#0072c6' or a named colour)",
+    )
+    active: Optional[bool] = Field(True, description="Whether the widget is active (default true)")
+
+
+class UpdatePAWidgetParams(BaseModel):
+    """Parameters for updating an existing Performance Analytics widget."""
+
+    widget_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA widget to update, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_widget."
+        ),
+    )
+    name: Optional[str] = Field(None, description="New display name for the widget")
+    indicator_id: Optional[str] = Field(
+        None,
+        description=(
+            "New PA indicator; accepts sys_id or exact name (auto-resolved to sys_id)."
+        ),
+    )
+    widget_type: Optional[str] = Field(None, description="Updated visual type of the widget")
+    dashboard_id: Optional[str] = Field(
+        None,
+        description=(
+            "New PA dashboard to attach this widget to; accepts sys_id or exact title "
+            "(auto-resolved to sys_id)."
+        ),
+    )
+    breakdown_id: Optional[str] = Field(
+        None,
+        description=(
+            "New PA breakdown; accepts sys_id or exact name (auto-resolved to sys_id)."
+        ),
+    )
+    description: Optional[str] = Field(None, description="Updated free-text description")
+    color: Optional[str] = Field(None, description="Updated colour for the widget visualisation")
+    active: Optional[bool] = Field(None, description="Whether the widget is active")
+
+
+class DeletePAWidgetParams(BaseModel):
+    """Parameters for deleting a Performance Analytics widget."""
+
+    widget_id: str = Field(
+        ...,
+        description=(
+            "sys_id of the PA widget to delete, or its exact name. "
+            "A 32-character hex string is treated as a sys_id; anything else is "
+            "resolved via a name= lookup on pa_widget."
+        ),
+    )
+
+
 class ListPABreakdownsParams(BaseModel):
     """Parameters for listing Performance Analytics breakdowns."""
 
@@ -2558,6 +2648,258 @@ def delete_pa_target(
     except requests.exceptions.HTTPError as exc:
         if exc.response is not None and exc.response.status_code == 404:
             return {"success": False, "message": f"PA target not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def create_pa_widget(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Create a new Performance Analytics widget on the pa_widget table.
+
+    A PA widget is a single visualisation element (chart, scorecard,
+    breakdown, etc.) that is placed on a PA dashboard.  Each widget is
+    tied to one PA indicator and, optionally, a breakdown dimension.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching CreatePAWidgetParams.
+
+    Returns:
+        Dictionary with ``success``, ``widget``, and ``message`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, CreatePAWidgetParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Resolve indicator (required)
+    indicator_sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+    if not indicator_sys_id:
+        return {
+            "success": False,
+            "message": f"PA indicator not found: {validated.indicator_id}",
+        }
+
+    body: Dict[str, Any] = {
+        "name": validated.name,
+        "indicator": indicator_sys_id,
+    }
+    if validated.widget_type is not None:
+        body["widget_type"] = validated.widget_type
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.color is not None:
+        body["color"] = validated.color
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.dashboard_id is not None:
+        dash_sys_id = _resolve_pa_dashboard_sys_id(validated.dashboard_id, instance_url, headers)
+        if not dash_sys_id:
+            return {
+                "success": False,
+                "message": f"PA dashboard not found: {validated.dashboard_id}",
+            }
+        body["home_page"] = dash_sys_id
+    if validated.breakdown_id is not None:
+        bkdn_sys_id = _resolve_pa_breakdown_sys_id(validated.breakdown_id, instance_url, headers)
+        if not bkdn_sys_id:
+            return {
+                "success": False,
+                "message": f"PA breakdown not found: {validated.breakdown_id}",
+            }
+        body["breakdown"] = bkdn_sys_id
+
+    url = f"{instance_url}/api/now/table/{PA_WIDGET_TABLE}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_WIDGET_FIELDS),
+    }
+    try:
+        response = _make_request("POST", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "widget": _format_pa_widget(data),
+            "message": f"PA widget '{validated.name}' created successfully",
+        }
+    except requests.exceptions.HTTPError as exc:
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def update_pa_widget(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Update an existing Performance Analytics widget.
+
+    Issues a PATCH to pa_widget/{sys_id} with only the fields supplied in
+    *params*.  Empty-body calls (no updatable field provided) are rejected
+    before reaching the API.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching UpdatePAWidgetParams.
+
+    Returns:
+        Dictionary with ``success``, ``widget``, and ``message`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, UpdatePAWidgetParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_widget_sys_id(validated.widget_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA widget not found: {validated.widget_id}",
+        }
+
+    body: Dict[str, Any] = {}
+    if validated.name is not None:
+        body["name"] = validated.name
+    if validated.widget_type is not None:
+        body["widget_type"] = validated.widget_type
+    if validated.description is not None:
+        body["description"] = validated.description
+    if validated.color is not None:
+        body["color"] = validated.color
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+    if validated.indicator_id is not None:
+        indicator_sys_id = _resolve_pa_indicator_sys_id(validated.indicator_id, instance_url, headers)
+        if not indicator_sys_id:
+            return {
+                "success": False,
+                "message": f"PA indicator not found: {validated.indicator_id}",
+            }
+        body["indicator"] = indicator_sys_id
+    if validated.dashboard_id is not None:
+        dash_sys_id = _resolve_pa_dashboard_sys_id(validated.dashboard_id, instance_url, headers)
+        if not dash_sys_id:
+            return {
+                "success": False,
+                "message": f"PA dashboard not found: {validated.dashboard_id}",
+            }
+        body["home_page"] = dash_sys_id
+    if validated.breakdown_id is not None:
+        bkdn_sys_id = _resolve_pa_breakdown_sys_id(validated.breakdown_id, instance_url, headers)
+        if not bkdn_sys_id:
+            return {
+                "success": False,
+                "message": f"PA breakdown not found: {validated.breakdown_id}",
+            }
+        body["breakdown"] = bkdn_sys_id
+
+    if not body:
+        return {"success": False, "message": "No fields provided to update"}
+
+    url = f"{instance_url}/api/now/table/{PA_WIDGET_TABLE}/{sys_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(PA_WIDGET_FIELDS),
+    }
+    try:
+        response = _make_request("PATCH", url, headers=headers, params=query_params, json=body)
+        response.raise_for_status()
+        data = response.json().get("result", {})
+        return {
+            "success": True,
+            "widget": _format_pa_widget(data),
+            "message": f"PA widget '{sys_id}' updated successfully",
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA widget not found: {sys_id}"}
+        return {"success": False, "message": _format_http_error(exc)}
+    except requests.exceptions.RequestException as exc:
+        return {"success": False, "message": str(exc)}
+
+
+def delete_pa_widget(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Delete a Performance Analytics widget by sys_id or exact name.
+
+    Issues a DELETE to pa_widget/{sys_id}.  Returns success on HTTP 204
+    (no content) or 200.  Returns a 404 error when the widget is not found.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching DeletePAWidgetParams.
+
+    Returns:
+        Dictionary with ``success``, ``message``, and ``widget_sys_id`` keys,
+        or an error message.
+    """
+    result = _unwrap_and_validate_params(params, DeletePAWidgetParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_pa_widget_sys_id(validated.widget_id, instance_url, headers)
+    if not sys_id:
+        return {
+            "success": False,
+            "message": f"PA widget not found: {validated.widget_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{PA_WIDGET_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code in (200, 204):
+            return {
+                "success": True,
+                "message": f"PA widget '{sys_id}' deleted successfully",
+                "widget_sys_id": sys_id,
+            }
+        response.raise_for_status()
+        return {
+            "success": True,
+            "message": f"PA widget '{sys_id}' deleted successfully",
+            "widget_sys_id": sys_id,
+        }
+    except requests.exceptions.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"success": False, "message": f"PA widget not found: {sys_id}"}
         return {"success": False, "message": _format_http_error(exc)}
     except requests.exceptions.RequestException as exc:
         return {"success": False, "message": str(exc)}

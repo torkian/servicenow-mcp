@@ -987,10 +987,12 @@ from servicenow_mcp.tools.assessment_tools import (
 from servicenow_mcp.tools.pa_tools import (
     CreatePAIndicatorParams,
     CreatePATargetParams,
+    CreatePAWidgetParams,
     DeletePABreakdownParams,
     DeletePADashboardParams,
     DeletePAIndicatorParams,
     DeletePATargetParams,
+    DeletePAWidgetParams,
     GetPABreakdownParams,
     GetPADashboardParams,
     GetPAIndicatorParams,
@@ -1009,14 +1011,17 @@ from servicenow_mcp.tools.pa_tools import (
     UpdatePADashboardParams,
     UpdatePAIndicatorParams,
     UpdatePATargetParams,
+    UpdatePAWidgetParams,
 )
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator as create_pa_indicator_tool,
     create_pa_target as create_pa_target_tool,
+    create_pa_widget as create_pa_widget_tool,
     delete_pa_breakdown as delete_pa_breakdown_tool,
     delete_pa_dashboard as delete_pa_dashboard_tool,
     delete_pa_indicator as delete_pa_indicator_tool,
     delete_pa_target as delete_pa_target_tool,
+    delete_pa_widget as delete_pa_widget_tool,
     get_pa_breakdown as get_pa_breakdown_tool,
     get_pa_dashboard as get_pa_dashboard_tool,
     get_pa_indicator as get_pa_indicator_tool,
@@ -1035,6 +1040,7 @@ from servicenow_mcp.tools.pa_tools import (
     update_pa_dashboard as update_pa_dashboard_tool,
     update_pa_indicator as update_pa_indicator_tool,
     update_pa_target as update_pa_target_tool,
+    update_pa_widget as update_pa_widget_tool,
 )
 from servicenow_mcp.tools.syslog_tools import (
     GetSyslogEntryParams,
@@ -4126,6 +4132,48 @@ def get_tool_definitions(
                 "resolved to a sys_id automatically. Returns widget metadata including name, "
                 "description, indicator, widget_type, active flag, home_page (dashboard), "
                 "breakdown, color, and timestamps. "
+                "Required: widget_id (sys_id or exact name)."
+            ),
+            "raw_dict",
+        ),
+        "create_pa_widget": (
+            create_pa_widget_tool,
+            CreatePAWidgetParams,
+            Dict[str, Any],
+            (
+                "Create a new Performance Analytics widget on the pa_widget table. "
+                "PA widgets are individual visualisation elements (charts, scorecards, breakdowns) "
+                "placed on PA dashboards. Each widget is tied to one PA indicator. "
+                "Required: name, indicator_id (sys_id or exact name, auto-resolved). "
+                "Optional: widget_type (chart/scorecard/breakdown/trend/dial/gauge), "
+                "dashboard_id (sys_id or exact title, auto-resolved), "
+                "breakdown_id (sys_id or exact name, auto-resolved), "
+                "description, color, active (default true)."
+            ),
+            "raw_dict",
+        ),
+        "update_pa_widget": (
+            update_pa_widget_tool,
+            UpdatePAWidgetParams,
+            Dict[str, Any],
+            (
+                "Update an existing Performance Analytics widget on the pa_widget table. "
+                "Issues a PATCH with only the supplied fields; empty-body calls are rejected. "
+                "The widget is looked up by sys_id or exact name (auto-resolved). "
+                "Required: widget_id (sys_id or exact name). "
+                "Optional: name, indicator_id, widget_type, dashboard_id, breakdown_id, "
+                "description, color, active."
+            ),
+            "raw_dict",
+        ),
+        "delete_pa_widget": (
+            delete_pa_widget_tool,
+            DeletePAWidgetParams,
+            Dict[str, Any],
+            (
+                "Delete a Performance Analytics widget from the pa_widget table. "
+                "Issues a DELETE; returns success on HTTP 204 or 200, error on 404. "
+                "The widget is looked up by sys_id or exact name (auto-resolved). "
                 "Required: widget_id (sys_id or exact name)."
             ),
             "raw_dict",

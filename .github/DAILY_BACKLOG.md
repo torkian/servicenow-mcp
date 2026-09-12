@@ -1,7 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-(empty — all items completed; will add new improvements next run)
+1. Add create_cmdb_ci_group, update_cmdb_ci_group, delete_cmdb_ci_group tools (list/get already exist)
+2. Add create_ci_affinity, update_ci_affinity, delete_ci_affinity tools (list/get already exist)
+3. Add list_locations and get_location tools (cmn_location table)
+4. Add create_location, update_location, delete_location tools
+5. Add list_departments and get_department tools (cmn_department table)
+6. Add list_companies and get_company tools (core_company table)
+7. Add list_service_offerings and get_service_offering tools (service_offering table)
+8. Add list_user_sessions tool (sys_user_session table)
+9. Add list_catalog_item_categories tool (sc_cat_item_category junction table)
+10. Add update_catalog_item tool (PATCH sc_cat_item fields)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -162,3 +171,4 @@
 156. 2026-09-09 — Add update_pa_dashboard, delete_pa_dashboard, update_pa_breakdown, delete_pa_breakdown tools (PATCH/DELETE on pa_home_page and pa_breakdown tables; sys_id/name resolver; empty-body guards; 404 guards; 4 new Pydantic param models; registered in system_administrator and full packages; 57 new tests; 3596 total tests; 95% total coverage)
 157. 2026-09-10 — Add list_pa_targets and get_pa_target tools (pa_target table; indicator name/sys_id resolver on list; active and date-range filters; get_pa_target by sys_id with 404 guard; 32 new tests; 3628 total tests; registered in system_administrator and full packages)
 158. 2026-09-11 — Add create_pa_target, update_pa_target, delete_pa_target tools (pa_target table; complete CRUD; indicator name/sys_id resolver on create; empty-body guard on update; 404 guards; registered in system_administrator and full packages; 33 new tests; 3661 total tests; 95% total coverage)
+159. 2026-09-12 — Add create_pa_widget, update_pa_widget, delete_pa_widget tools (pa_widget table; complete CRUD; indicator/dashboard/breakdown name/sys_id resolvers on create and update; empty-body guard on update; 404 guards on update and delete; 31 new tests; 3692 total tests; registered in system_administrator and full packages)
