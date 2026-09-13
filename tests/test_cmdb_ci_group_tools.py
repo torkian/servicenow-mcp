@@ -4,12 +4,18 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    CreateCMDBCIGroupParams,
+    DeleteCMDBCIGroupParams,
     GetCMDBCIGroupParams,
     ListCMDBCIGroupsParams,
+    UpdateCMDBCIGroupParams,
     _format_ci_group,
     _build_ci_group_query,
+    create_cmdb_ci_group,
+    delete_cmdb_ci_group,
     get_cmdb_ci_group,
     list_cmdb_ci_groups,
+    update_cmdb_ci_group,
 )
 
 # ---------------------------------------------------------------------------
@@ -391,3 +397,382 @@ def test_list_ci_groups_params_defaults():
     assert p.group_type is None
     assert p.active is None
     assert p.query is None
+
+
+# ---------------------------------------------------------------------------
+# create_cmdb_ci_group — param model
+# ---------------------------------------------------------------------------
+
+
+def test_create_ci_group_params_name_required():
+    """name is required; omitting it raises a validation error."""
+    with pytest.raises(Exception):
+        CreateCMDBCIGroupParams()
+
+
+def test_create_ci_group_params_name_only():
+    """All optional fields can be omitted."""
+    p = CreateCMDBCIGroupParams(name="DB Servers")
+    assert p.name == "DB Servers"
+    assert p.group_type is None
+    assert p.active is None
+    assert p.description is None
+    assert p.manager is None
+
+
+# ---------------------------------------------------------------------------
+# create_cmdb_ci_group — success paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.post")
+def test_create_ci_group_success_minimal(mock_post, config, auth_manager):
+    """Creates a group with name only; returns formatted record."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {"result": RAW_CI_GROUP}
+    mock_post.return_value = mock_resp
+
+    params = CreateCMDBCIGroupParams(name="Production Web Servers")
+    result = create_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" not in result
+    assert "ci_group" in result
+    assert result["ci_group"]["name"] == "Production Web Servers"
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.post")
+def test_create_ci_group_all_fields(mock_post, config, auth_manager):
+    """All optional fields are included in the POST body."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {"result": RAW_CI_GROUP}
+    mock_post.return_value = mock_resp
+
+    params = CreateCMDBCIGroupParams(
+        name="DB Servers",
+        group_type="manual",
+        active=True,
+        description="All database CIs",
+        manager="mgr_sys_id",
+    )
+    create_cmdb_ci_group(config, auth_manager, params)
+
+    body = mock_post.call_args[1]["json"]
+    assert body["name"] == "DB Servers"
+    assert body["type"] == "manual"
+    assert body["active"] == "true"
+    assert body["description"] == "All database CIs"
+    assert body["manager"] == "mgr_sys_id"
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.post")
+def test_create_ci_group_active_false(mock_post, config, auth_manager):
+    """active=False serialises to the string 'false'."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {"result": RAW_CI_GROUP}
+    mock_post.return_value = mock_resp
+
+    params = CreateCMDBCIGroupParams(name="Archived Group", active=False)
+    create_cmdb_ci_group(config, auth_manager, params)
+
+    body = mock_post.call_args[1]["json"]
+    assert body["active"] == "false"
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.post")
+def test_create_ci_group_url_targets_table(mock_post, config, auth_manager):
+    """POST URL targets the cmdb_ci_group table."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {"result": RAW_CI_GROUP}
+    mock_post.return_value = mock_resp
+
+    params = CreateCMDBCIGroupParams(name="Test Group")
+    create_cmdb_ci_group(config, auth_manager, params)
+
+    called_url = mock_post.call_args[0][0]
+    assert "cmdb_ci_group" in called_url
+
+
+# ---------------------------------------------------------------------------
+# create_cmdb_ci_group — error paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.post")
+def test_create_ci_group_http_error(mock_post, config, auth_manager):
+    """HTTP errors are caught and returned as error dict."""
+    import requests
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 400
+    mock_resp.raise_for_status.side_effect = requests.HTTPError(response=mock_resp)
+    mock_post.return_value = mock_resp
+
+    params = CreateCMDBCIGroupParams(name="Bad Group")
+    result = create_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.post")
+def test_create_ci_group_request_exception(mock_post, config, auth_manager):
+    """Network errors are caught and returned as error dict."""
+    import requests
+
+    mock_post.side_effect = requests.RequestException("connection refused")
+
+    params = CreateCMDBCIGroupParams(name="Bad Group")
+    result = create_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+    assert "connection refused" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# update_cmdb_ci_group — param model
+# ---------------------------------------------------------------------------
+
+
+def test_update_ci_group_params_sys_id_required():
+    """sys_id is required."""
+    with pytest.raises(Exception):
+        UpdateCMDBCIGroupParams()
+
+
+def test_update_ci_group_params_all_optional_none():
+    """All update fields default to None."""
+    p = UpdateCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    assert p.name is None
+    assert p.group_type is None
+    assert p.active is None
+    assert p.description is None
+    assert p.manager is None
+
+
+# ---------------------------------------------------------------------------
+# update_cmdb_ci_group — success paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.patch")
+def test_update_ci_group_success(mock_patch, config, auth_manager):
+    """Returns formatted record under 'ci_group' key on success."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_CI_GROUP}
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCMDBCIGroupParams(sys_id=GROUP_SYS_ID, name="Updated Name")
+    result = update_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" not in result
+    assert "ci_group" in result
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.patch")
+def test_update_ci_group_all_fields(mock_patch, config, auth_manager):
+    """All optional fields appear in the PATCH body when set."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_CI_GROUP}
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCMDBCIGroupParams(
+        sys_id=GROUP_SYS_ID,
+        name="Renamed Group",
+        group_type="dynamic",
+        active=False,
+        description="New description",
+        manager="new_mgr_sys_id",
+    )
+    update_cmdb_ci_group(config, auth_manager, params)
+
+    body = mock_patch.call_args[1]["json"]
+    assert body["name"] == "Renamed Group"
+    assert body["type"] == "dynamic"
+    assert body["active"] == "false"
+    assert body["description"] == "New description"
+    assert body["manager"] == "new_mgr_sys_id"
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.patch")
+def test_update_ci_group_url_contains_sys_id(mock_patch, config, auth_manager):
+    """PATCH URL includes the sys_id path segment."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_CI_GROUP}
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCMDBCIGroupParams(sys_id=GROUP_SYS_ID, description="Updated")
+    update_cmdb_ci_group(config, auth_manager, params)
+
+    called_url = mock_patch.call_args[0][0]
+    assert GROUP_SYS_ID in called_url
+
+
+# ---------------------------------------------------------------------------
+# update_cmdb_ci_group — error paths
+# ---------------------------------------------------------------------------
+
+
+def test_update_ci_group_empty_body(config, auth_manager):
+    """Returns error when no update fields are provided."""
+    params = UpdateCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    result = update_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+    assert "No fields" in result["error"]
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.patch")
+def test_update_ci_group_404(mock_patch, config, auth_manager):
+    """Returns structured error when server returns 404."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCMDBCIGroupParams(sys_id=GROUP_SYS_ID, name="New Name")
+    result = update_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+    assert GROUP_SYS_ID in result["error"]
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.patch")
+def test_update_ci_group_http_error(mock_patch, config, auth_manager):
+    """HTTP errors are caught and returned as error dict."""
+    import requests
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_resp.raise_for_status.side_effect = requests.HTTPError(response=mock_resp)
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCMDBCIGroupParams(sys_id=GROUP_SYS_ID, name="Name")
+    result = update_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.patch")
+def test_update_ci_group_request_exception(mock_patch, config, auth_manager):
+    """Network errors are caught and returned as error dict."""
+    import requests
+
+    mock_patch.side_effect = requests.RequestException("timeout")
+
+    params = UpdateCMDBCIGroupParams(sys_id=GROUP_SYS_ID, name="Name")
+    result = update_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+    assert "timeout" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# delete_cmdb_ci_group — param model
+# ---------------------------------------------------------------------------
+
+
+def test_delete_ci_group_params_sys_id_required():
+    """sys_id is required."""
+    with pytest.raises(Exception):
+        DeleteCMDBCIGroupParams()
+
+
+# ---------------------------------------------------------------------------
+# delete_cmdb_ci_group — success paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.delete")
+def test_delete_ci_group_success_204(mock_delete, config, auth_manager):
+    """Returns success dict on 204 No Content response."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 204
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    result = delete_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" not in result
+    assert result["success"] is True
+    assert GROUP_SYS_ID in result["message"]
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.delete")
+def test_delete_ci_group_success_200(mock_delete, config, auth_manager):
+    """Returns success dict on 200 OK response (some SN versions)."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    result = delete_cmdb_ci_group(config, auth_manager, params)
+
+    assert result["success"] is True
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.delete")
+def test_delete_ci_group_url_contains_sys_id(mock_delete, config, auth_manager):
+    """DELETE URL includes the sys_id path segment."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 204
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    delete_cmdb_ci_group(config, auth_manager, params)
+
+    called_url = mock_delete.call_args[0][0]
+    assert GROUP_SYS_ID in called_url
+
+
+# ---------------------------------------------------------------------------
+# delete_cmdb_ci_group — error paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.delete")
+def test_delete_ci_group_404(mock_delete, config, auth_manager):
+    """Returns structured error when server returns 404."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    result = delete_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+    assert GROUP_SYS_ID in result["error"]
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.delete")
+def test_delete_ci_group_http_error(mock_delete, config, auth_manager):
+    """HTTP errors are caught and returned as error dict."""
+    import requests
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 403
+    mock_resp.raise_for_status.side_effect = requests.HTTPError(response=mock_resp)
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    result = delete_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+
+
+@patch("servicenow_mcp.tools.cmdb_ci_group_tools.requests.delete")
+def test_delete_ci_group_request_exception(mock_delete, config, auth_manager):
+    """Network errors are caught and returned as error dict."""
+    import requests
+
+    mock_delete.side_effect = requests.RequestException("connection reset")
+
+    params = DeleteCMDBCIGroupParams(sys_id=GROUP_SYS_ID)
+    result = delete_cmdb_ci_group(config, auth_manager, params)
+
+    assert "error" in result
+    assert "connection reset" in result["error"]

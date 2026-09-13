@@ -1,7 +1,7 @@
 """
 CMDB CI Group tools for the ServiceNow MCP server.
 
-Provides tools for querying CI groups from the cmdb_ci_group table.
+Provides tools for managing CI groups in the cmdb_ci_group table.
 CI groups are logical collections of configuration items used for batch
 maintenance windows, relationship views, and alert groupings.
 """
@@ -65,6 +65,51 @@ class GetCMDBCIGroupParams(BaseModel):
     """Parameters for retrieving a single CMDB CI group."""
 
     sys_id: str = Field(..., description="sys_id of the cmdb_ci_group record to retrieve")
+
+
+class CreateCMDBCIGroupParams(BaseModel):
+    """Parameters for creating a new CMDB CI group."""
+
+    name: str = Field(..., description="Name of the CI group (required, must be unique)")
+    group_type: Optional[str] = Field(
+        None,
+        description=(
+            "Group type stored in the 'type' field "
+            "(e.g. 'manual', 'dynamic', or any value defined in your instance)"
+        ),
+    )
+    active: Optional[bool] = Field(
+        None,
+        description="Whether the group is active. Defaults to True if not specified.",
+    )
+    description: Optional[str] = Field(None, description="Free-text description of the group")
+    manager: Optional[str] = Field(
+        None,
+        description="sys_id of the user record to set as the group manager",
+    )
+
+
+class UpdateCMDBCIGroupParams(BaseModel):
+    """Parameters for updating an existing CMDB CI group."""
+
+    sys_id: str = Field(..., description="sys_id of the cmdb_ci_group record to update")
+    name: Optional[str] = Field(None, description="New name for the CI group")
+    group_type: Optional[str] = Field(
+        None,
+        description="New group type value for the 'type' field",
+    )
+    active: Optional[bool] = Field(None, description="Set active state of the group")
+    description: Optional[str] = Field(None, description="Updated description")
+    manager: Optional[str] = Field(
+        None,
+        description="sys_id of the new manager user record",
+    )
+
+
+class DeleteCMDBCIGroupParams(BaseModel):
+    """Parameters for deleting a CMDB CI group."""
+
+    sys_id: str = Field(..., description="sys_id of the cmdb_ci_group record to delete")
 
 
 # ---------------------------------------------------------------------------
@@ -211,3 +256,133 @@ def get_cmdb_ci_group(
         return {"error": f"CMDB CI group not found: {params.sys_id}"}
 
     return {"ci_group": _format_ci_group(result)}
+
+
+def create_cmdb_ci_group(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateCMDBCIGroupParams,
+) -> Dict[str, Any]:
+    """Create a new CMDB CI group.
+
+    Posts a new record to the cmdb_ci_group table. The ``name`` field is
+    required; all other fields are optional.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for the new group.
+
+    Returns:
+        Dictionary with a ``ci_group`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    url = f"{base_url}/api/now/table/{CMDB_CI_GROUP_TABLE}"
+
+    body: Dict[str, Any] = {"name": params.name}
+    if params.group_type is not None:
+        body["type"] = params.group_type
+    if params.active is not None:
+        body["active"] = "true" if params.active else "false"
+    if params.description is not None:
+        body["description"] = params.description
+    if params.manager is not None:
+        body["manager"] = params.manager
+
+    try:
+        response = requests.post(url, headers=headers, json=body, timeout=30)
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    result = response.json().get("result", {})
+    return {"ci_group": _format_ci_group(result)}
+
+
+def update_cmdb_ci_group(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: UpdateCMDBCIGroupParams,
+) -> Dict[str, Any]:
+    """Update an existing CMDB CI group via PATCH.
+
+    Applies a partial update to the cmdb_ci_group record identified by
+    ``sys_id``. At least one optional field must be supplied.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required sys_id and fields to update.
+
+    Returns:
+        Dictionary with a ``ci_group`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    url = f"{base_url}/api/now/table/{CMDB_CI_GROUP_TABLE}/{params.sys_id}"
+
+    body: Dict[str, Any] = {}
+    if params.name is not None:
+        body["name"] = params.name
+    if params.group_type is not None:
+        body["type"] = params.group_type
+    if params.active is not None:
+        body["active"] = "true" if params.active else "false"
+    if params.description is not None:
+        body["description"] = params.description
+    if params.manager is not None:
+        body["manager"] = params.manager
+
+    if not body:
+        return {"error": "No fields provided for update"}
+
+    try:
+        response = requests.patch(url, headers=headers, json=body, timeout=30)
+        if response.status_code == 404:
+            return {"error": f"CMDB CI group not found: {params.sys_id}"}
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    result = response.json().get("result", {})
+    return {"ci_group": _format_ci_group(result)}
+
+
+def delete_cmdb_ci_group(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: DeleteCMDBCIGroupParams,
+) -> Dict[str, Any]:
+    """Delete a CMDB CI group by sys_id.
+
+    Sends a DELETE request to the cmdb_ci_group table endpoint. Returns
+    a structured error when the record does not exist.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required sys_id.
+
+    Returns:
+        Dictionary with a ``success`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    url = f"{base_url}/api/now/table/{CMDB_CI_GROUP_TABLE}/{params.sys_id}"
+
+    try:
+        response = requests.delete(url, headers=headers, timeout=30)
+        if response.status_code == 404:
+            return {"error": f"CMDB CI group not found: {params.sys_id}"}
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    return {"success": True, "message": f"CMDB CI group {params.sys_id} deleted successfully"}

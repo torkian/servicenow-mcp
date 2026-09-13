@@ -362,14 +362,26 @@ from servicenow_mcp.tools.cmdb_affinity_tools import (
     list_ci_affinities as list_ci_affinities_tool,
 )
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    CreateCMDBCIGroupParams,
+    DeleteCMDBCIGroupParams,
     GetCMDBCIGroupParams,
     ListCMDBCIGroupsParams,
+    UpdateCMDBCIGroupParams,
+)
+from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    create_cmdb_ci_group as create_cmdb_ci_group_tool,
+)
+from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    delete_cmdb_ci_group as delete_cmdb_ci_group_tool,
 )
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     get_cmdb_ci_group as get_cmdb_ci_group_tool,
 )
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     list_cmdb_ci_groups as list_cmdb_ci_groups_tool,
+)
+from servicenow_mcp.tools.cmdb_ci_group_tools import (
+    update_cmdb_ci_group as update_cmdb_ci_group_tool,
 )
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
@@ -2871,6 +2883,39 @@ def get_tool_definitions(
             (
                 "Retrieve a single CMDB CI group by its sys_id from the "
                 "cmdb_ci_group table. Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "create_cmdb_ci_group": (
+            create_cmdb_ci_group_tool,
+            CreateCMDBCIGroupParams,
+            Dict[str, Any],
+            (
+                "Create a new CMDB CI group in the cmdb_ci_group table. "
+                "Required: name. Optional: group_type (type field value), "
+                "active (boolean), description, manager (user sys_id)."
+            ),
+            "raw_dict",
+        ),
+        "update_cmdb_ci_group": (
+            update_cmdb_ci_group_tool,
+            UpdateCMDBCIGroupParams,
+            Dict[str, Any],
+            (
+                "Update an existing CMDB CI group via PATCH. "
+                "Required: sys_id. Optional updatable fields: name, group_type, "
+                "active, description, manager (user sys_id). "
+                "Returns error if no fields are provided or the record is not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_cmdb_ci_group": (
+            delete_cmdb_ci_group_tool,
+            DeleteCMDBCIGroupParams,
+            Dict[str, Any],
+            (
+                "Delete a CMDB CI group by sys_id from the cmdb_ci_group table. "
+                "Returns a structured error when the record does not exist."
             ),
             "raw_dict",
         ),

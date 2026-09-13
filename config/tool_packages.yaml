@@ -362,6 +362,9 @@ system_administrator:
   # CMDB CI Groups
   - list_cmdb_ci_groups
   - get_cmdb_ci_group
+  - create_cmdb_ci_group
+  - update_cmdb_ci_group
+  - delete_cmdb_ci_group
   # CMDB Relationships
   - list_ci_relationships
   - get_ci_relationship
@@ -656,6 +659,9 @@ full:
   # CMDB CI Groups
   - list_cmdb_ci_groups
   - get_cmdb_ci_group
+  - create_cmdb_ci_group
+  - update_cmdb_ci_group
+  - delete_cmdb_ci_group
   # CMDB Relationships
   - list_ci_relationships
   - get_ci_relationship
