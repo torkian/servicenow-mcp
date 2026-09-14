@@ -74,6 +74,59 @@ class GetCIAffinityParams(BaseModel):
     sys_id: str = Field(..., description="sys_id of the cmdb_ci_affinity record to retrieve")
 
 
+class CreateCIAffinityParams(BaseModel):
+    """Parameters for creating a new CI affinity rule."""
+
+    name: str = Field(..., description="Name of the affinity rule (required, must be unique)")
+    affinity_type: Optional[str] = Field(
+        None,
+        description=(
+            "Affinity type value for the 'type' field "
+            "(e.g. 'affinity', 'anti_affinity', or any custom value in your instance)"
+        ),
+    )
+    active: Optional[bool] = Field(
+        None,
+        description="Whether the rule is active. Defaults to True if not specified.",
+    )
+    description: Optional[str] = Field(None, description="Free-text description of the affinity rule")
+    scope: Optional[str] = Field(
+        None,
+        description="sys_id of the application scope for the rule",
+    )
+    condition: Optional[str] = Field(
+        None,
+        description="Encoded query condition string defining CI membership criteria",
+    )
+
+
+class UpdateCIAffinityParams(BaseModel):
+    """Parameters for updating an existing CI affinity rule."""
+
+    sys_id: str = Field(..., description="sys_id of the cmdb_ci_affinity record to update")
+    name: Optional[str] = Field(None, description="New name for the affinity rule")
+    affinity_type: Optional[str] = Field(
+        None,
+        description="New affinity type value for the 'type' field",
+    )
+    active: Optional[bool] = Field(None, description="Set active state of the rule")
+    description: Optional[str] = Field(None, description="Updated description")
+    scope: Optional[str] = Field(
+        None,
+        description="sys_id of the new application scope",
+    )
+    condition: Optional[str] = Field(
+        None,
+        description="Updated encoded query condition string",
+    )
+
+
+class DeleteCIAffinityParams(BaseModel):
+    """Parameters for deleting a CI affinity rule."""
+
+    sys_id: str = Field(..., description="sys_id of the cmdb_ci_affinity record to delete")
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -220,3 +273,137 @@ def get_ci_affinity(
         return {"error": f"CI affinity record not found: {params.sys_id}"}
 
     return {"affinity": _format_affinity(result)}
+
+
+def create_ci_affinity(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateCIAffinityParams,
+) -> Dict[str, Any]:
+    """Create a new CMDB CI affinity rule.
+
+    Posts a new record to the cmdb_ci_affinity table. The ``name`` field is
+    required; all other fields are optional.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for the new affinity rule.
+
+    Returns:
+        Dictionary with an ``affinity`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    url = f"{base_url}/api/now/table/{CMDB_CI_AFFINITY_TABLE}"
+
+    body: Dict[str, Any] = {"name": params.name}
+    if params.affinity_type is not None:
+        body["type"] = params.affinity_type
+    if params.active is not None:
+        body["active"] = "true" if params.active else "false"
+    if params.description is not None:
+        body["description"] = params.description
+    if params.scope is not None:
+        body["scope"] = params.scope
+    if params.condition is not None:
+        body["condition"] = params.condition
+
+    try:
+        response = requests.post(url, headers=headers, json=body, timeout=30)
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    result = response.json().get("result", {})
+    return {"affinity": _format_affinity(result)}
+
+
+def update_ci_affinity(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: UpdateCIAffinityParams,
+) -> Dict[str, Any]:
+    """Update an existing CMDB CI affinity rule via PATCH.
+
+    Applies a partial update to the cmdb_ci_affinity record identified by
+    ``sys_id``. At least one optional field must be supplied.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required sys_id and fields to update.
+
+    Returns:
+        Dictionary with an ``affinity`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    url = f"{base_url}/api/now/table/{CMDB_CI_AFFINITY_TABLE}/{params.sys_id}"
+
+    body: Dict[str, Any] = {}
+    if params.name is not None:
+        body["name"] = params.name
+    if params.affinity_type is not None:
+        body["type"] = params.affinity_type
+    if params.active is not None:
+        body["active"] = "true" if params.active else "false"
+    if params.description is not None:
+        body["description"] = params.description
+    if params.scope is not None:
+        body["scope"] = params.scope
+    if params.condition is not None:
+        body["condition"] = params.condition
+
+    if not body:
+        return {"error": "No fields provided for update"}
+
+    try:
+        response = requests.patch(url, headers=headers, json=body, timeout=30)
+        if response.status_code == 404:
+            return {"error": f"CI affinity record not found: {params.sys_id}"}
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    result = response.json().get("result", {})
+    return {"affinity": _format_affinity(result)}
+
+
+def delete_ci_affinity(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: DeleteCIAffinityParams,
+) -> Dict[str, Any]:
+    """Delete a CMDB CI affinity rule by sys_id.
+
+    Sends a DELETE request to the cmdb_ci_affinity table endpoint. Returns
+    a structured error when the record does not exist.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required sys_id.
+
+    Returns:
+        Dictionary with a ``success`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    url = f"{base_url}/api/now/table/{CMDB_CI_AFFINITY_TABLE}/{params.sys_id}"
+
+    try:
+        response = requests.delete(url, headers=headers, timeout=30)
+        if response.status_code == 404:
+            return {"error": f"CI affinity record not found: {params.sys_id}"}
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    return {"success": True, "message": f"CI affinity record {params.sys_id} deleted successfully"}

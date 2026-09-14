@@ -352,14 +352,26 @@ from servicenow_mcp.tools.changeset_tools import (
     update_changeset as update_changeset_tool,
 )
 from servicenow_mcp.tools.cmdb_affinity_tools import (
+    CreateCIAffinityParams,
+    DeleteCIAffinityParams,
     GetCIAffinityParams,
     ListCIAffinitiesParams,
+    UpdateCIAffinityParams,
+)
+from servicenow_mcp.tools.cmdb_affinity_tools import (
+    create_ci_affinity as create_ci_affinity_tool,
+)
+from servicenow_mcp.tools.cmdb_affinity_tools import (
+    delete_ci_affinity as delete_ci_affinity_tool,
 )
 from servicenow_mcp.tools.cmdb_affinity_tools import (
     get_ci_affinity as get_ci_affinity_tool,
 )
 from servicenow_mcp.tools.cmdb_affinity_tools import (
     list_ci_affinities as list_ci_affinities_tool,
+)
+from servicenow_mcp.tools.cmdb_affinity_tools import (
+    update_ci_affinity as update_ci_affinity_tool,
 )
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     CreateCMDBCIGroupParams,
@@ -2860,6 +2872,40 @@ def get_tool_definitions(
             (
                 "Retrieve a single CMDB CI affinity rule by its sys_id from the "
                 "cmdb_ci_affinity table. Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "create_ci_affinity": (
+            create_ci_affinity_tool,
+            CreateCIAffinityParams,
+            Dict[str, Any],
+            (
+                "Create a new CMDB CI affinity rule in the cmdb_ci_affinity table. "
+                "Required: name. Optional: affinity_type (type field value), "
+                "active (boolean), description, scope (app scope sys_id), "
+                "condition (encoded query string)."
+            ),
+            "raw_dict",
+        ),
+        "update_ci_affinity": (
+            update_ci_affinity_tool,
+            UpdateCIAffinityParams,
+            Dict[str, Any],
+            (
+                "Update an existing CMDB CI affinity rule via PATCH. "
+                "Required: sys_id. Optional updatable fields: name, affinity_type, "
+                "active, description, scope, condition. "
+                "Returns error if no fields are provided or the record is not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_ci_affinity": (
+            delete_ci_affinity_tool,
+            DeleteCIAffinityParams,
+            Dict[str, Any],
+            (
+                "Delete a CMDB CI affinity rule by sys_id from the cmdb_ci_affinity table. "
+                "Returns a structured error when the record does not exist."
             ),
             "raw_dict",
         ),

@@ -359,6 +359,9 @@ system_administrator:
   # CMDB Affinity
   - list_ci_affinities
   - get_ci_affinity
+  - create_ci_affinity
+  - update_ci_affinity
+  - delete_ci_affinity
   # CMDB CI Groups
   - list_cmdb_ci_groups
   - get_cmdb_ci_group
@@ -656,6 +659,9 @@ full:
   # CMDB Affinity
   - list_ci_affinities
   - get_ci_affinity
+  - create_ci_affinity
+  - update_ci_affinity
+  - delete_ci_affinity
   # CMDB CI Groups
   - list_cmdb_ci_groups
   - get_cmdb_ci_group

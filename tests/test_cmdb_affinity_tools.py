@@ -4,11 +4,17 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.cmdb_affinity_tools import (
+    CreateCIAffinityParams,
+    DeleteCIAffinityParams,
     GetCIAffinityParams,
     ListCIAffinitiesParams,
+    UpdateCIAffinityParams,
     _format_affinity,
+    create_ci_affinity,
+    delete_ci_affinity,
     get_ci_affinity,
     list_ci_affinities,
+    update_ci_affinity,
 )
 
 # ---------------------------------------------------------------------------
@@ -398,3 +404,336 @@ def test_list_ci_affinities_combined_filters():
     assert "nameLIKEWeb" in query
     assert "type=affinity" in query
     assert "active=true" in query
+
+
+# ---------------------------------------------------------------------------
+# create_ci_affinity — success paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.post")
+def test_create_ci_affinity_minimal(mock_post, config, auth_manager):
+    """Creates a record with only the required name field."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {"result": dict(RAW_AFFINITY, name="New Rule")}
+    mock_post.return_value = mock_resp
+
+    params = CreateCIAffinityParams(name="New Rule")
+    result = create_ci_affinity(config, auth_manager, params)
+
+    assert "affinity" in result
+    assert result["affinity"]["name"] == "New Rule"
+    body = mock_post.call_args[1]["json"]
+    assert body["name"] == "New Rule"
+    assert "type" not in body
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.post")
+def test_create_ci_affinity_all_fields(mock_post, config, auth_manager):
+    """All optional fields are included in the POST body when provided."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {"result": RAW_AFFINITY}
+    mock_post.return_value = mock_resp
+
+    params = CreateCIAffinityParams(
+        name="Web Tier Affinity",
+        affinity_type="affinity",
+        active=True,
+        description="Keep web servers together",
+        scope="scope_sys_id_123",
+        condition="sys_class_name=cmdb_ci_web_server",
+    )
+    result = create_ci_affinity(config, auth_manager, params)
+
+    assert "affinity" in result
+    body = mock_post.call_args[1]["json"]
+    assert body["name"] == "Web Tier Affinity"
+    assert body["type"] == "affinity"
+    assert body["active"] == "true"
+    assert body["description"] == "Keep web servers together"
+    assert body["scope"] == "scope_sys_id_123"
+    assert body["condition"] == "sys_class_name=cmdb_ci_web_server"
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.post")
+def test_create_ci_affinity_active_false(mock_post, config, auth_manager):
+    """active=False is serialised as the string 'false'."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 201
+    mock_resp.json.return_value = {"result": RAW_AFFINITY}
+    mock_post.return_value = mock_resp
+
+    params = CreateCIAffinityParams(name="Inactive Rule", active=False)
+    create_ci_affinity(config, auth_manager, params)
+
+    body = mock_post.call_args[1]["json"]
+    assert body["active"] == "false"
+
+
+# ---------------------------------------------------------------------------
+# create_ci_affinity — error paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.post")
+def test_create_ci_affinity_http_error(mock_post, config, auth_manager):
+    """HTTP errors are caught and returned as error dict."""
+    import requests
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 400
+    mock_resp.raise_for_status.side_effect = requests.HTTPError(response=mock_resp)
+    mock_post.return_value = mock_resp
+
+    params = CreateCIAffinityParams(name="Bad Rule")
+    result = create_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.post")
+def test_create_ci_affinity_request_exception(mock_post, config, auth_manager):
+    """Network errors are caught and returned as error dict."""
+    import requests
+
+    mock_post.side_effect = requests.RequestException("connection reset")
+
+    params = CreateCIAffinityParams(name="Offline Rule")
+    result = create_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+    assert "connection reset" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# update_ci_affinity — success paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.patch")
+def test_update_ci_affinity_name(mock_patch, config, auth_manager):
+    """Updating only the name sends correct PATCH body."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": dict(RAW_AFFINITY, name="Renamed Rule")}
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCIAffinityParams(sys_id=AFFINITY_SYS_ID, name="Renamed Rule")
+    result = update_ci_affinity(config, auth_manager, params)
+
+    assert "affinity" in result
+    body = mock_patch.call_args[1]["json"]
+    assert body == {"name": "Renamed Rule"}
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.patch")
+def test_update_ci_affinity_all_fields(mock_patch, config, auth_manager):
+    """All optional fields are sent when provided."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_resp.json.return_value = {"result": RAW_AFFINITY}
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCIAffinityParams(
+        sys_id=AFFINITY_SYS_ID,
+        name="Updated Name",
+        affinity_type="anti_affinity",
+        active=False,
+        description="Updated desc",
+        scope="new_scope_id",
+        condition="sys_class_name=cmdb_ci_db_instance",
+    )
+    update_ci_affinity(config, auth_manager, params)
+
+    body = mock_patch.call_args[1]["json"]
+    assert body["name"] == "Updated Name"
+    assert body["type"] == "anti_affinity"
+    assert body["active"] == "false"
+    assert body["description"] == "Updated desc"
+    assert body["scope"] == "new_scope_id"
+    assert body["condition"] == "sys_class_name=cmdb_ci_db_instance"
+
+
+# ---------------------------------------------------------------------------
+# update_ci_affinity — error paths
+# ---------------------------------------------------------------------------
+
+
+def test_update_ci_affinity_no_fields(config, auth_manager):
+    """Returns error when no updatable fields are supplied."""
+    params = UpdateCIAffinityParams(sys_id=AFFINITY_SYS_ID)
+    result = update_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+    assert "No fields" in result["error"]
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.patch")
+def test_update_ci_affinity_404(mock_patch, config, auth_manager):
+    """Returns structured error when the server returns 404."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCIAffinityParams(sys_id=AFFINITY_SYS_ID, name="Ghost")
+    result = update_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+    assert AFFINITY_SYS_ID in result["error"]
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.patch")
+def test_update_ci_affinity_http_error(mock_patch, config, auth_manager):
+    """HTTP errors are caught and returned as error dict."""
+    import requests
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 500
+    mock_resp.raise_for_status.side_effect = requests.HTTPError(response=mock_resp)
+    mock_patch.return_value = mock_resp
+
+    params = UpdateCIAffinityParams(sys_id=AFFINITY_SYS_ID, name="Fail")
+    result = update_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.patch")
+def test_update_ci_affinity_request_exception(mock_patch, config, auth_manager):
+    """Network errors are caught and returned as error dict."""
+    import requests
+
+    mock_patch.side_effect = requests.RequestException("network down")
+
+    params = UpdateCIAffinityParams(sys_id=AFFINITY_SYS_ID, name="Offline")
+    result = update_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+    assert "network down" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# delete_ci_affinity — success paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.delete")
+def test_delete_ci_affinity_success_204(mock_delete, config, auth_manager):
+    """Returns success dict on HTTP 204 No Content."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 204
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCIAffinityParams(sys_id=AFFINITY_SYS_ID)
+    result = delete_ci_affinity(config, auth_manager, params)
+
+    assert result["success"] is True
+    assert AFFINITY_SYS_ID in result["message"]
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.delete")
+def test_delete_ci_affinity_success_200(mock_delete, config, auth_manager):
+    """Returns success dict on HTTP 200 as well."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 200
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCIAffinityParams(sys_id=AFFINITY_SYS_ID)
+    result = delete_ci_affinity(config, auth_manager, params)
+
+    assert result["success"] is True
+
+
+# ---------------------------------------------------------------------------
+# delete_ci_affinity — error paths
+# ---------------------------------------------------------------------------
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.delete")
+def test_delete_ci_affinity_404(mock_delete, config, auth_manager):
+    """Returns structured error when the server returns 404."""
+    mock_resp = MagicMock()
+    mock_resp.status_code = 404
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCIAffinityParams(sys_id=AFFINITY_SYS_ID)
+    result = delete_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+    assert AFFINITY_SYS_ID in result["error"]
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.delete")
+def test_delete_ci_affinity_http_error(mock_delete, config, auth_manager):
+    """HTTP errors are caught and returned as error dict."""
+    import requests
+
+    mock_resp = MagicMock()
+    mock_resp.status_code = 403
+    mock_resp.raise_for_status.side_effect = requests.HTTPError(response=mock_resp)
+    mock_delete.return_value = mock_resp
+
+    params = DeleteCIAffinityParams(sys_id=AFFINITY_SYS_ID)
+    result = delete_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+
+
+@patch("servicenow_mcp.tools.cmdb_affinity_tools.requests.delete")
+def test_delete_ci_affinity_request_exception(mock_delete, config, auth_manager):
+    """Network errors are caught and returned as error dict."""
+    import requests
+
+    mock_delete.side_effect = requests.RequestException("socket error")
+
+    params = DeleteCIAffinityParams(sys_id=AFFINITY_SYS_ID)
+    result = delete_ci_affinity(config, auth_manager, params)
+
+    assert "error" in result
+    assert "socket error" in result["error"]
+
+
+# ---------------------------------------------------------------------------
+# Param model validation
+# ---------------------------------------------------------------------------
+
+
+def test_create_ci_affinity_params_requires_name():
+    """Missing name raises a validation error."""
+    with pytest.raises(Exception):
+        CreateCIAffinityParams()
+
+
+def test_update_ci_affinity_params_requires_sys_id():
+    """Missing sys_id raises a validation error."""
+    with pytest.raises(Exception):
+        UpdateCIAffinityParams()
+
+
+def test_delete_ci_affinity_params_requires_sys_id():
+    """Missing sys_id raises a validation error."""
+    with pytest.raises(Exception):
+        DeleteCIAffinityParams()
+
+
+def test_create_ci_affinity_params_defaults():
+    """Optional fields default to None."""
+    p = CreateCIAffinityParams(name="Test")
+    assert p.affinity_type is None
+    assert p.active is None
+    assert p.description is None
+    assert p.scope is None
+    assert p.condition is None
+
+
+def test_update_ci_affinity_params_defaults():
+    """All optional fields default to None."""
+    p = UpdateCIAffinityParams(sys_id=AFFINITY_SYS_ID)
+    assert p.name is None
+    assert p.affinity_type is None
+    assert p.active is None
+    assert p.description is None
+    assert p.scope is None
+    assert p.condition is None

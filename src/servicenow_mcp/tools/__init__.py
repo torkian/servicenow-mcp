@@ -99,8 +99,11 @@ from servicenow_mcp.tools.changeset_tools import (
     update_changeset,
 )
 from servicenow_mcp.tools.cmdb_affinity_tools import (
+    create_ci_affinity as create_ci_affinity,
+    delete_ci_affinity as delete_ci_affinity,
     get_ci_affinity as get_ci_affinity,
     list_ci_affinities as list_ci_affinities,
+    update_ci_affinity as update_ci_affinity,
 )
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     create_cmdb_ci_group as create_cmdb_ci_group,
