@@ -395,6 +395,16 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     update_cmdb_ci_group as update_cmdb_ci_group_tool,
 )
+from servicenow_mcp.tools.location_tools import (
+    GetLocationParams,
+    ListLocationsParams,
+)
+from servicenow_mcp.tools.location_tools import (
+    get_location as get_location_tool,
+)
+from servicenow_mcp.tools.location_tools import (
+    list_locations as list_locations_tool,
+)
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
     DeleteCIRelationshipParams,
@@ -2962,6 +2972,30 @@ def get_tool_definitions(
             (
                 "Delete a CMDB CI group by sys_id from the cmdb_ci_group table. "
                 "Returns a structured error when the record does not exist."
+            ),
+            "raw_dict",
+        ),
+        "list_locations": (
+            list_locations_tool,
+            ListLocationsParams,
+            Dict[str, Any],
+            (
+                "List location records from the cmn_location table. Locations represent "
+                "physical addresses and offices used across incidents, users, assets, and CIs. "
+                "Filters: name (substring), city (substring), country (substring), "
+                "company (substring or sys_id). Supports pagination with limit/offset."
+            ),
+            "raw_dict",
+        ),
+        "get_location": (
+            get_location_tool,
+            GetLocationParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single location record from the cmn_location table by sys_id "
+                "or exact name. Returns address fields (street, city, state, country, zip), "
+                "coordinates (latitude/longitude), phone, time_zone, parent location, "
+                "company, and contact. Returns 404-style error when not found."
             ),
             "raw_dict",
         ),

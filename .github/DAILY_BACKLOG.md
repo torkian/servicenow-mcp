@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_locations and get_location tools (cmn_location table)
-4. Add create_location, update_location, delete_location tools
+1. Add create_location, update_location, delete_location tools
 5. Add list_departments and get_department tools (cmn_department table)
 6. Add list_companies and get_company tools (core_company table)
 7. Add list_service_offerings and get_service_offering tools (service_offering table)
@@ -172,3 +171,4 @@
 159. 2026-09-12 — Add create_pa_widget, update_pa_widget, delete_pa_widget tools (pa_widget table; complete CRUD; indicator/dashboard/breakdown name/sys_id resolvers on create and update; empty-body guard on update; 404 guards on update and delete; 31 new tests; 3692 total tests; registered in system_administrator and full packages)
 160. 2026-09-13 — Add create_cmdb_ci_group, update_cmdb_ci_group, delete_cmdb_ci_group tools (cmdb_ci_group table; complete CRUD; active boolean serialised as string; empty-body guard on update; 404 guards on update and delete; 24 new tests; 3716 total tests; registered in system_administrator and full packages; 95% total coverage)
 161. 2026-09-14 — Add create_ci_affinity, update_ci_affinity, delete_ci_affinity tools (cmdb_ci_affinity table; complete CRUD; optional affinity_type/active/description/scope/condition fields; active serialised as string; empty-body guard on update; 404 guards on update and delete; 21 new tests; 3737 total tests; registered in system_administrator and full packages; 95% total coverage)
+162. 2026-09-15 — Add list_locations and get_location tools (cmn_location table; list supports name/city/country/company substring filters and pagination; get resolves by sys_id or exact name; reference fields normalised; 27 new tests; 3764 total tests; registered in system_administrator and full packages; 95% total coverage)
