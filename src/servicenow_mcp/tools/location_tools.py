@@ -73,6 +73,57 @@ class GetLocationParams(BaseModel):
     )
 
 
+class CreateLocationParams(BaseModel):
+    """Parameters for creating a new location."""
+
+    name: str = Field(..., description="Name of the location (required)")
+    street: Optional[str] = Field(None, description="Street address")
+    city: Optional[str] = Field(None, description="City name")
+    state: Optional[str] = Field(None, description="State or province")
+    country: Optional[str] = Field(None, description="Country code or name")
+    zip: Optional[str] = Field(None, description="Postal / ZIP code")
+    phone: Optional[str] = Field(None, description="Phone number")
+    fax: Optional[str] = Field(None, description="Fax number")
+    latitude: Optional[str] = Field(None, description="Latitude coordinate")
+    longitude: Optional[str] = Field(None, description="Longitude coordinate")
+    time_zone: Optional[str] = Field(None, description="Time zone (e.g. 'America/New_York')")
+    parent: Optional[str] = Field(None, description="sys_id of parent location")
+    company: Optional[str] = Field(None, description="sys_id of associated company record")
+    contact: Optional[str] = Field(None, description="sys_id of the contact user record")
+
+
+class UpdateLocationParams(BaseModel):
+    """Parameters for updating an existing location."""
+
+    location_id: str = Field(
+        ...,
+        description="sys_id or exact name of the location to update",
+    )
+    name: Optional[str] = Field(None, description="New name for the location")
+    street: Optional[str] = Field(None, description="Updated street address")
+    city: Optional[str] = Field(None, description="Updated city")
+    state: Optional[str] = Field(None, description="Updated state or province")
+    country: Optional[str] = Field(None, description="Updated country")
+    zip: Optional[str] = Field(None, description="Updated postal / ZIP code")
+    phone: Optional[str] = Field(None, description="Updated phone number")
+    fax: Optional[str] = Field(None, description="Updated fax number")
+    latitude: Optional[str] = Field(None, description="Updated latitude")
+    longitude: Optional[str] = Field(None, description="Updated longitude")
+    time_zone: Optional[str] = Field(None, description="Updated time zone")
+    parent: Optional[str] = Field(None, description="sys_id of new parent location")
+    company: Optional[str] = Field(None, description="sys_id of new company record")
+    contact: Optional[str] = Field(None, description="sys_id of new contact user record")
+
+
+class DeleteLocationParams(BaseModel):
+    """Parameters for deleting a location."""
+
+    location_id: str = Field(
+        ...,
+        description="sys_id or exact name of the location to delete",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -261,3 +312,139 @@ def get_location(
         return {"error": f"Location not found: {params.location_id}"}
 
     return {"location": _format_location(result)}
+
+
+def create_location(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateLocationParams,
+) -> Dict[str, Any]:
+    """Create a new location record in the cmn_location table.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters for the new location.
+
+    Returns:
+        Dictionary with a ``location`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+    url = f"{base_url}/api/now/table/{LOCATION_TABLE}"
+
+    body: Dict[str, Any] = {"name": params.name}
+    for field in (
+        "street", "city", "state", "country", "zip",
+        "phone", "fax", "latitude", "longitude",
+        "time_zone", "parent", "company", "contact",
+    ):
+        value = getattr(params, field)
+        if value is not None:
+            body[field] = value
+
+    try:
+        response = requests.post(url, headers=headers, json=body, timeout=30)
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    result = response.json().get("result", {})
+    return {"location": _format_location(result)}
+
+
+def update_location(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: UpdateLocationParams,
+) -> Dict[str, Any]:
+    """Update an existing location via PATCH.
+
+    Applies a partial update to the cmn_location record identified by
+    ``location_id`` (sys_id or name). At least one optional field must be
+    supplied.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required location_id and fields to update.
+
+    Returns:
+        Dictionary with a ``location`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+
+    sys_id = _resolve_location_sys_id(base_url, headers, params.location_id)
+    if not sys_id:
+        return {"error": f"Location not found: {params.location_id}"}
+
+    url = f"{base_url}/api/now/table/{LOCATION_TABLE}/{sys_id}"
+
+    body: Dict[str, Any] = {}
+    for field in (
+        "name", "street", "city", "state", "country", "zip",
+        "phone", "fax", "latitude", "longitude",
+        "time_zone", "parent", "company", "contact",
+    ):
+        value = getattr(params, field)
+        if value is not None:
+            body[field] = value
+
+    if not body:
+        return {"error": "No fields provided for update"}
+
+    try:
+        response = requests.patch(url, headers=headers, json=body, timeout=30)
+        if response.status_code == 404:
+            return {"error": f"Location not found: {params.location_id}"}
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    result = response.json().get("result", {})
+    return {"location": _format_location(result)}
+
+
+def delete_location(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: DeleteLocationParams,
+) -> Dict[str, Any]:
+    """Delete a location record from the cmn_location table.
+
+    Resolves the location by sys_id or exact name, then sends a DELETE
+    request. Returns a structured error when the record does not exist.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required location_id.
+
+    Returns:
+        Dictionary with a ``success`` key on success, or ``error`` on failure.
+    """
+    headers = auth_manager.get_headers()
+    base_url = config.instance_url.rstrip("/")
+
+    sys_id = _resolve_location_sys_id(base_url, headers, params.location_id)
+    if not sys_id:
+        return {"error": f"Location not found: {params.location_id}"}
+
+    url = f"{base_url}/api/now/table/{LOCATION_TABLE}/{sys_id}"
+
+    try:
+        response = requests.delete(url, headers=headers, timeout=30)
+        if response.status_code == 404:
+            return {"error": f"Location not found: {params.location_id}"}
+        response.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": f"HTTP {exc.response.status_code}: {exc}"}
+    except requests.RequestException as exc:
+        return {"error": f"Request failed: {exc}"}
+
+    return {"success": True, "message": f"Location {sys_id} deleted successfully"}

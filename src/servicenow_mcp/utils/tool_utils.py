@@ -396,14 +396,26 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
     update_cmdb_ci_group as update_cmdb_ci_group_tool,
 )
 from servicenow_mcp.tools.location_tools import (
+    CreateLocationParams,
+    DeleteLocationParams,
     GetLocationParams,
     ListLocationsParams,
+    UpdateLocationParams,
+)
+from servicenow_mcp.tools.location_tools import (
+    create_location as create_location_tool,
+)
+from servicenow_mcp.tools.location_tools import (
+    delete_location as delete_location_tool,
 )
 from servicenow_mcp.tools.location_tools import (
     get_location as get_location_tool,
 )
 from servicenow_mcp.tools.location_tools import (
     list_locations as list_locations_tool,
+)
+from servicenow_mcp.tools.location_tools import (
+    update_location as update_location_tool,
 )
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
@@ -2996,6 +3008,42 @@ def get_tool_definitions(
                 "or exact name. Returns address fields (street, city, state, country, zip), "
                 "coordinates (latitude/longitude), phone, time_zone, parent location, "
                 "company, and contact. Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "create_location": (
+            create_location_tool,
+            CreateLocationParams,
+            Dict[str, Any],
+            (
+                "Create a new location record in the cmn_location table. "
+                "Required: name. Optional: street, city, state, country, zip, phone, fax, "
+                "latitude, longitude, time_zone, parent (sys_id), company (sys_id), "
+                "contact (sys_id)."
+            ),
+            "raw_dict",
+        ),
+        "update_location": (
+            update_location_tool,
+            UpdateLocationParams,
+            Dict[str, Any],
+            (
+                "Update an existing location record via PATCH. "
+                "Required: location_id (sys_id or exact name). Optional updatable fields: "
+                "name, street, city, state, country, zip, phone, fax, latitude, longitude, "
+                "time_zone, parent, company, contact. "
+                "Returns error if no fields provided or record not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_location": (
+            delete_location_tool,
+            DeleteLocationParams,
+            Dict[str, Any],
+            (
+                "Delete a location record from the cmn_location table. "
+                "Required: location_id (sys_id or exact name). "
+                "Returns a structured error when the record does not exist."
             ),
             "raw_dict",
         ),

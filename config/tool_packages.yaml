@@ -378,6 +378,9 @@ system_administrator:
   # Locations
   - list_locations
   - get_location
+  - create_location
+  - update_location
+  - delete_location
   # Incident Management (destructive)
   - delete_incident
   # Asset Management
@@ -681,6 +684,9 @@ full:
   # Locations
   - list_locations
   - get_location
+  - create_location
+  - update_location
+  - delete_location
   # Asset Management
   - create_asset
   - delete_asset

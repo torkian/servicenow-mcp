@@ -113,8 +113,11 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
     update_cmdb_ci_group as update_cmdb_ci_group,
 )
 from servicenow_mcp.tools.location_tools import (
+    create_location as create_location,
+    delete_location as delete_location,
     get_location as get_location,
     list_locations as list_locations,
+    update_location as update_location,
 )
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     create_ci_relationship,
