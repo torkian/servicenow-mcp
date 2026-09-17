@@ -375,6 +375,9 @@ system_administrator:
   - delete_ci_relationship
   - list_ci_relationship_types
   - list_ci_dependencies
+  # Departments
+  - list_departments
+  - get_department
   # Locations
   - list_locations
   - get_location
@@ -681,6 +684,9 @@ full:
   - delete_ci_relationship
   - list_ci_relationship_types
   - list_ci_dependencies
+  # Departments
+  - list_departments
+  - get_department
   # Locations
   - list_locations
   - get_location

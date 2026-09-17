@@ -395,6 +395,16 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     update_cmdb_ci_group as update_cmdb_ci_group_tool,
 )
+from servicenow_mcp.tools.department_tools import (
+    GetDepartmentParams,
+    ListDepartmentsParams,
+)
+from servicenow_mcp.tools.department_tools import (
+    get_department as get_department_tool,
+)
+from servicenow_mcp.tools.department_tools import (
+    list_departments as list_departments_tool,
+)
 from servicenow_mcp.tools.location_tools import (
     CreateLocationParams,
     DeleteLocationParams,
@@ -2984,6 +2994,29 @@ def get_tool_definitions(
             (
                 "Delete a CMDB CI group by sys_id from the cmdb_ci_group table. "
                 "Returns a structured error when the record does not exist."
+            ),
+            "raw_dict",
+        ),
+        "list_departments": (
+            list_departments_tool,
+            ListDepartmentsParams,
+            Dict[str, Any],
+            (
+                "List department records from the cmn_department table. Departments represent "
+                "organisational units assigned to users, incidents, and assets. "
+                "Filters: name (substring), company (substring or sys_id). "
+                "Supports pagination with limit/offset."
+            ),
+            "raw_dict",
+        ),
+        "get_department": (
+            get_department_tool,
+            GetDepartmentParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single department record from the cmn_department table by sys_id "
+                "or exact name. Returns name, description, id, parent department, dept_head, "
+                "company, cost_center, and audit timestamps. Returns 404-style error when not found."
             ),
             "raw_dict",
         ),

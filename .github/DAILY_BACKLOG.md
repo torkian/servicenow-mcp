@@ -1,12 +1,11 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_departments and get_department tools (cmn_department table)
-6. Add list_companies and get_company tools (core_company table)
-7. Add list_service_offerings and get_service_offering tools (service_offering table)
-8. Add list_user_sessions tool (sys_user_session table)
-9. Add list_catalog_item_categories tool (sc_cat_item_category junction table)
-10. Add update_catalog_item tool (PATCH sc_cat_item fields)
+1. Add list_companies and get_company tools (core_company table)
+2. Add list_service_offerings and get_service_offering tools (service_offering table)
+3. Add list_user_sessions tool (sys_user_session table)
+4. Add list_catalog_item_categories tool (sc_cat_item_category junction table)
+5. Add update_catalog_item tool (PATCH sc_cat_item fields)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -172,3 +171,4 @@
 161. 2026-09-14 — Add create_ci_affinity, update_ci_affinity, delete_ci_affinity tools (cmdb_ci_affinity table; complete CRUD; optional affinity_type/active/description/scope/condition fields; active serialised as string; empty-body guard on update; 404 guards on update and delete; 21 new tests; 3737 total tests; registered in system_administrator and full packages; 95% total coverage)
 162. 2026-09-15 — Add list_locations and get_location tools (cmn_location table; list supports name/city/country/company substring filters and pagination; get resolves by sys_id or exact name; reference fields normalised; 27 new tests; 3764 total tests; registered in system_administrator and full packages; 95% total coverage)
 163. 2026-09-16 — Add create_location, update_location, delete_location tools (cmn_location table; full CRUD; sys_id/name resolver on update and delete; empty-body guard on update; 404 guards; 17 new tests; 3781 total tests; registered in system_administrator and full packages; 95% total coverage)
+164. 2026-09-17 — Add list_departments and get_department tools (cmn_department table; list supports name/company substring filters and pagination; get resolves by sys_id or exact name; reference fields normalised; 27 new tests; 3808 total tests; registered in system_administrator and full packages; 95% total coverage)

@@ -112,6 +112,10 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
     list_cmdb_ci_groups as list_cmdb_ci_groups,
     update_cmdb_ci_group as update_cmdb_ci_group,
 )
+from servicenow_mcp.tools.department_tools import (
+    get_department as get_department,
+    list_departments as list_departments,
+)
 from servicenow_mcp.tools.location_tools import (
     create_location as create_location,
     delete_location as delete_location,
