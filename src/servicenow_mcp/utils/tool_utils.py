@@ -395,6 +395,16 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     update_cmdb_ci_group as update_cmdb_ci_group_tool,
 )
+from servicenow_mcp.tools.company_tools import (
+    GetCompanyParams,
+    ListCompaniesParams,
+)
+from servicenow_mcp.tools.company_tools import (
+    get_company as get_company_tool,
+)
+from servicenow_mcp.tools.company_tools import (
+    list_companies as list_companies_tool,
+)
 from servicenow_mcp.tools.department_tools import (
     GetDepartmentParams,
     ListDepartmentsParams,
@@ -2994,6 +3004,30 @@ def get_tool_definitions(
             (
                 "Delete a CMDB CI group by sys_id from the cmdb_ci_group table. "
                 "Returns a structured error when the record does not exist."
+            ),
+            "raw_dict",
+        ),
+        "list_companies": (
+            list_companies_tool,
+            ListCompaniesParams,
+            Dict[str, Any],
+            (
+                "List company records from the core_company table. Companies represent "
+                "organisations that can be vendors, customers, or manufacturers. "
+                "Filters: name/city/country (substring), vendor/customer/manufacturer (boolean). "
+                "Supports pagination with limit/offset."
+            ),
+            "raw_dict",
+        ),
+        "get_company": (
+            get_company_tool,
+            GetCompanyParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single company record from the core_company table by sys_id "
+                "or exact name. Returns name, contact details, address, website, "
+                "stock info, classification flags (vendor/customer/manufacturer), "
+                "parent company, and audit timestamps. Returns 404-style error when not found."
             ),
             "raw_dict",
         ),

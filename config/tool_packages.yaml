@@ -375,6 +375,9 @@ system_administrator:
   - delete_ci_relationship
   - list_ci_relationship_types
   - list_ci_dependencies
+  # Companies
+  - list_companies
+  - get_company
   # Departments
   - list_departments
   - get_department
@@ -684,6 +687,9 @@ full:
   - delete_ci_relationship
   - list_ci_relationship_types
   - list_ci_dependencies
+  # Companies
+  - list_companies
+  - get_company
   # Departments
   - list_departments
   - get_department

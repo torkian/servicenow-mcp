@@ -112,6 +112,10 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
     list_cmdb_ci_groups as list_cmdb_ci_groups,
     update_cmdb_ci_group as update_cmdb_ci_group,
 )
+from servicenow_mcp.tools.company_tools import (
+    get_company as get_company,
+    list_companies as list_companies,
+)
 from servicenow_mcp.tools.department_tools import (
     get_department as get_department,
     list_departments as list_departments,
@@ -818,4 +822,12 @@ __all__ = [
     "create_pa_target",
     "update_pa_target",
     "delete_pa_target",
+
+    # Department tools
+    "list_departments",
+    "get_department",
+
+    # Company tools
+    "list_companies",
+    "get_company",
 ]
