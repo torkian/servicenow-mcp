@@ -120,6 +120,10 @@ from servicenow_mcp.tools.department_tools import (
     get_department as get_department,
     list_departments as list_departments,
 )
+from servicenow_mcp.tools.service_offering_tools import (
+    get_service_offering as get_service_offering,
+    list_service_offerings as list_service_offerings,
+)
 from servicenow_mcp.tools.location_tools import (
     create_location as create_location,
     delete_location as delete_location,
@@ -830,4 +834,8 @@ __all__ = [
     # Company tools
     "list_companies",
     "get_company",
+
+    # Service Offering tools
+    "list_service_offerings",
+    "get_service_offering",
 ]

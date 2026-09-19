@@ -381,6 +381,9 @@ system_administrator:
   # Departments
   - list_departments
   - get_department
+  # Service Offerings
+  - list_service_offerings
+  - get_service_offering
   # Locations
   - list_locations
   - get_location
@@ -693,6 +696,9 @@ full:
   # Departments
   - list_departments
   - get_department
+  # Service Offerings
+  - list_service_offerings
+  - get_service_offering
   # Locations
   - list_locations
   - get_location

@@ -1,10 +1,9 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_service_offerings and get_service_offering tools (service_offering table)
-2. Add list_user_sessions tool (sys_user_session table)
-3. Add list_catalog_item_categories tool (sc_cat_item_category junction table)
-4. Add update_catalog_item tool (PATCH sc_cat_item fields)
+1. Add list_user_sessions tool (sys_user_session table)
+2. Add list_catalog_item_categories tool (sc_cat_item_category junction table)
+3. Add update_catalog_item tool (PATCH sc_cat_item fields)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -172,3 +171,4 @@
 163. 2026-09-16 — Add create_location, update_location, delete_location tools (cmn_location table; full CRUD; sys_id/name resolver on update and delete; empty-body guard on update; 404 guards; 17 new tests; 3781 total tests; registered in system_administrator and full packages; 95% total coverage)
 164. 2026-09-17 — Add list_departments and get_department tools (cmn_department table; list supports name/company substring filters and pagination; get resolves by sys_id or exact name; reference fields normalised; 27 new tests; 3808 total tests; registered in system_administrator and full packages; 95% total coverage)
 165. 2026-09-18 — Add list_companies and get_company tools (core_company table; list supports name/city/country substring and vendor/customer/manufacturer boolean filters with pagination; get resolves by sys_id or exact name; reference fields normalised; 38 new tests; 3846 total tests; registered in system_administrator and full packages; 95% total coverage)
+166. 2026-09-19 — Add list_service_offerings and get_service_offering tools (service_offering table; list supports name/state/active/service_classification filters and pagination; get resolves by sys_id or exact name; reference fields normalised including business_contact/it_contact/owned_by/managed_by/parent/portfolio; 33 new tests; registered in system_administrator and full packages; 95% total coverage)

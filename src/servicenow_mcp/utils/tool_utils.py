@@ -415,6 +415,16 @@ from servicenow_mcp.tools.department_tools import (
 from servicenow_mcp.tools.department_tools import (
     list_departments as list_departments_tool,
 )
+from servicenow_mcp.tools.service_offering_tools import (
+    GetServiceOfferingParams,
+    ListServiceOfferingsParams,
+)
+from servicenow_mcp.tools.service_offering_tools import (
+    get_service_offering as get_service_offering_tool,
+)
+from servicenow_mcp.tools.service_offering_tools import (
+    list_service_offerings as list_service_offerings_tool,
+)
 from servicenow_mcp.tools.location_tools import (
     CreateLocationParams,
     DeleteLocationParams,
@@ -3051,6 +3061,32 @@ def get_tool_definitions(
                 "Retrieve a single department record from the cmn_department table by sys_id "
                 "or exact name. Returns name, description, id, parent department, dept_head, "
                 "company, cost_center, and audit timestamps. Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "list_service_offerings": (
+            list_service_offerings_tool,
+            ListServiceOfferingsParams,
+            Dict[str, Any],
+            (
+                "List service offering records from the service_offering table. "
+                "Service offerings represent IT services made available to business users. "
+                "Filters: name (substring), state (e.g. operational/pipeline/retired), "
+                "active (boolean), service_classification (substring). "
+                "Supports pagination with limit/offset."
+            ),
+            "raw_dict",
+        ),
+        "get_service_offering": (
+            get_service_offering_tool,
+            GetServiceOfferingParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single service offering record from the service_offering table "
+                "by sys_id or exact name. Returns name, state, price, availability, "
+                "business/IT contacts, owned_by, managed_by, classification, parent, "
+                "portfolio, version, start/end dates, and audit timestamps. "
+                "Returns 404-style error when not found."
             ),
             "raw_dict",
         ),
