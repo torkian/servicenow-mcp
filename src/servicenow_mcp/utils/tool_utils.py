@@ -425,6 +425,16 @@ from servicenow_mcp.tools.service_offering_tools import (
 from servicenow_mcp.tools.service_offering_tools import (
     list_service_offerings as list_service_offerings_tool,
 )
+from servicenow_mcp.tools.user_session_tools import (
+    GetUserSessionParams,
+    ListUserSessionsParams,
+)
+from servicenow_mcp.tools.user_session_tools import (
+    get_user_session as get_user_session_tool,
+)
+from servicenow_mcp.tools.user_session_tools import (
+    list_user_sessions as list_user_sessions_tool,
+)
 from servicenow_mcp.tools.location_tools import (
     CreateLocationParams,
     DeleteLocationParams,
@@ -3087,6 +3097,33 @@ def get_tool_definitions(
                 "business/IT contacts, owned_by, managed_by, classification, parent, "
                 "portfolio, version, start/end dates, and audit timestamps. "
                 "Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "list_user_sessions": (
+            list_user_sessions_tool,
+            ListUserSessionsParams,
+            Dict[str, Any],
+            (
+                "List user session records from the sys_user_session table. "
+                "Each row represents an authenticated session with login time, last "
+                "activity, IP address, browser, and OS details. "
+                "Filters: user_id (sys_id or user_name, auto-resolved), "
+                "ip_address (exact match), logged_in_after (YYYY-MM-DD or YYYY-MM-DD HH:MM:SS). "
+                "Supports pagination with limit/offset."
+            ),
+            "raw_dict",
+        ),
+        "get_user_session": (
+            get_user_session_tool,
+            GetUserSessionParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single user session record from sys_user_session by its sys_id. "
+                "Returns user, session_id, logged_in, last_request, ip_address, browser, "
+                "os_type, screen_size, and audit timestamps. "
+                "Returns 404-style error when the sys_id is not found. "
+                "Required: session_id (sys_id)."
             ),
             "raw_dict",
         ),

@@ -384,6 +384,9 @@ system_administrator:
   # Service Offerings
   - list_service_offerings
   - get_service_offering
+  # User Sessions
+  - list_user_sessions
+  - get_user_session
   # Locations
   - list_locations
   - get_location
@@ -699,6 +702,9 @@ full:
   # Service Offerings
   - list_service_offerings
   - get_service_offering
+  # User Sessions
+  - list_user_sessions
+  - get_user_session
   # Locations
   - list_locations
   - get_location

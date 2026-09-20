@@ -124,6 +124,10 @@ from servicenow_mcp.tools.service_offering_tools import (
     get_service_offering as get_service_offering,
     list_service_offerings as list_service_offerings,
 )
+from servicenow_mcp.tools.user_session_tools import (
+    get_user_session as get_user_session,
+    list_user_sessions as list_user_sessions,
+)
 from servicenow_mcp.tools.location_tools import (
     create_location as create_location,
     delete_location as delete_location,
@@ -838,4 +842,8 @@ __all__ = [
     # Service Offering tools
     "list_service_offerings",
     "get_service_offering",
+
+    # User Session tools
+    "list_user_sessions",
+    "get_user_session",
 ]

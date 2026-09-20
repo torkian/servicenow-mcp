@@ -1,9 +1,8 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_user_sessions tool (sys_user_session table)
-2. Add list_catalog_item_categories tool (sc_cat_item_category junction table)
-3. Add update_catalog_item tool (PATCH sc_cat_item fields)
+1. Add list_catalog_item_categories tool (sc_cat_item_category junction table)
+2. Add update_catalog_item tool (PATCH sc_cat_item fields)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -172,3 +171,4 @@
 164. 2026-09-17 — Add list_departments and get_department tools (cmn_department table; list supports name/company substring filters and pagination; get resolves by sys_id or exact name; reference fields normalised; 27 new tests; 3808 total tests; registered in system_administrator and full packages; 95% total coverage)
 165. 2026-09-18 — Add list_companies and get_company tools (core_company table; list supports name/city/country substring and vendor/customer/manufacturer boolean filters with pagination; get resolves by sys_id or exact name; reference fields normalised; 38 new tests; 3846 total tests; registered in system_administrator and full packages; 95% total coverage)
 166. 2026-09-19 — Add list_service_offerings and get_service_offering tools (service_offering table; list supports name/state/active/service_classification filters and pagination; get resolves by sys_id or exact name; reference fields normalised including business_contact/it_contact/owned_by/managed_by/parent/portfolio; 33 new tests; registered in system_administrator and full packages; 95% total coverage)
+167. 2026-09-20 — Add list_user_sessions and get_user_session tools (sys_user_session table; list supports user_id/ip_address/logged_in_after filters with pagination; user_name→sys_id resolver; get_user_session by sys_id with 404/empty-result guards; 25 new tests; 3904 total tests; registered in system_administrator and full packages; 95% total coverage)
