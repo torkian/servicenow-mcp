@@ -492,7 +492,6 @@ def test_update_location_not_found_by_name(config, auth_manager):
 
 
 def test_update_location_404_on_patch(config, auth_manager):
-    import requests as req_mod
     patch_resp = MagicMock()
     patch_resp.status_code = 404
     patch_resp.raise_for_status.return_value = None
