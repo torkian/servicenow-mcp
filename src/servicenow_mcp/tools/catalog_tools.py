@@ -12,7 +12,16 @@ from pydantic import BaseModel, Field
 
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.utils.config import ServerConfig
-from servicenow_mcp.utils.helpers import _format_http_error, _make_request
+from servicenow_mcp.utils.helpers import (
+    _build_sysparm_params,
+    _format_http_error,
+    _get_headers,
+    _get_instance_url,
+    _join_query_parts,
+    _make_request,
+    _paginated_list_response,
+    _unwrap_and_validate_params,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -1206,4 +1215,110 @@ def move_catalog_items(
             success=False,
             message=f"Error moving catalog items: {_format_http_error(e)}",
             data=None,
-        ) 
+        )
+
+
+# ---------------------------------------------------------------------------
+# list_catalog_item_categories
+# ---------------------------------------------------------------------------
+
+_ITEM_CATEGORY_FIELDS = [
+    "sys_id",
+    "sc_cat_item",
+    "sc_category",
+]
+
+
+class ListCatalogItemCategoriesParams(BaseModel):
+    """Parameters for listing sc_cat_item_category junction records."""
+
+    catalog_item_id: Optional[str] = Field(
+        None,
+        description="Filter by catalog item sys_id — returns only records for that item",
+    )
+    category_id: Optional[str] = Field(
+        None,
+        description="Filter by sc_category sys_id — returns only records for that category",
+    )
+    limit: int = Field(20, description="Maximum number of records to return (default 20)")
+    offset: int = Field(0, description="Pagination offset")
+
+
+def _format_item_category_link(record: Dict) -> Dict:
+    """Normalise a raw sc_cat_item_category junction record."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    sc_cat_item = record.get("sc_cat_item", {})
+    sc_category = record.get("sc_category", {})
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "catalog_item_id": sc_cat_item.get("value") if isinstance(sc_cat_item, dict) else sc_cat_item,
+        "catalog_item_name": sc_cat_item.get("display_value") if isinstance(sc_cat_item, dict) else None,
+        "category_id": sc_category.get("value") if isinstance(sc_category, dict) else sc_category,
+        "category_name": sc_category.get("display_value") if isinstance(sc_category, dict) else None,
+    }
+
+
+def list_catalog_item_categories(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List sc_cat_item_category junction records linking catalog items to categories.
+
+    The ``sc_cat_item_category`` table holds one row per (catalog_item, category)
+    association.  Results can be filtered by catalog item sys_id, category sys_id,
+    or both, and support pagination.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListCatalogItemCategoriesParams.
+
+    Returns:
+        Dictionary with ``success``, ``links`` (list), ``count``, and pagination
+        keys (``has_more``, ``next_offset``).
+    """
+    result = _unwrap_and_validate_params(params, ListCatalogItemCategoriesParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    filters = []
+    if validated.catalog_item_id:
+        filters.append(f"sc_cat_item={validated.catalog_item_id}")
+    if validated.category_id:
+        filters.append(f"sc_category={validated.category_id}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(_ITEM_CATEGORY_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/sc_cat_item_category"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        links = [_format_item_category_link(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(links, validated.limit, validated.offset, "links")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing catalog item categories: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing catalog item categories: {_format_http_error(e)}",
+        } 

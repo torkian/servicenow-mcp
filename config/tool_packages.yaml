@@ -117,6 +117,7 @@ catalog_builder:
   - delete_catalog_item
   # Categories
   - list_catalog_categories
+  - list_catalog_item_categories
   - get_catalog_category
   - create_catalog_category
   - update_catalog_category
@@ -501,6 +502,7 @@ full:
   - delete_catalog_item
   # Catalog (Categories)
   - list_catalog_categories
+  - list_catalog_item_categories
   - get_catalog_category
   - create_catalog_category
   - update_catalog_category

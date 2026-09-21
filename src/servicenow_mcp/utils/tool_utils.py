@@ -83,6 +83,7 @@ from servicenow_mcp.tools.catalog_tools import (
     GetCatalogItemParams,
     GetCatalogParams,
     ListCatalogCategoriesParams,
+    ListCatalogItemCategoriesParams,
     ListCatalogItemsByCatalogParams,
     ListCatalogItemsParams,
     ListCatalogsParams,
@@ -110,6 +111,9 @@ from servicenow_mcp.tools.catalog_tools import (
 )
 from servicenow_mcp.tools.catalog_tools import (
     list_catalog_categories as list_catalog_categories_tool,
+)
+from servicenow_mcp.tools.catalog_tools import (
+    list_catalog_item_categories as list_catalog_item_categories_tool,
 )
 from servicenow_mcp.tools.catalog_tools import (
     list_catalog_items as list_catalog_items_tool,
@@ -1494,6 +1498,13 @@ def get_tool_definitions(
             str,  # Expects JSON string
             "List service catalog categories.",
             "json",  # Tool returns list/dict
+        ),
+        "list_catalog_item_categories": (
+            list_catalog_item_categories_tool,
+            ListCatalogItemCategoriesParams,
+            str,  # Expects JSON string
+            "List sc_cat_item_category junction records linking catalog items to categories.",
+            "json",
         ),
         "get_catalog_category": (
             get_catalog_category_tool,
