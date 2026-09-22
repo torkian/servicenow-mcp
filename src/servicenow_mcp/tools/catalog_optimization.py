@@ -37,6 +37,9 @@ class UpdateCatalogItemParams(BaseModel):
     price: Optional[str] = None
     active: Optional[bool] = None
     order: Optional[int] = None
+    delivery_time: Optional[str] = None
+    availability: Optional[str] = None
+    picture: Optional[str] = None
 
 
 def get_optimization_recommendations(
@@ -140,54 +143,123 @@ def get_optimization_recommendations(
         }
 
 
+def _resolve_catalog_item_sys_id(
+    config: ServerConfig,
+    headers: Dict,
+    item_id: str,
+) -> Optional[str]:
+    """Resolve a catalog item name to its sys_id; return sys_id unchanged for 32-hex inputs."""
+    if len(item_id) == 32 and all(c in "0123456789abcdef" for c in item_id):
+        return item_id
+    try:
+        resp = _make_request(
+            "GET",
+            f"{config.instance_url}/api/now/table/sc_cat_item",
+            headers=headers,
+            params={
+                "sysparm_query": f"name={item_id}",
+                "sysparm_limit": 1,
+                "sysparm_fields": "sys_id,name",
+                "sysparm_display_value": "false",
+            },
+        )
+        resp.raise_for_status()
+        results = resp.json().get("result", [])
+        return results[0]["sys_id"] if results else None
+    except Exception:
+        return None
+
+
 def update_catalog_item(
     config: ServerConfig, auth_manager: AuthManager, params: UpdateCatalogItemParams
 ) -> Dict:
-    """
-    Update a catalog item.
+    """Update a service catalog item (PATCH sc_cat_item).
 
-    Args:
-        config: The server configuration
-        auth_manager: The authentication manager
-        params: The parameters for updating the catalog item
-
-    Returns:
-        A dictionary containing the result of the update operation
+    Accepts either a 32-character sys_id or an exact item name for item_id.
+    Returns an error when no fields are provided to update, and handles 404
+    gracefully when the item does not exist.
     """
     logger.info(f"Updating catalog item: {params.item_id}")
-    
+
+    headers = auth_manager.get_headers()
+    headers["Accept"] = "application/json"
+    headers["Content-Type"] = "application/json"
+
+    # Build the request body with only the provided parameters
+    body: Dict = {}
+    if params.name is not None:
+        body["name"] = params.name
+    if params.short_description is not None:
+        body["short_description"] = params.short_description
+    if params.description is not None:
+        body["description"] = params.description
+    if params.category is not None:
+        body["category"] = params.category
+    if params.price is not None:
+        body["price"] = params.price
+    if params.active is not None:
+        body["active"] = str(params.active).lower()
+    if params.order is not None:
+        body["order"] = str(params.order)
+    if params.delivery_time is not None:
+        body["delivery_time"] = params.delivery_time
+    if params.availability is not None:
+        body["availability"] = params.availability
+    if params.picture is not None:
+        body["picture"] = params.picture
+
+    if not body:
+        return {
+            "success": False,
+            "message": "No fields provided to update",
+            "data": None,
+        }
+
+    # Resolve name → sys_id if needed
+    resolved_sys_id = _resolve_catalog_item_sys_id(config, headers, params.item_id)
+    if resolved_sys_id is None:
+        return {
+            "success": False,
+            "message": f"Catalog item not found: {params.item_id}",
+            "data": None,
+        }
+
+    url = f"{config.instance_url}/api/now/table/sc_cat_item/{resolved_sys_id}"
     try:
-        # Build the request body with only the provided parameters
-        body = {}
-        if params.name is not None:
-            body["name"] = params.name
-        if params.short_description is not None:
-            body["short_description"] = params.short_description
-        if params.description is not None:
-            body["description"] = params.description
-        if params.category is not None:
-            body["category"] = params.category
-        if params.price is not None:
-            body["price"] = params.price
-        if params.active is not None:
-            body["active"] = str(params.active).lower()
-        if params.order is not None:
-            body["order"] = str(params.order)
-        
-        # Make the API request
-        url = f"{config.instance_url}/api/now/table/sc_cat_item/{params.item_id}"
-        headers = auth_manager.get_headers()
-        headers["Content-Type"] = "application/json"
-        
-        response = _make_request("PATCH", url, headers=headers, json=body)
+        response = _make_request(
+            "PATCH",
+            url,
+            headers=headers,
+            json=body,
+            params={"sysparm_display_value": "true", "sysparm_exclude_reference_link": "true"},
+        )
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Catalog item not found: {params.item_id}",
+                "data": None,
+            }
         response.raise_for_status()
-        
+
+        item = response.json().get("result", {})
         return {
             "success": True,
-            "message": "Catalog item updated successfully",
-            "data": response.json()["result"],
+            "message": f"Catalog item {params.item_id} updated successfully",
+            "data": {
+                "sys_id": item.get("sys_id", ""),
+                "name": item.get("name", ""),
+                "short_description": item.get("short_description", ""),
+                "description": item.get("description", ""),
+                "category": item.get("category", ""),
+                "price": item.get("price", ""),
+                "active": item.get("active", ""),
+                "order": item.get("order", ""),
+                "delivery_time": item.get("delivery_time", ""),
+                "availability": item.get("availability", ""),
+                "picture": item.get("picture", ""),
+            },
         }
-    
+
     except Exception as e:
         logger.error(f"Error updating catalog item: {e}")
         return {

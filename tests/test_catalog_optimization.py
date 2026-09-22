@@ -475,12 +475,13 @@ class TestCatalogOptimizationTools(unittest.TestCase):
 
     @patch("requests.patch")
     def test_update_catalog_item(self, mock_patch):
-        """Test updating a catalog item."""
-        # Mock the response from ServiceNow
+        """Test updating a catalog item using a sys_id directly."""
+        sys_id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "result": {
-                "sys_id": "item1",
+                "sys_id": sys_id,
                 "name": "Laptop",
                 "short_description": "Updated laptop description",
                 "description": "Detailed description",
@@ -492,33 +493,30 @@ class TestCatalogOptimizationTools(unittest.TestCase):
         }
         mock_patch.return_value = mock_response
 
-        # Create the parameters
         params = UpdateCatalogItemParams(
-            item_id="item1",
+            item_id=sys_id,
             short_description="Updated laptop description",
         )
 
-        # Call the function
         result = update_catalog_item(self.config, self.auth_manager, params)
 
-        # Verify the results
         self.assertTrue(result["success"])
         self.assertEqual(result["data"]["short_description"], "Updated laptop description")
-        
-        # Verify the API call
+
         mock_patch.assert_called_once()
         args, kwargs = mock_patch.call_args
-        self.assertEqual(args[0], "https://example.service-now.com/api/now/table/sc_cat_item/item1")
+        self.assertIn(sys_id, args[0])
         self.assertEqual(kwargs["json"], {"short_description": "Updated laptop description"})
 
     @patch("requests.patch")
     def test_update_catalog_item_multiple_fields(self, mock_patch):
         """Test updating multiple fields of a catalog item."""
-        # Mock the response from ServiceNow
+        sys_id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "result": {
-                "sys_id": "item1",
+                "sys_id": sys_id,
                 "name": "Updated Laptop",
                 "short_description": "Updated laptop description",
                 "description": "Detailed description",
@@ -530,27 +528,23 @@ class TestCatalogOptimizationTools(unittest.TestCase):
         }
         mock_patch.return_value = mock_response
 
-        # Create the parameters with multiple fields
         params = UpdateCatalogItemParams(
-            item_id="item1",
+            item_id=sys_id,
             name="Updated Laptop",
             short_description="Updated laptop description",
             price="1099.99",
         )
 
-        # Call the function
         result = update_catalog_item(self.config, self.auth_manager, params)
 
-        # Verify the results
         self.assertTrue(result["success"])
         self.assertEqual(result["data"]["name"], "Updated Laptop")
         self.assertEqual(result["data"]["short_description"], "Updated laptop description")
         self.assertEqual(result["data"]["price"], "1099.99")
-        
-        # Verify the API call
+
         mock_patch.assert_called_once()
         args, kwargs = mock_patch.call_args
-        self.assertEqual(args[0], "https://example.service-now.com/api/now/table/sc_cat_item/item1")
+        self.assertIn(sys_id, args[0])
         self.assertEqual(kwargs["json"], {
             "name": "Updated Laptop",
             "short_description": "Updated laptop description",
@@ -559,20 +553,17 @@ class TestCatalogOptimizationTools(unittest.TestCase):
 
     @patch("requests.patch")
     def test_update_catalog_item_error(self, mock_patch):
-        """Test error handling when updating a catalog item."""
-        # Mock an error response
+        """Test error handling when the PATCH request fails."""
+        sys_id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
         mock_patch.side_effect = requests.exceptions.RequestException("API Error")
 
-        # Create the parameters
         params = UpdateCatalogItemParams(
-            item_id="item1",
+            item_id=sys_id,
             short_description="Updated laptop description",
         )
 
-        # Call the function
         result = update_catalog_item(self.config, self.auth_manager, params)
 
-        # Verify the results
         self.assertFalse(result["success"])
         self.assertIn("Error updating catalog item", result["message"])
         self.assertIsNone(result["data"])
@@ -593,10 +584,12 @@ class TestCatalogOptimizationTools(unittest.TestCase):
     @patch("requests.patch")
     def test_update_catalog_item_all_fields(self, mock_patch):
         """Test updating a catalog item with all optional fields set."""
+        sys_id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
         mock_response = MagicMock()
+        mock_response.status_code = 200
         mock_response.json.return_value = {
             "result": {
-                "sys_id": "item1",
+                "sys_id": sys_id,
                 "name": "Full Laptop",
                 "short_description": "Short desc",
                 "description": "Long desc",
@@ -604,12 +597,15 @@ class TestCatalogOptimizationTools(unittest.TestCase):
                 "price": "500.00",
                 "active": "true",
                 "order": "10",
+                "delivery_time": "3 days",
+                "availability": "1",
+                "picture": "laptop.png",
             }
         }
         mock_patch.return_value = mock_response
 
         params = UpdateCatalogItemParams(
-            item_id="item1",
+            item_id=sys_id,
             name="Full Laptop",
             short_description="Short desc",
             description="Long desc",
@@ -617,6 +613,9 @@ class TestCatalogOptimizationTools(unittest.TestCase):
             price="500.00",
             active=True,
             order=10,
+            delivery_time="3 days",
+            availability="1",
+            picture="laptop.png",
         )
 
         result = update_catalog_item(self.config, self.auth_manager, params)
@@ -628,6 +627,99 @@ class TestCatalogOptimizationTools(unittest.TestCase):
         self.assertEqual(body["category"], "hardware")
         self.assertEqual(body["active"], "true")
         self.assertEqual(body["order"], "10")
+        self.assertEqual(body["delivery_time"], "3 days")
+        self.assertEqual(body["availability"], "1")
+        self.assertEqual(body["picture"], "laptop.png")
+
+    def test_update_catalog_item_no_fields(self):
+        """Test that update_catalog_item returns an error when no fields are provided."""
+        sys_id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+        params = UpdateCatalogItemParams(item_id=sys_id)
+
+        result = update_catalog_item(self.config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertEqual(result["message"], "No fields provided to update")
+        self.assertIsNone(result["data"])
+
+    @patch("requests.patch")
+    def test_update_catalog_item_404(self, mock_patch):
+        """Test that a 404 response is handled gracefully."""
+        sys_id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+        mock_response = MagicMock()
+        mock_response.status_code = 404
+        mock_patch.return_value = mock_response
+
+        params = UpdateCatalogItemParams(item_id=sys_id, name="Ghost Item")
+        result = update_catalog_item(self.config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIsNone(result["data"])
+
+    @patch("requests.patch")
+    @patch("requests.get")
+    def test_update_catalog_item_by_name(self, mock_get, mock_patch):
+        """Test updating a catalog item by name (resolver path)."""
+        resolved_sys_id = "a1b2c3d4e5f6a1b2c3d4e5f6a1b2c3d4"
+
+        get_response = MagicMock()
+        get_response.status_code = 200
+        get_response.json.return_value = {"result": [{"sys_id": resolved_sys_id, "name": "My Laptop"}]}
+        mock_get.return_value = get_response
+
+        patch_response = MagicMock()
+        patch_response.status_code = 200
+        patch_response.json.return_value = {
+            "result": {
+                "sys_id": resolved_sys_id,
+                "name": "My Laptop",
+                "short_description": "New desc",
+                "description": "",
+                "category": "",
+                "price": "",
+                "active": "true",
+                "order": "",
+                "delivery_time": "",
+                "availability": "",
+                "picture": "",
+            }
+        }
+        mock_patch.return_value = patch_response
+
+        params = UpdateCatalogItemParams(item_id="My Laptop", short_description="New desc")
+        result = update_catalog_item(self.config, self.auth_manager, params)
+
+        self.assertTrue(result["success"])
+        self.assertEqual(result["data"]["sys_id"], resolved_sys_id)
+        mock_get.assert_called_once()
+        mock_patch.assert_called_once()
+
+    @patch("requests.get")
+    def test_update_catalog_item_name_not_found(self, mock_get):
+        """Test that a missing item name returns a not-found error."""
+        get_response = MagicMock()
+        get_response.status_code = 200
+        get_response.json.return_value = {"result": []}
+        mock_get.return_value = get_response
+
+        params = UpdateCatalogItemParams(item_id="Nonexistent Item", name="New Name")
+        result = update_catalog_item(self.config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+        self.assertIsNone(result["data"])
+
+    @patch("requests.get")
+    def test_update_catalog_item_resolver_exception(self, mock_get):
+        """Test that a GET error during name resolution returns not-found."""
+        mock_get.side_effect = requests.exceptions.ConnectionError("timeout")
+
+        params = UpdateCatalogItemParams(item_id="My Laptop", name="New Name")
+        result = update_catalog_item(self.config, self.auth_manager, params)
+
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
 
     @patch("requests.get")
     @patch("random.sample")
