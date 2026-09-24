@@ -1,9 +1,8 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add tests for time_card_tools.py (86% coverage, needs improvement)
-2. Add tests for project_tools.py (85% coverage, needs improvement)
-3. Add bulk_update_request_items tool (PATCH multiple sc_req_item in one Batch API call)
+1. Add tests for project_tools.py (85% coverage, needs improvement)
+2. Add bulk_update_request_items tool (PATCH multiple sc_req_item in one Batch API call)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -176,3 +175,4 @@
 168. 2026-09-21 — Add list_catalog_item_categories tool (sc_cat_item_category junction table; catalog_item_id and category_id filters; reference fields normalised to display names; pagination with has_more/next_offset; 19 new tests; 3923 total tests; registered in catalog_builder and full packages; 95% total coverage)
 169. 2026-09-22 — Enhance update_catalog_item tool (name→sys_id resolver; empty-body guard; 404 guard; delivery_time/availability/picture fields; normalised response; 5 new tests; 3928 total tests; 95% total coverage)
 170. 2026-09-23 — Improve user_tools.py test coverage (78%→100%); 26 new tests in test_user_tools_coverage.py covering optional field branches, role assignment helpers, group optional fields, add_group_members email fallback + POST failure, remove_group_members not-found + exception, and all get_user_by_email paths
+171. 2026-09-24 — Improve time_card_tools.py test coverage (86%→100%); 13 new tests in test_time_card_tools_coverage.py covering all error paths: invalid params, no instance_url/headers, RequestException on task resolve/list/create/update, and task_sys_id direct filter
