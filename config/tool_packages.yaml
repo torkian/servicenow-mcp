@@ -94,6 +94,7 @@ service_desk:
   - bulk_update_incidents
   - bulk_update_problems
   - bulk_update_problem_tasks
+  - bulk_update_request_items
   # Change Approval (read-only)
   - list_change_approvals
   - get_change_approval
@@ -190,6 +191,7 @@ change_coordinator:
   - bulk_update_change_tasks
   - bulk_update_problems
   - bulk_update_problem_tasks
+  - bulk_update_request_items
   # CI Relationships (changes often affect CIs)
   - list_ci_dependencies
 
@@ -807,6 +809,7 @@ full:
   - bulk_update_change_tasks
   - bulk_update_problems
   - bulk_update_problem_tasks
+  - bulk_update_request_items
   # Generic Table CRUD
   - list_records
   - get_record

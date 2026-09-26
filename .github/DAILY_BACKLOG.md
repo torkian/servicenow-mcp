@@ -1,7 +1,11 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add bulk_update_request_items tool (PATCH multiple sc_req_item in one Batch API call)
+1. Improve bulk_tools.py test coverage for existing helpers (edge cases in _resolve_* functions, no-op body paths)
+2. Add list_user_skills and get_user_skill tools (sys_user_has_skill table)
+3. Add create_kb_category tool (POST kb_category; name/parent/active/description fields)
+4. Add list_ci_dependency_groups tool (cmdb_dep_group table)
+5. Add list_software_assets tool (alm_asset scoped to software category)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -176,3 +180,4 @@
 170. 2026-09-23 — Improve user_tools.py test coverage (78%→100%); 26 new tests in test_user_tools_coverage.py covering optional field branches, role assignment helpers, group optional fields, add_group_members email fallback + POST failure, remove_group_members not-found + exception, and all get_user_by_email paths
 171. 2026-09-24 — Improve time_card_tools.py test coverage (86%→100%); 13 new tests in test_time_card_tools_coverage.py covering all error paths: invalid params, no instance_url/headers, RequestException on task resolve/list/create/update, and task_sys_id direct filter
 172. 2026-09-25 — Improve project_tools.py test coverage (84%→100%); 14 new tests in test_project_tools_coverage.py covering date field_validator, all optional-field branches in create/update, validation-failure paths, all three timeframe filters, extra query param, and no-instance_url/no-headers error paths; 3981 total tests
+173. 2026-09-26 — Add bulk_update_request_items tool (PATCH multiple sc_req_item / RITM records in one Batch API call; RequestItemUpdate model with 8 fields including state/stage/assigned_to/close_notes; RITM numbers batch-resolved via single numberIN GET; per-result item_id enrichment; registered in service_desk, change_coordinator, and full packages; 22 new tests; 4003 total tests; 96% total coverage)

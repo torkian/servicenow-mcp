@@ -43,12 +43,16 @@ from servicenow_mcp.tools.bulk_tools import (
     BulkUpdateIncidentsParams,
     BulkUpdateProblemTasksParams,
     BulkUpdateProblemsParams,
+    BulkUpdateRequestItemsParams,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_requests as bulk_update_change_requests_tool,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_change_tasks as bulk_update_change_tasks_tool,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_update_request_items as bulk_update_request_items_tool,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_incidents as bulk_update_incidents_tool,
@@ -2910,6 +2914,22 @@ def get_tool_definitions(
                 "PTASK numbers are resolved to sys_ids with one preliminary GET "
                 "before the batch PATCH is issued. Up to 100 tasks per call. "
                 "Returns per-task ok/status_code with the original task_id."
+            ),
+            "raw_dict",
+        ),
+        "bulk_update_request_items": (
+            bulk_update_request_items_tool,
+            BulkUpdateRequestItemsParams,
+            Dict[str, Any],
+            (
+                "PATCH multiple ServiceNow request items (sc_req_item / RITM records) "
+                "in a single Batch API call. "
+                "Each update entry specifies an item_id (RITM number or sys_id) and "
+                "the fields to change (short_description, description, state, stage, "
+                "assigned_to, assignment_group, work_notes, close_notes). "
+                "RITM numbers are resolved to sys_ids with one preliminary GET "
+                "before the batch PATCH is issued. Up to 100 items per call. "
+                "Returns per-item ok/status_code with the original item_id."
             ),
             "raw_dict",
         ),

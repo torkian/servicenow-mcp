@@ -23,6 +23,7 @@ from servicenow_mcp.tools.bulk_tools import (
     bulk_update_incidents,
     bulk_update_problem_tasks,
     bulk_update_problems,
+    bulk_update_request_items,
     execute_bulk_operations,
 )
 from servicenow_mcp.tools.catalog_optimization import (
@@ -654,6 +655,7 @@ __all__ = [
     "bulk_update_change_tasks",
     "bulk_update_problems",
     "bulk_update_problem_tasks",
+    "bulk_update_request_items",
 
     # CMDB tools
     "list_ci_audit_history",
