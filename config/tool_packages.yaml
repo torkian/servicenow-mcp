@@ -390,6 +390,9 @@ system_administrator:
   # User Sessions
   - list_user_sessions
   - get_user_session
+  # User Skills
+  - list_user_skills
+  - get_user_skill
   # Locations
   - list_locations
   - get_location
@@ -709,6 +712,9 @@ full:
   # User Sessions
   - list_user_sessions
   - get_user_session
+  # User Skills
+  - list_user_skills
+  - get_user_skill
   # Locations
   - list_locations
   - get_location

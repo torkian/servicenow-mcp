@@ -443,6 +443,16 @@ from servicenow_mcp.tools.user_session_tools import (
 from servicenow_mcp.tools.user_session_tools import (
     list_user_sessions as list_user_sessions_tool,
 )
+from servicenow_mcp.tools.user_skill_tools import (
+    GetUserSkillParams,
+    ListUserSkillsParams,
+)
+from servicenow_mcp.tools.user_skill_tools import (
+    get_user_skill as get_user_skill_tool,
+)
+from servicenow_mcp.tools.user_skill_tools import (
+    list_user_skills as list_user_skills_tool,
+)
 from servicenow_mcp.tools.location_tools import (
     CreateLocationParams,
     DeleteLocationParams,
@@ -3155,6 +3165,33 @@ def get_tool_definitions(
                 "os_type, screen_size, and audit timestamps. "
                 "Returns 404-style error when the sys_id is not found. "
                 "Required: session_id (sys_id)."
+            ),
+            "raw_dict",
+        ),
+        "list_user_skills": (
+            list_user_skills_tool,
+            ListUserSkillsParams,
+            Dict[str, Any],
+            (
+                "List user skill assignment records from the sys_user_has_skill table. "
+                "Each row links a user to a skill with an optional proficiency level. "
+                "Filters: user_id (sys_id or user_name, auto-resolved), "
+                "skill_id (sys_id or exact skill name, auto-resolved via sys_skill), "
+                "level (exact proficiency level value). "
+                "Supports pagination with limit/offset."
+            ),
+            "raw_dict",
+        ),
+        "get_user_skill": (
+            get_user_skill_tool,
+            GetUserSkillParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single user skill assignment record from sys_user_has_skill "
+                "by its sys_id. Returns user, skill name, skill_sys_id, level, and "
+                "audit timestamps. "
+                "Returns 404-style error when the sys_id is not found. "
+                "Required: user_skill_id (sys_id of the sys_user_has_skill record)."
             ),
             "raw_dict",
         ),

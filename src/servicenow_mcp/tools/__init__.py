@@ -130,6 +130,10 @@ from servicenow_mcp.tools.user_session_tools import (
     get_user_session as get_user_session,
     list_user_sessions as list_user_sessions,
 )
+from servicenow_mcp.tools.user_skill_tools import (
+    get_user_skill as get_user_skill,
+    list_user_skills as list_user_skills,
+)
 from servicenow_mcp.tools.location_tools import (
     create_location as create_location,
     delete_location as delete_location,
@@ -850,4 +854,8 @@ __all__ = [
     # User Session tools
     "list_user_sessions",
     "get_user_session",
+
+    # User Skill tools
+    "list_user_skills",
+    "get_user_skill",
 ]
