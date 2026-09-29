@@ -201,6 +201,7 @@ knowledge_author:
   - list_knowledge_bases
   # KB Categories
   - create_category  # KB specific category tool
+  - create_kb_category  # create with name resolution
   - list_categories  # KB specific category tool
   - get_kb_category  # KB specific category tool
   # Article Lifecycle
@@ -600,6 +601,7 @@ full:
   - create_knowledge_base
   - list_knowledge_bases
   - create_category # KB specific
+  - create_kb_category # create with name resolution
   - list_categories # KB specific
   - get_kb_category # KB specific
   - create_article

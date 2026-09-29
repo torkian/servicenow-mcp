@@ -676,9 +676,10 @@ from servicenow_mcp.tools.knowledge_base import (
     UpdateArticleParams,
 )
 from servicenow_mcp.tools.knowledge_base import (
-    CreateCategoryParams as CreateKBCategoryParams,  # Aliased
+    CreateCategoryParams,
 )
 from servicenow_mcp.tools.knowledge_base import (
+    CreateKBCategoryParams,
     GetKBCategoryParams,
 )
 from servicenow_mcp.tools.knowledge_base import (
@@ -686,6 +687,9 @@ from servicenow_mcp.tools.knowledge_base import (
 )
 from servicenow_mcp.tools.knowledge_base import (
     create_article as create_article_tool,
+)
+from servicenow_mcp.tools.knowledge_base import (
+    create_kb_category as create_kb_category_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
     create_knowledge_article as create_knowledge_article_tool,
@@ -2260,10 +2264,20 @@ def get_tool_definitions(
         # Use the passed-in implementations for aliased KB category tools
         "create_category": (
             create_kb_category_tool_impl,  # Use passed function
-            CreateKBCategoryParams,
+            CreateCategoryParams,
             str,  # Expects JSON string
             "Create a new category in a knowledge base",
             "json_dict",  # Tool returns Pydantic model
+        ),
+        "create_kb_category": (
+            create_kb_category_tool,
+            CreateKBCategoryParams,
+            Dict[str, Any],
+            (
+                "Create a new knowledge base category, automatically resolving knowledge base "
+                "and parent category by name or sys_id"
+            ),
+            "raw_dict",
         ),
         "create_article": (
             create_article_tool,

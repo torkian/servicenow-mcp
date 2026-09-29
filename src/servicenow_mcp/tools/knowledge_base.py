@@ -144,6 +144,20 @@ class GetKBCategoryParams(BaseModel):
     )
 
 
+class CreateKBCategoryParams(BaseModel):
+    """Parameters for creating a knowledge base category (POST kb_category)."""
+
+    name: str = Field(..., description="Display label for the new category")
+    knowledge_base: str = Field(
+        ..., description="Knowledge base name or sys_id to create the category in"
+    )
+    parent: Optional[str] = Field(
+        None, description="Parent category name or sys_id (for sub-categories)"
+    )
+    active: bool = Field(True, description="Whether the category is active")
+    description: Optional[str] = Field(None, description="Optional description")
+
+
 class ListArticlesByCategoryParams(BaseModel):
     """Parameters for listing knowledge articles within a specific category."""
 
@@ -1471,4 +1485,97 @@ def get_kb_category(
         return {
             "success": False,
             "message": f"Failed to get knowledge base category: {_format_http_error(e)}",
+        }
+
+
+def create_kb_category(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: CreateKBCategoryParams,
+) -> Dict[str, Any]:
+    """Create a new knowledge base category.
+
+    Resolves knowledge_base and parent by name or sys_id before POSTing to
+    the kb_category table.
+    """
+    kb_sys_id = _resolve_kb_sys_id(config, auth_manager, params.knowledge_base)
+    if not kb_sys_id:
+        return {
+            "success": False,
+            "message": f"Knowledge base '{params.knowledge_base}' not found",
+        }
+
+    parent_sys_id: Optional[str] = None
+    if params.parent:
+        parent_sys_id = _resolve_category_sys_id(
+            config, auth_manager, params.parent, kb_sys_id
+        )
+        if not parent_sys_id:
+            return {
+                "success": False,
+                "message": f"Parent category '{params.parent}' not found",
+            }
+
+    body: Dict[str, Any] = {
+        "label": params.name,
+        "kb_knowledge_base": kb_sys_id,
+        "active": str(params.active).lower(),
+    }
+    if params.description:
+        body["description"] = params.description
+    if parent_sys_id:
+        body["parent"] = parent_sys_id
+
+    try:
+        response = _make_request(
+            "POST",
+            f"{config.api_url}/table/kb_category",
+            json=body,
+            headers=auth_manager.get_headers(),
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+        result = response.json().get("result", {})
+
+        def _dv(field) -> str:
+            if isinstance(field, dict):
+                return field.get("display_value", "")
+            return field or ""
+
+        kb_field = result.get("kb_knowledge_base")
+        parent_field = result.get("parent")
+        active_field = result.get("active")
+
+        category = {
+            "sys_id": result.get("sys_id", ""),
+            "label": _dv(result.get("label")),
+            "description": _dv(result.get("description")),
+            "knowledge_base": _dv(kb_field),
+            "knowledge_base_sys_id": (
+                kb_field.get("value", "") if isinstance(kb_field, dict) else kb_sys_id
+            ),
+            "parent_category": _dv(parent_field),
+            "parent_category_sys_id": (
+                parent_field.get("value", "")
+                if isinstance(parent_field, dict)
+                else (parent_sys_id or "")
+            ),
+            "active": (
+                active_field.lower() == "true"
+                if isinstance(active_field, str)
+                else bool(active_field)
+            ),
+        }
+
+        return {
+            "success": True,
+            "message": f"Category '{category['label']}' created successfully",
+            "category": category,
+        }
+
+    except requests.RequestException as e:
+        logger.error("Failed to create KB category: %s", e)
+        return {
+            "success": False,
+            "message": f"Failed to create KB category: {_format_http_error(e)}",
         }
