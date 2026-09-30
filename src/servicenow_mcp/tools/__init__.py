@@ -114,6 +114,10 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
     list_cmdb_ci_groups as list_cmdb_ci_groups,
     update_cmdb_ci_group as update_cmdb_ci_group,
 )
+from servicenow_mcp.tools.cmdb_dep_group_tools import (
+    get_ci_dependency_group as get_ci_dependency_group,
+    list_ci_dependency_groups as list_ci_dependency_groups,
+)
 from servicenow_mcp.tools.company_tools import (
     get_company as get_company,
     list_companies as list_companies,

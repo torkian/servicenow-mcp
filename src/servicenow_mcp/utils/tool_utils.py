@@ -403,6 +403,16 @@ from servicenow_mcp.tools.cmdb_ci_group_tools import (
 from servicenow_mcp.tools.cmdb_ci_group_tools import (
     update_cmdb_ci_group as update_cmdb_ci_group_tool,
 )
+from servicenow_mcp.tools.cmdb_dep_group_tools import (
+    GetCIDependencyGroupParams,
+    ListCIDependencyGroupsParams,
+)
+from servicenow_mcp.tools.cmdb_dep_group_tools import (
+    get_ci_dependency_group as get_ci_dependency_group_tool,
+)
+from servicenow_mcp.tools.cmdb_dep_group_tools import (
+    list_ci_dependency_groups as list_ci_dependency_groups_tool,
+)
 from servicenow_mcp.tools.company_tools import (
     GetCompanyParams,
     ListCompaniesParams,
@@ -3079,6 +3089,29 @@ def get_tool_definitions(
             (
                 "Delete a CMDB CI group by sys_id from the cmdb_ci_group table. "
                 "Returns a structured error when the record does not exist."
+            ),
+            "raw_dict",
+        ),
+        "list_ci_dependency_groups": (
+            list_ci_dependency_groups_tool,
+            ListCIDependencyGroupsParams,
+            Dict[str, Any],
+            (
+                "List CMDB CI dependency groups from the cmdb_dep_group table. "
+                "Dependency groups define named sets of CIs that share a common "
+                "failure domain or are tracked together for impact analysis. "
+                "Filters: name (substring), group_type (type field value), active flag. "
+                "Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_ci_dependency_group": (
+            get_ci_dependency_group_tool,
+            GetCIDependencyGroupParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single CMDB CI dependency group by its sys_id from the "
+                "cmdb_dep_group table. Returns a 404-style error when not found."
             ),
             "raw_dict",
         ),

@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add list_ci_dependency_groups tool (cmdb_dep_group table)
-2. Add list_software_assets tool (alm_asset scoped to software category)
+1. Add list_software_assets tool (alm_asset scoped to software category)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -181,3 +180,4 @@
 174. 2026-09-27 — Improve bulk_tools.py test coverage (99%→100%); 24 new tests in test_bulk_tools_coverage.py covering the "No valid updates to execute" defensive guard (all 6 bulk functions) and direct unit tests for all 6 _resolve_* helper functions (success, empty-result, HTTP error propagation); 4027 total tests
 175. 2026-09-28 — Add list_user_skills and get_user_skill tools (sys_user_has_skill table); user_id/user_name auto-resolved via sys_user; skill_id/skill_name auto-resolved via sys_skill; level filter; reference fields normalised; 404 and empty-result guards on get; registered in system_administrator and full packages; 31 new tests; 4058 total tests; 99% user_skill_tools.py coverage
 176. 2026-09-29 — Add create_kb_category tool (POST kb_category; name/parent/active/description fields; resolves knowledge_base and parent by name or sys_id; CreateKBCategoryParams model; registered in knowledge_author and full packages; 14 new tests; 4072 total tests; 96% total coverage)
+177. 2026-09-30 — Add list_ci_dependency_groups and get_ci_dependency_group tools (cmdb_dep_group table); name/group_type/active filters and raw query passthrough on list; 404 and empty-result guards on get; reference fields normalised; registered in system_administrator and full packages; 19 new tests; 4091 total tests; 96% total coverage
