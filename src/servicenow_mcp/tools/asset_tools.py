@@ -412,6 +412,85 @@ def list_assets(
         return {"success": False, "message": f"Error listing assets: {_format_http_error(e)}"}
 
 
+class ListSoftwareAssetsParams(BaseModel):
+    """Parameters for listing software assets."""
+
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+    asset_tag: Optional[str] = Field(None, description="Filter by asset tag (exact match)")
+    display_name: Optional[str] = Field(None, description="Filter by display name (substring match)")
+    install_status: Optional[str] = Field(
+        None, description=f"Filter by install status: {INSTALL_STATUS_VALUES}"
+    )
+    assigned_to: Optional[str] = Field(
+        None, description="Filter by assigned user sys_id or user name (substring match)"
+    )
+    software_name: Optional[str] = Field(
+        None, description="Filter by software product name (substring match on model.name)"
+    )
+    query: Optional[str] = Field(None, description="Raw ServiceNow encoded query string")
+
+
+def list_software_assets(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List software assets from the alm_asset table (model_category scoped to Software).
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListSoftwareAssetsParams.
+
+    Returns:
+        Dictionary with ``success``, ``assets`` (list), ``count``, and pagination keys.
+    """
+    result = _unwrap_and_validate_params(params, ListSoftwareAssetsParams)
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    query_parts = ["model_category.nameLIKESoftware"]
+    if validated.asset_tag:
+        query_parts.append(f"asset_tag={validated.asset_tag}")
+    if validated.display_name:
+        query_parts.append(f"display_nameLIKE{validated.display_name}")
+    if validated.install_status:
+        query_parts.append(f"install_status={validated.install_status}")
+    if validated.assigned_to:
+        query_parts.append(f"assigned_to.nameLIKE{validated.assigned_to}")
+    if validated.software_name:
+        query_parts.append(f"model.nameLIKE{validated.software_name}")
+    if validated.query:
+        query_parts.append(validated.query)
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        fields=",".join(ASSET_FIELDS),
+    )
+
+    url = f"{instance_url}/api/now/table/{ASSET_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        assets = [_format_asset(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(assets, validated.limit, validated.offset, "assets")
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing software assets: {e}")
+        return {"success": False, "message": f"Error listing software assets: {_format_http_error(e)}"}
+
+
 def get_asset(
     auth_manager: AuthManager,
     server_config: ServerConfig,

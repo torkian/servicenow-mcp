@@ -63,6 +63,7 @@ service_desk:
   - get_kb_category
   # Asset Lookup & Provisioning
   - list_assets
+  - list_software_assets
   - get_asset
   - create_asset
   # Service Requests
@@ -409,6 +410,7 @@ system_administrator:
   - create_asset
   - delete_asset
   - list_assets
+  - list_software_assets
   - get_asset
   - update_asset
   # Contract Management
@@ -733,6 +735,7 @@ full:
   - create_asset
   - delete_asset
   - list_assets
+  - list_software_assets
   - get_asset
   - update_asset
   # Contract Management

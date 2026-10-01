@@ -8,6 +8,7 @@ from servicenow_mcp.tools.asset_tools import (
     delete_asset,
     get_asset,
     list_assets,
+    list_software_assets,
     update_asset,
 )
 from servicenow_mcp.tools.attachment_tools import (
@@ -694,6 +695,7 @@ __all__ = [
     "create_asset",
     "delete_asset",
     "list_assets",
+    "list_software_assets",
     "get_asset",
     "update_asset",
 

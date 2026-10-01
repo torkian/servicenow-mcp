@@ -11,12 +11,14 @@ from servicenow_mcp.tools.asset_tools import (
     DeleteAssetParams,
     GetAssetParams,
     ListAssetsParams,
+    ListSoftwareAssetsParams,
     UpdateAssetParams,
     _format_asset,
     create_asset,
     delete_asset,
     get_asset,
     list_assets,
+    list_software_assets,
     update_asset,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -825,6 +827,175 @@ class TestDeleteAsset(unittest.TestCase):
 
         self.assertTrue(result["success"])
         self.assertIn("asset999", result["message"])
+
+
+class TestListSoftwareAssets(unittest.TestCase):
+    def setUp(self):
+        self.config = _make_config()
+        self.auth_manager = _make_auth_manager()
+
+    @patch("requests.get")
+    def test_list_software_assets_returns_results(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": [FAKE_ASSET]}
+        mock_get.return_value = mock_response
+
+        result = list_software_assets(self.auth_manager, self.config, {})
+        self.assertTrue(result["success"])
+        self.assertIn("assets", result)
+        self.assertEqual(len(result["assets"]), 1)
+
+    @patch("requests.get")
+    def test_software_category_filter_always_applied(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(self.auth_manager, self.config, {})
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        self.assertIn("model_category.nameLIKESoftware", params_used.get("sysparm_query", ""))
+
+    @patch("requests.get")
+    def test_display_name_filter(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(self.auth_manager, self.config, {"display_name": "Acrobat"})
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        query = params_used.get("sysparm_query", "")
+        self.assertIn("model_category.nameLIKESoftware", query)
+        self.assertIn("display_nameLIKEAcrobat", query)
+
+    @patch("requests.get")
+    def test_install_status_filter(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(self.auth_manager, self.config, {"install_status": "1"})
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        self.assertIn("install_status=1", params_used.get("sysparm_query", ""))
+
+    @patch("requests.get")
+    def test_assigned_to_filter(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(self.auth_manager, self.config, {"assigned_to": "jdoe"})
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        self.assertIn("assigned_to.nameLIKEjdoe", params_used.get("sysparm_query", ""))
+
+    @patch("requests.get")
+    def test_software_name_filter(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(self.auth_manager, self.config, {"software_name": "Office"})
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        self.assertIn("model.nameLIKEOffice", params_used.get("sysparm_query", ""))
+
+    @patch("requests.get")
+    def test_asset_tag_filter(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(self.auth_manager, self.config, {"asset_tag": "SW0001"})
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        self.assertIn("asset_tag=SW0001", params_used.get("sysparm_query", ""))
+
+    @patch("requests.get")
+    def test_raw_query_filter(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(self.auth_manager, self.config, {"query": "company=acme"})
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        self.assertIn("company=acme", params_used.get("sysparm_query", ""))
+
+    @patch("requests.get")
+    def test_pagination_defaults(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": [FAKE_ASSET] * 20}
+        mock_get.return_value = mock_response
+
+        result = list_software_assets(self.auth_manager, self.config, {})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["count"], 20)
+
+    @patch("requests.get")
+    def test_http_error_returns_failure(self, mock_get):
+        mock_get.side_effect = requests.exceptions.RequestException("connection refused")
+        result = list_software_assets(self.auth_manager, self.config, {})
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing software assets", result["message"])
+
+    @patch("requests.get")
+    def test_multiple_filters_combined(self, mock_get):
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_response.json.return_value = {"result": []}
+        mock_get.return_value = mock_response
+
+        list_software_assets(
+            self.auth_manager,
+            self.config,
+            {"display_name": "Office", "install_status": "1", "software_name": "Microsoft"},
+        )
+        call_kwargs = mock_get.call_args
+        params_used = call_kwargs[1].get("params") or call_kwargs[0][1]
+        query = params_used.get("sysparm_query", "")
+        self.assertIn("model_category.nameLIKESoftware", query)
+        self.assertIn("display_nameLIKEOffice", query)
+        self.assertIn("install_status=1", query)
+        self.assertIn("model.nameLIKEMicrosoft", query)
+
+
+class TestListSoftwareAssetsParams(unittest.TestCase):
+    def test_defaults(self):
+        p = ListSoftwareAssetsParams()
+        self.assertEqual(p.limit, 20)
+        self.assertEqual(p.offset, 0)
+        self.assertIsNone(p.display_name)
+        self.assertIsNone(p.install_status)
+        self.assertIsNone(p.assigned_to)
+        self.assertIsNone(p.software_name)
+        self.assertIsNone(p.asset_tag)
+        self.assertIsNone(p.query)
+
+    def test_custom_values(self):
+        p = ListSoftwareAssetsParams(
+            limit=5,
+            offset=10,
+            display_name="Acrobat",
+            software_name="Adobe",
+            install_status="1",
+        )
+        self.assertEqual(p.limit, 5)
+        self.assertEqual(p.offset, 10)
+        self.assertEqual(p.display_name, "Acrobat")
+        self.assertEqual(p.software_name, "Adobe")
+        self.assertEqual(p.install_status, "1")
 
 
 if __name__ == "__main__":
