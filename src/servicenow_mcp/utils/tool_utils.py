@@ -5,6 +5,7 @@ from servicenow_mcp.tools.asset_tools import (
     DeleteAssetParams,
     GetAssetParams,
     ListAssetsParams,
+    ListHardwareAssetsParams,
     ListSoftwareAssetsParams,
     UpdateAssetParams,
 )
@@ -22,6 +23,9 @@ from servicenow_mcp.tools.asset_tools import (
 )
 from servicenow_mcp.tools.asset_tools import (
     list_software_assets as list_software_assets_tool,
+)
+from servicenow_mcp.tools.asset_tools import (
+    list_hardware_assets as list_hardware_assets_tool,
 )
 from servicenow_mcp.tools.asset_tools import (
     update_asset as update_asset_tool,
@@ -3533,6 +3537,19 @@ def get_tool_definitions(
                 "Automatically scopes to records whose model category name contains 'Software'. "
                 "Supports optional filters for asset tag, display name, install status, "
                 "assigned user, and software product name. Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "list_hardware_assets": (
+            list_hardware_assets_tool,
+            ListHardwareAssetsParams,
+            Dict[str, Any],
+            (
+                "List hardware assets from the ServiceNow alm_hardware table. "
+                "Returns hardware-specific fields including CPU, RAM, OS, IP address, and MAC address "
+                "in addition to base asset fields. Supports optional filters for asset tag, "
+                "display name, install status, assigned user, OS, IP address, and MAC address. "
+                "Supports pagination."
             ),
             "raw_dict",
         ),
