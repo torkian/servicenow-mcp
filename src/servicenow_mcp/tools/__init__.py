@@ -295,6 +295,11 @@ from servicenow_mcp.tools.sla_tools import (
     list_slas,
     resolve_sla_breach,
 )
+from servicenow_mcp.tools.sla_notification_tools import (
+    create_sla_breach_notification,
+    list_at_risk_slas,
+    list_sla_breach_events,
+)
 from servicenow_mcp.tools.story_tools import (
     create_story,
     create_story_dependency,
@@ -742,6 +747,9 @@ __all__ = [
     "get_incident_sla",
     "get_sla_breach",
     "resolve_sla_breach",
+    "list_at_risk_slas",
+    "create_sla_breach_notification",
+    "list_sla_breach_events",
 
     # User email lookup
     "get_user_by_email",

@@ -978,6 +978,14 @@ from servicenow_mcp.tools.sla_tools import (
 from servicenow_mcp.tools.sla_tools import (
     resolve_sla_breach as resolve_sla_breach_tool,
 )
+from servicenow_mcp.tools.sla_notification_tools import (
+    CreateSLABreachNotificationParams,
+    ListAtRiskSLAsParams,
+    ListSLABreachEventsParams,
+    create_sla_breach_notification as create_sla_breach_notification_tool,
+    list_at_risk_slas as list_at_risk_slas_tool,
+    list_sla_breach_events as list_sla_breach_events_tool,
+)
 from servicenow_mcp.tools.story_tools import (
     CreateStoryDependencyParams,
     CreateStoryParams,
@@ -3917,6 +3925,45 @@ def get_tool_definitions(
                 "close out a breach after the underlying task has been actioned. "
                 "Accepts an optional work_notes field for audit purposes. "
                 "Returns the updated sla_breach record."
+            ),
+            "raw_dict",
+        ),
+        "list_at_risk_slas": (
+            list_at_risk_slas_tool,
+            ListAtRiskSLAsParams,
+            Dict[str, Any],
+            (
+                "List active SLA tracking records (task_sla) that are approaching breach. "
+                "Returns records where has_breached=false and the elapsed percentage is at "
+                "or above the given threshold (default 80%). Optional filters: table_name "
+                "(e.g. 'incident'), stage, limit, offset. Useful for proactively identifying "
+                "tasks at risk before a formal breach is recorded."
+            ),
+            "raw_dict",
+        ),
+        "create_sla_breach_notification": (
+            create_sla_breach_notification_tool,
+            CreateSLABreachNotificationParams,
+            Dict[str, Any],
+            (
+                "Create a ServiceNow sysevent record that triggers an SLA breach notification. "
+                "Posts an event (default name 'sla.breach') to the sysevent table with the "
+                "given task_sys_id as parm1. ServiceNow's built-in notification engine picks "
+                "up the event and dispatches configured email/push alerts. Optionally pass "
+                "sla_sys_id (stored as parm2) and a custom event_name or source label."
+            ),
+            "raw_dict",
+        ),
+        "list_sla_breach_events": (
+            list_sla_breach_events_tool,
+            ListSLABreachEventsParams,
+            Dict[str, Any],
+            (
+                "List SLA breach notification events from the ServiceNow sysevent table. "
+                "Filters by event_name (default 'sla.breach'). Optional filters: state "
+                "('ready', 'processed', 'error'), source, limit, offset. Useful for auditing "
+                "which breach notifications have been fired and whether they were successfully "
+                "processed by the notification engine."
             ),
             "raw_dict",
         ),
