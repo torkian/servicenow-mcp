@@ -13,6 +13,7 @@ from servicenow_mcp.tools.asset_tools import (
     update_asset,
 )
 from servicenow_mcp.tools.attachment_tools import (
+    bulk_upload_attachments,
     delete_attachment,
     download_attachment,
     get_attachment,
@@ -721,6 +722,7 @@ __all__ = [
     "delete_attachment",
     "upload_attachment",
     "download_attachment",
+    "bulk_upload_attachments",
 
     # Problem management tools
     "list_problems",

@@ -1,9 +1,8 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add bulk attachment upload support
-2. Add change request approval/rejection tools
-3. Add problem root cause analysis tools
+1. Add change request approval/rejection tools
+2. Add problem root cause analysis tools
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -186,3 +185,4 @@
 178. 2026-10-01 — Add list_software_assets tool (alm_asset scoped to model_category.nameLIKESoftware; filters for display_name/install_status/assigned_to/asset_tag/software_name; full pagination; ListSoftwareAssetsParams model; registered in service_desk, system_administrator, and full packages; 14 new tests; 4104 total tests; 96% total coverage)
 179. 2026-10-02 — Add list_hardware_assets tool (alm_hardware table; returns CPU/RAM/OS/IP/MAC hardware fields plus base asset fields; filters for display_name/asset_tag/install_status/assigned_to/os/ip_address/mac_address; pagination; registered in service_desk, system_administrator, and full packages; 19 new tests; 4123 total tests; 96% total coverage)
 180. 2026-10-03 — Add SLA breach notification tools (list_at_risk_slas queries task_sla for has_breached=false with percentage >= threshold; create_sla_breach_notification POSTs sysevent to trigger built-in alerts; list_sla_breach_events audits fired events; 40 new tests; 4163 total tests; 96% total coverage; sla_notification_tools.py 98%)
+181. 2026-10-04 — Add bulk_upload_attachments tool (up to 50 files per call; per-item success/failure results; base64 decode guard; encryption_context support; 14 new tests; 4177 total tests; 96% total coverage)

@@ -7,7 +7,7 @@ via the /api/now/attachment endpoint.
 
 import base64
 import logging
-from typing import Any, Dict, Optional
+from typing import Any, Dict, List, Optional
 
 import requests
 from pydantic import BaseModel, Field
@@ -88,6 +88,29 @@ class DownloadAttachmentParams(BaseModel):
     """Parameters for downloading the binary content of an attachment."""
 
     sys_id: str = Field(..., description="sys_id of the attachment to download")
+
+
+class BulkUploadItem(BaseModel):
+    """A single file to upload as part of a bulk upload request."""
+
+    table_name: str = Field(..., description="ServiceNow table name (e.g. 'incident')")
+    table_sys_id: str = Field(..., description="sys_id of the record to attach the file to")
+    file_name: str = Field(..., description="File name including extension (e.g. 'report.pdf')")
+    file_content_base64: str = Field(..., description="Base64-encoded file content")
+    content_type: Optional[str] = Field(
+        "application/octet-stream",
+        description="MIME type of the file (default: application/octet-stream)",
+    )
+    encryption_context: Optional[str] = Field(None, description="Encryption context sys_id (optional)")
+
+
+class BulkUploadAttachmentsParams(BaseModel):
+    """Parameters for uploading multiple file attachments in one tool call."""
+
+    attachments: List[BulkUploadItem] = Field(
+        ...,
+        description="List of attachments to upload (1–50 items).",
+    )
 
 
 def _format_attachment(record: Dict) -> Dict:
@@ -356,3 +379,106 @@ def download_attachment(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error downloading attachment: {e}")
         return {"success": False, "message": f"Error downloading attachment: {_format_http_error(e)}"}
+
+
+def bulk_upload_attachments(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Upload multiple file attachments to ServiceNow records in one tool call.
+
+    Iterates over each item in the ``attachments`` list and posts each file to
+    ``/api/now/attachment/file``.  Per-item results (success/failure) are
+    returned so callers can see which files succeeded and which failed without
+    aborting the entire batch on the first error.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching BulkUploadAttachmentsParams.
+
+    Returns:
+        Dictionary with ``success``, ``results`` (per-item), ``uploaded`` count,
+        and ``failed`` count keys.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        BulkUploadAttachmentsParams,
+        required_fields=["attachments"],
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    if not validated.attachments:
+        return {"success": False, "message": "No attachments provided"}
+    if len(validated.attachments) > 50:
+        return {"success": False, "message": "At most 50 attachments can be uploaded per call"}
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    upload_url = f"{instance_url}{ATTACHMENT_API}/file"
+    results: List[Dict[str, Any]] = []
+    uploaded = 0
+    failed = 0
+
+    for item in validated.attachments:
+        try:
+            file_bytes = base64.b64decode(item.file_content_base64)
+        except Exception as exc:
+            results.append({
+                "file_name": item.file_name,
+                "table_name": item.table_name,
+                "table_sys_id": item.table_sys_id,
+                "success": False,
+                "message": f"Invalid base64 content: {exc}",
+            })
+            failed += 1
+            continue
+
+        upload_headers = {**headers, "Content-Type": item.content_type or "application/octet-stream"}
+        query_params: Dict[str, Any] = {
+            "table_name": item.table_name,
+            "table_sys_id": item.table_sys_id,
+            "file_name": item.file_name,
+        }
+        if item.encryption_context:
+            query_params["encryption_context"] = item.encryption_context
+
+        try:
+            response = _make_request(
+                "POST", upload_url, headers=upload_headers, params=query_params, data=file_bytes
+            )
+            response.raise_for_status()
+            record = response.json().get("result", {})
+            results.append({
+                "file_name": item.file_name,
+                "table_name": item.table_name,
+                "table_sys_id": item.table_sys_id,
+                "success": True,
+                "attachment": _format_attachment(record),
+            })
+            uploaded += 1
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error uploading {item.file_name}: {e}")
+            results.append({
+                "file_name": item.file_name,
+                "table_name": item.table_name,
+                "table_sys_id": item.table_sys_id,
+                "success": False,
+                "message": f"Upload failed: {_format_http_error(e)}",
+            })
+            failed += 1
+
+    return {
+        "success": failed == 0,
+        "uploaded": uploaded,
+        "failed": failed,
+        "results": results,
+    }

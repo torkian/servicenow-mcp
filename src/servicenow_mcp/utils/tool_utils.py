@@ -31,9 +31,13 @@ from servicenow_mcp.tools.asset_tools import (
     update_asset as update_asset_tool,
 )
 from servicenow_mcp.tools.attachment_tools import (
+    BulkUploadAttachmentsParams,
     DeleteAttachmentParams,
     GetAttachmentParams,
     ListAttachmentsParams,
+)
+from servicenow_mcp.tools.attachment_tools import (
+    bulk_upload_attachments as bulk_upload_attachments_tool,
 )
 from servicenow_mcp.tools.attachment_tools import (
     delete_attachment as delete_attachment_tool,
@@ -3690,6 +3694,18 @@ def get_tool_definitions(
             DeleteAttachmentParams,
             Dict[str, Any],
             "Permanently delete a file attachment from ServiceNow by its sys_id.",
+            "raw_dict",
+        ),
+        "bulk_upload_attachments": (
+            bulk_upload_attachments_tool,
+            BulkUploadAttachmentsParams,
+            Dict[str, Any],
+            (
+                "Upload multiple file attachments to ServiceNow records in one call. "
+                "Each item specifies table_name, table_sys_id, file_name, "
+                "file_content_base64, and optional content_type. Up to 50 files per "
+                "call. Returns per-file success/failure results."
+            ),
             "raw_dict",
         ),
         # Service Request Tools

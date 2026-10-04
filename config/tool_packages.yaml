@@ -300,6 +300,7 @@ system_administrator:
   - get_attachment
   - delete_attachment
   - upload_attachment
+  - bulk_upload_attachments
   # User Management
   - create_user
   - update_user
@@ -760,6 +761,7 @@ full:
   - get_attachment
   - delete_attachment
   - upload_attachment
+  - bulk_upload_attachments
   # Problem Management
   - list_problems
   - get_problem
