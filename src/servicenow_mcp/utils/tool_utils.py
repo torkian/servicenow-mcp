@@ -784,8 +784,12 @@ from servicenow_mcp.tools.problem_tools import (
     CreateProblemParams,
     CreateProblemWorkaroundParams,
     GetProblemParams,
+    GetProblemRootCauseParams,
     GetProblemWorkaroundParams,
+    LinkIncidentToProblemParams,
+    ListProblemRelatedIncidentsParams,
     ListProblemsParams,
+    SetProblemRootCauseParams,
     UpdateProblemParams,
 )
 from servicenow_mcp.tools.problem_tools import (
@@ -801,10 +805,22 @@ from servicenow_mcp.tools.problem_tools import (
     get_problem as get_problem_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
+    get_problem_root_cause as get_problem_root_cause_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
     get_problem_workaround as get_problem_workaround_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
+    link_incident_to_problem as link_incident_to_problem_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    list_problem_related_incidents as list_problem_related_incidents_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
     list_problems as list_problems_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    set_problem_root_cause as set_problem_root_cause_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
     update_problem as update_problem_tool,
@@ -4060,6 +4076,53 @@ def get_tool_definitions(
                 "Returns workaround_info with sys_id, number, short_description, "
                 "workaround text, has_workaround flag, known_error flag, state, "
                 "and problem_state — without fetching the full problem record."
+            ),
+            "raw_dict",
+        ),
+        "set_problem_root_cause": (
+            set_problem_root_cause_tool,
+            SetProblemRootCauseParams,
+            Dict[str, Any],
+            (
+                "Record root cause analysis findings on a ServiceNow problem. "
+                "PATCHes cause_notes, fix_notes, corrective_actions, resolution_code, "
+                "and problem_state fields. Accepts problem number (e.g. PRB0001234) or sys_id. "
+                "Used during RCA to capture why the problem occurred and what fix was applied."
+            ),
+            "raw_dict",
+        ),
+        "get_problem_root_cause": (
+            get_problem_root_cause_tool,
+            GetProblemRootCauseParams,
+            Dict[str, Any],
+            (
+                "Retrieve root cause analysis details for a ServiceNow problem. "
+                "Returns rca_info with cause_notes, fix_notes, workaround, known_error, "
+                "has_root_cause flag, resolution_code, problem_state label, resolved_at, "
+                "and assigned fields — without fetching the full problem record."
+            ),
+            "raw_dict",
+        ),
+        "link_incident_to_problem": (
+            link_incident_to_problem_tool,
+            LinkIncidentToProblemParams,
+            Dict[str, Any],
+            (
+                "Link an incident to a ServiceNow problem record by setting the incident's "
+                "problem_id field. Accepts incident number (e.g. INC0001234) or sys_id, "
+                "and problem number (e.g. PRB0001234) or sys_id. Optionally attaches a work note."
+            ),
+            "raw_dict",
+        ),
+        "list_problem_related_incidents": (
+            list_problem_related_incidents_tool,
+            ListProblemRelatedIncidentsParams,
+            Dict[str, Any],
+            (
+                "List incidents linked to a ServiceNow problem record. "
+                "Queries incidents whose problem_id field references the given problem. "
+                "Accepts problem number (e.g. PRB0001234) or sys_id. "
+                "Supports state filter and pagination with has_more/next_offset."
             ),
             "raw_dict",
         ),
