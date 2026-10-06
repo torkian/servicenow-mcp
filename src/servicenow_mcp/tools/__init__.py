@@ -21,6 +21,7 @@ from servicenow_mcp.tools.attachment_tools import (
     upload_attachment,
 )
 from servicenow_mcp.tools.bulk_tools import (
+    bulk_delete_incidents,
     bulk_update_change_requests,
     bulk_update_change_tasks,
     bulk_update_incidents,
@@ -672,6 +673,7 @@ __all__ = [
 
     # Bulk operations
     "execute_bulk_operations",
+    "bulk_delete_incidents",
     "bulk_update_incidents",
     "bulk_update_change_requests",
     "bulk_update_change_tasks",

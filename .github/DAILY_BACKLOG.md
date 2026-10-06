@@ -1,11 +1,10 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add bulk_delete_incidents tool (DELETE multiple incidents via batch API)
-2. Add list_change_request_comments tool (journal entries for change requests)
-3. Add get_problem_task_comments tool (journal entries for problem tasks)
-4. Add list_request_comments tool (journal entries for sc_request records)
-5. Add report_tools.py (list_reports, get_report, run_report via /api/now/table/sys_report)
+1. Add list_change_request_comments tool (journal entries for change requests)
+2. Add get_problem_task_comments tool (journal entries for problem tasks)
+3. Add list_request_comments tool (journal entries for sc_request records)
+4. Add report_tools.py (list_reports, get_report, run_report via /api/now/table/sys_report)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -190,3 +189,4 @@
 180. 2026-10-03 — Add SLA breach notification tools (list_at_risk_slas queries task_sla for has_breached=false with percentage >= threshold; create_sla_breach_notification POSTs sysevent to trigger built-in alerts; list_sla_breach_events audits fired events; 40 new tests; 4163 total tests; 96% total coverage; sla_notification_tools.py 98%)
 181. 2026-10-04 — Add bulk_upload_attachments tool (up to 50 files per call; per-item success/failure results; base64 decode guard; encryption_context support; 14 new tests; 4177 total tests; 96% total coverage)
 182. 2026-10-05 — Add problem root cause analysis tools (set_problem_root_cause, get_problem_root_cause, link_incident_to_problem, list_problem_related_incidents); RCA fields cause_notes/fix_notes/resolution_code/problem_state; incident ↔ problem linkage via problem_id field; registered in service_desk, change_coordinator, and full packages; 41 new tests; 4218 total tests; 96% total coverage
+183. 2026-10-06 — Add bulk_delete_incidents tool (DELETE multiple incidents via Batch API; INC number/sys_id resolver via single GET; up to 100 per call; per-result incident_id enrichment; registered in service_desk, change_coordinator, and full packages; 14 new tests; 4232 total tests; 96% total coverage)

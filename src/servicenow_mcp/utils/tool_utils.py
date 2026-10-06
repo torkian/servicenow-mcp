@@ -49,6 +49,7 @@ from servicenow_mcp.tools.attachment_tools import (
     list_attachments as list_attachments_tool,
 )
 from servicenow_mcp.tools.bulk_tools import (
+    BulkDeleteIncidentsParams,
     BulkOperationsParams,
     BulkUpdateChangeRequestsParams,
     BulkUpdateChangeTasksParams,
@@ -65,6 +66,9 @@ from servicenow_mcp.tools.bulk_tools import (
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_request_items as bulk_update_request_items_tool,
+)
+from servicenow_mcp.tools.bulk_tools import (
+    bulk_delete_incidents as bulk_delete_incidents_tool,
 )
 from servicenow_mcp.tools.bulk_tools import (
     bulk_update_incidents as bulk_update_incidents_tool,
@@ -2909,6 +2913,19 @@ def get_tool_definitions(
                 "using the ServiceNow Batch API. Each request specifies a method, "
                 "relative URL path, and optional body. Results are returned in the "
                 "same order with per-request status codes and parsed response bodies."
+            ),
+            "raw_dict",
+        ),
+        "bulk_delete_incidents": (
+            bulk_delete_incidents_tool,
+            BulkDeleteIncidentsParams,
+            Dict[str, Any],
+            (
+                "DELETE multiple ServiceNow incidents in a single Batch API call. "
+                "Each entry in incident_ids is an incident number (e.g. INC0010001) or "
+                "32-character sys_id. Incident numbers are resolved to sys_ids with one "
+                "preliminary GET before the batch DELETE is issued. Up to 100 incidents "
+                "per call. Returns per-incident ok/status_code with the original incident_id."
             ),
             "raw_dict",
         ),

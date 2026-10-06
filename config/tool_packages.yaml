@@ -100,6 +100,7 @@ service_desk:
   - list_notifications
   - get_notification
   # Bulk Operations
+  - bulk_delete_incidents
   - bulk_update_incidents
   - bulk_update_problems
   - bulk_update_problem_tasks
@@ -199,6 +200,7 @@ change_coordinator:
   - link_incident_to_problem
   - list_problem_related_incidents
   # Bulk Operations
+  - bulk_delete_incidents
   - bulk_update_incidents
   - bulk_update_change_requests
   - bulk_update_change_tasks
@@ -847,6 +849,7 @@ full:
   - get_notification
   # Bulk Operations
   - execute_bulk_operations
+  - bulk_delete_incidents
   - bulk_update_incidents
   - bulk_update_change_requests
   - bulk_update_change_tasks

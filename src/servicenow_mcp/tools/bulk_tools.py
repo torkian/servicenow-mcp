@@ -1162,3 +1162,99 @@ def bulk_update_request_items(
 
     result["results"] = enriched
     return result
+
+
+# ---------------------------------------------------------------------------
+# Bulk delete incidents
+# ---------------------------------------------------------------------------
+
+
+class BulkDeleteIncidentsParams(BaseModel):
+    """Parameters for bulk-deleting multiple incidents in one batch call."""
+
+    incident_ids: List[str] = Field(
+        ...,
+        description=(
+            "List of incident numbers (e.g. INC0010001) or 32-character sys_ids to delete "
+            "(1–100 items)."
+        ),
+    )
+
+
+def bulk_delete_incidents(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: BulkDeleteIncidentsParams,
+) -> Dict[str, Any]:
+    """DELETE multiple incidents in ServiceNow using a single Batch API call.
+
+    Incident numbers are resolved to sys_ids with one preliminary GET request
+    before the batch DELETE is issued. Up to 100 incidents can be deleted per call.
+    Each result entry reports the incident_id, ok flag, and HTTP status.
+    """
+    if not params.incident_ids:
+        return {"success": False, "message": "No incident IDs provided"}
+
+    if len(params.incident_ids) > 100:
+        return {
+            "success": False,
+            "message": f"Too many incidents: {len(params.incident_ids)} (maximum 100)",
+        }
+
+    numbers_to_resolve: List[str] = [
+        iid for iid in params.incident_ids if not _is_sys_id(iid)
+    ]
+
+    number_to_sys_id: Dict[str, str] = {}
+    if numbers_to_resolve:
+        try:
+            number_to_sys_id = _resolve_incident_numbers(
+                config, auth_manager, numbers_to_resolve
+            )
+        except requests.RequestException as e:
+            logger.error("Failed to resolve incident numbers: %s", e)
+            return {
+                "success": False,
+                "message": f"Failed to resolve incident numbers: {_format_http_error(e)}",
+            }
+
+    batch_requests: List[BulkOperationRequest] = []
+    unresolved: List[str] = []
+
+    for idx, iid in enumerate(params.incident_ids):
+        if _is_sys_id(iid):
+            sys_id = iid
+        else:
+            sys_id = number_to_sys_id.get(iid)
+            if sys_id is None:
+                unresolved.append(iid)
+                continue
+
+        batch_requests.append(
+            BulkOperationRequest(
+                id=str(idx),
+                method="DELETE",
+                url=f"/api/now/v2/table/incident/{sys_id}",
+            )
+        )
+
+    if unresolved:
+        return {
+            "success": False,
+            "message": f"Incident(s) not found: {', '.join(unresolved)}",
+            "unresolved": unresolved,
+        }
+
+    if not batch_requests:
+        return {"success": False, "message": "No valid incidents to delete"}
+
+    bulk_params = BulkOperationsParams(requests=batch_requests)
+    result = execute_bulk_operations(config, auth_manager, bulk_params)
+
+    enriched = []
+    for entry in result.get("results", []):
+        original_idx = int(entry["id"])
+        enriched.append({**entry, "incident_id": params.incident_ids[original_idx]})
+
+    result["results"] = enriched
+    return result
