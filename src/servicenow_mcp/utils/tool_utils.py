@@ -342,8 +342,12 @@ from servicenow_mcp.tools.change_tools import (
     get_change_conflict as get_change_conflict_tool,
 )
 from servicenow_mcp.tools.change_tools import (
+    list_change_request_comments as list_change_request_comments_tool,
+)
+from servicenow_mcp.tools.change_tools import (
     ListChangeConflictsParams,
     GetChangeConflictParams,
+    ListChangeRequestCommentsParams,
 )
 from servicenow_mcp.tools.changeset_tools import (
     AddFileToChangesetParams,
@@ -2032,6 +2036,17 @@ def get_tool_definitions(
                 "Required: sys_id (32-char hex). "
                 "Returns conflict detail including change_request, conflict_ci, "
                 "conflict_change, type, state, and blackout_window."
+            ),
+            "json",
+        ),
+        "list_change_request_comments": (
+            list_change_request_comments_tool,
+            ListChangeRequestCommentsParams,
+            str,
+            (
+                "List journal entries (comments and work notes) for a change request in ServiceNow. "
+                "Required: change_id (CHG number or sys_id). "
+                "Optional: entry_type ('comments' or 'work_notes'), limit, offset."
             ),
             "json",
         ),

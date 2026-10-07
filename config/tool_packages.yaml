@@ -108,6 +108,7 @@ service_desk:
   # Change Approval (read-only)
   - list_change_approvals
   - get_change_approval
+  - list_change_request_comments
   # CMDB / Outage Awareness
   - list_cmdb_ci_outages
   - get_ci_outage
@@ -187,6 +188,7 @@ change_coordinator:
   - list_change_windows_for_date
   - list_change_conflicts
   - get_change_conflict
+  - list_change_request_comments
   # Problem Management (changes often linked to problems)
   - list_problems
   - get_problem
@@ -582,6 +584,7 @@ full:
   - list_change_windows_for_date
   - list_change_conflicts
   - get_change_conflict
+  - list_change_request_comments
   # Workflow
   - list_workflows
   - get_workflow_details
