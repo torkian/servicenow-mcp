@@ -230,6 +230,7 @@ from servicenow_mcp.tools.problem_task_tools import (
     close_problem_task,
     create_problem_task,
     get_problem_task,
+    list_problem_task_comments,
     list_problem_tasks,
     list_problem_tasks_by_problem,
     update_problem_task,
@@ -751,6 +752,7 @@ __all__ = [
     "get_problem_task",
     "update_problem_task",
     "close_problem_task",
+    "list_problem_task_comments",
 
     # SLA management tools
     "list_slas",

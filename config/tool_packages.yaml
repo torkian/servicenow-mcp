@@ -43,6 +43,7 @@ service_desk:
   - get_problem_task
   - update_problem_task
   - close_problem_task
+  - list_problem_task_comments
   # Service Catalog Tasks
   - get_sctask
   - list_sctasks
@@ -109,6 +110,8 @@ service_desk:
   - list_change_approvals
   - get_change_approval
   - list_change_request_comments
+  # Problem Tasks (read-only)
+  - list_problem_task_comments
   # CMDB / Outage Awareness
   - list_cmdb_ci_outages
   - get_ci_outage
@@ -189,6 +192,7 @@ change_coordinator:
   - list_change_conflicts
   - get_change_conflict
   - list_change_request_comments
+  - list_problem_task_comments
   # Problem Management (changes often linked to problems)
   - list_problems
   - get_problem
@@ -794,6 +798,7 @@ full:
   - get_problem_task
   - update_problem_task
   - close_problem_task
+  - list_problem_task_comments
   # Story Management
   - create_story
   - update_story

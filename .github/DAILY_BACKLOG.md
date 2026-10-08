@@ -1,9 +1,8 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add get_problem_task_comments tool (journal entries for problem tasks)
-2. Add list_request_comments tool (journal entries for sc_request records)
-3. Add report_tools.py (list_reports, get_report, run_report via /api/now/table/sys_report)
+1. Add list_request_comments tool (journal entries for sc_request records)
+2. Add report_tools.py (list_reports, get_report, run_report via /api/now/table/sys_report)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -190,3 +189,4 @@
 182. 2026-10-05 — Add problem root cause analysis tools (set_problem_root_cause, get_problem_root_cause, link_incident_to_problem, list_problem_related_incidents); RCA fields cause_notes/fix_notes/resolution_code/problem_state; incident ↔ problem linkage via problem_id field; registered in service_desk, change_coordinator, and full packages; 41 new tests; 4218 total tests; 96% total coverage
 183. 2026-10-06 — Add bulk_delete_incidents tool (DELETE multiple incidents via Batch API; INC number/sys_id resolver via single GET; up to 100 per call; per-result incident_id enrichment; registered in service_desk, change_coordinator, and full packages; 14 new tests; 4232 total tests; 96% total coverage)
 184. 2026-10-07 — Add list_change_request_comments tool (sys_journal_field scoped to name=change_request; CHG number/sys_id resolver; optional entry_type filter for comments vs work_notes; pagination with has_more/next_offset; registered in service_desk, change_coordinator, and full packages; 18 new tests; 4250 total tests; 96% total coverage)
+185. 2026-10-08 — Add list_problem_task_comments tool (sys_journal_field scoped to name=problem_task; PTASK number/sys_id resolver; optional entry_type filter for comments vs work_notes; pagination with has_more/next_offset; registered in service_desk, change_coordinator, and full packages; 18 new tests; 4268 total tests; 96% total coverage)

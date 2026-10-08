@@ -765,6 +765,7 @@ from servicenow_mcp.tools.problem_task_tools import (
     CloseProblemTaskParams,
     CreateProblemTaskParams,
     GetProblemTaskParams,
+    ListProblemTaskCommentsParams,
     ListProblemTasksByProblemParams,
     ListProblemTasksParams,
     UpdateProblemTaskParams,
@@ -786,6 +787,9 @@ from servicenow_mcp.tools.problem_task_tools import (
 )
 from servicenow_mcp.tools.problem_task_tools import (
     update_problem_task as update_problem_task_tool,
+)
+from servicenow_mcp.tools.problem_task_tools import (
+    list_problem_task_comments as list_problem_task_comments_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
     CloseProblemParams,
@@ -4227,6 +4231,17 @@ def get_tool_definitions(
                 "priority, planned_start_date, planned_end_date, work_notes, close_notes."
             ),
             "raw_dict",
+        ),
+        "list_problem_task_comments": (
+            list_problem_task_comments_tool,
+            ListProblemTaskCommentsParams,
+            str,
+            (
+                "List journal entries (comments and work notes) for a problem task in ServiceNow. "
+                "Required: task_id (PTASK number or sys_id). "
+                "Optional: entry_type ('comments' or 'work_notes'), limit, offset."
+            ),
+            "json",
         ),
         # User Group Management Tools
         "list_user_groups": (
