@@ -857,6 +857,7 @@ from servicenow_mcp.tools.request_tools import (
     DeleteRequestItemParams,
     GetRequestItemParams,
     GetRequestParams,
+    ListRequestCommentsParams,
     ListRequestItemsParams,
     ListRequestsParams,
     UpdateRequestItemParams,
@@ -878,6 +879,9 @@ from servicenow_mcp.tools.request_item_task_tools import (
 )
 from servicenow_mcp.tools.request_tools import (
     close_request as close_request_tool,
+)
+from servicenow_mcp.tools.request_tools import (
+    list_request_comments as list_request_comments_tool,
 )
 from servicenow_mcp.tools.request_tools import (
     create_request as create_request_tool,
@@ -3858,6 +3862,19 @@ def get_tool_definitions(
                 "ServiceNow by RITM number (e.g. RITM0010001) or 32-character sys_id. "
                 "Resolves RITM number to sys_id automatically. Returns success on 204, "
                 "failure on 404 or network errors."
+            ),
+            "raw_dict",
+        ),
+        "list_request_comments": (
+            list_request_comments_tool,
+            ListRequestCommentsParams,
+            Dict[str, Any],
+            (
+                "List journal entries (comments and work notes) for a specific service "
+                "request (sc_request). Queries the sys_journal_field table scoped to "
+                "name=sc_request. Accepts a request number (e.g. REQ0010001) or sys_id. "
+                "Optionally filter to 'comments' (customer-visible) or 'work_notes' "
+                "(internal). Supports pagination."
             ),
             "raw_dict",
         ),
