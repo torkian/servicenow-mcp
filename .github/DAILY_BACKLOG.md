@@ -1,7 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add report_tools.py (list_reports, get_report, run_report via /api/now/table/sys_report)
+(empty)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -190,3 +190,4 @@
 184. 2026-10-07 — Add list_change_request_comments tool (sys_journal_field scoped to name=change_request; CHG number/sys_id resolver; optional entry_type filter for comments vs work_notes; pagination with has_more/next_offset; registered in service_desk, change_coordinator, and full packages; 18 new tests; 4250 total tests; 96% total coverage)
 185. 2026-10-08 — Add list_problem_task_comments tool (sys_journal_field scoped to name=problem_task; PTASK number/sys_id resolver; optional entry_type filter for comments vs work_notes; pagination with has_more/next_offset; registered in service_desk, change_coordinator, and full packages; 18 new tests; 4268 total tests; 96% total coverage)
 186. 2026-10-09 — Add list_request_comments tool (sys_journal_field scoped to name=sc_request; REQ number/sys_id resolver; optional entry_type filter for comments vs work_notes; pagination with has_more/next_offset; registered in service_desk and full packages; 18 new tests; 4286 total tests; 96% total coverage)
+187. 2026-10-10 — Add report_tools.py (list_reports, get_report, run_report); sys_report table; titleSTARTSWITH resolver; run_report executes source table query in json mode or returns download_url for csv/pdf/excel; registered in system_administrator and full packages; 45 new tests; 100% report_tools.py coverage; 4331 total tests; 96% total coverage

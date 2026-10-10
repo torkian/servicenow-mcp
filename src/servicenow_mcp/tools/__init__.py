@@ -364,6 +364,11 @@ from servicenow_mcp.tools.metric_tools import (
     list_metric_definitions,
     list_metric_values,
 )
+from servicenow_mcp.tools.report_tools import (
+    get_report,
+    list_reports,
+    run_report,
+)
 from servicenow_mcp.tools.pa_tools import (
     create_pa_indicator,
     create_pa_target,
@@ -894,4 +899,9 @@ __all__ = [
     # User Skill tools
     "list_user_skills",
     "get_user_skill",
+
+    # Report tools
+    "list_reports",
+    "get_report",
+    "run_report",
 ]

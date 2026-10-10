@@ -509,6 +509,10 @@ system_administrator:
   - create_pa_target
   - update_pa_target
   - delete_pa_target
+  # Report Tools
+  - list_reports
+  - get_report
+  - run_report
 
 full:
   # Incident Management
@@ -919,3 +923,7 @@ full:
   - create_pa_target
   - update_pa_target
   - delete_pa_target
+  # Report Tools
+  - list_reports
+  - get_report
+  - run_report

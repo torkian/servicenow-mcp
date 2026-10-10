@@ -1120,6 +1120,16 @@ from servicenow_mcp.tools.metric_tools import (
     list_metric_definitions as list_metric_definitions_tool,
     list_metric_values as list_metric_values_tool,
 )
+from servicenow_mcp.tools.report_tools import (
+    GetReportParams,
+    ListReportsParams,
+    RunReportParams,
+)
+from servicenow_mcp.tools.report_tools import (
+    get_report as get_report_tool,
+    list_reports as list_reports_tool,
+    run_report as run_report_tool,
+)
 from servicenow_mcp.tools.user_preference_tools import (
     DeleteUserPreferenceParams,
     GetUserPreferenceParams,
@@ -5014,6 +5024,48 @@ def get_tool_definitions(
                 "Issues DELETE to pa_target/{sys_id}. "
                 "Returns 404 error when the target is not found. "
                 "Required: target_id (sys_id)."
+            ),
+            "raw_dict",
+        ),
+        # Report tools
+        "list_reports": (
+            list_reports_tool,
+            ListReportsParams,
+            Dict[str, Any],
+            (
+                "List ServiceNow reports from the sys_report table. "
+                "Supports filtering by title (substring), source table, report_type "
+                "(bar/pie/list/trend/histogram/map/gauge/pivot), category, and active flag. "
+                "Returns paginated results ordered by title, each with sys_id, title, table, "
+                "report_type, description, category, user, active, and timestamps."
+            ),
+            "raw_dict",
+        ),
+        "get_report": (
+            get_report_tool,
+            GetReportParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single ServiceNow report by sys_id or title from sys_report. "
+                "A 32-character hex string is treated as a sys_id; anything else triggers a "
+                "titleSTARTSWITH lookup. Returns full report metadata including field, group_by, "
+                "order_by, filter conditions, trend_field, and sum/count fields. "
+                "Returns 404 error when the report is not found."
+            ),
+            "raw_dict",
+        ),
+        "run_report": (
+            run_report_tool,
+            RunReportParams,
+            Dict[str, Any],
+            (
+                "Execute a ServiceNow report and return results. "
+                "When output_format='json' (default), the tool fetches report metadata then "
+                "queries the report's source table using its stored filter conditions, "
+                "returning up to 'limit' data rows (max 1000). "
+                "For output_format='csv', 'pdf', or 'excel', the tool returns a download_url "
+                "pattern to retrieve the file from ServiceNow. "
+                "report_id can be a sys_id (32-char hex) or report title (auto-resolved)."
             ),
             "raw_dict",
         ),
