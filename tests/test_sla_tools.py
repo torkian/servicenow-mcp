@@ -9,6 +9,9 @@ from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.sla_tools import (
     _format_sla,
     _format_task_sla,
+    _resolve_sla_sys_id,
+    create_sla,
+    delete_sla,
     get_incident_sla,
     get_sla,
     get_sla_breach,
@@ -17,6 +20,7 @@ from servicenow_mcp.tools.sla_tools import (
     list_sla_breaches,
     list_slas,
     resolve_sla_breach,
+    update_sla,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
 
@@ -1249,6 +1253,303 @@ class TestGetIncidentSLA(unittest.TestCase):
         )
         self.assertFalse(result["success"])
         self.assertIn("get_headers", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# _resolve_sla_sys_id
+# ---------------------------------------------------------------------------
+
+class TestResolveSLASysId(unittest.TestCase):
+    def test_passthrough_for_hex_sys_id(self):
+        result = _resolve_sla_sys_id("https://dev.service-now.com", {}, FAKE_SYS_ID)
+        self.assertEqual(result, FAKE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_name_lookup_returns_sys_id(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]})
+        result = _resolve_sla_sys_id("https://dev.service-now.com", {}, "Priority 1 Response")
+        self.assertEqual(result, FAKE_SYS_ID)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_name_lookup_not_found(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = _resolve_sla_sys_id("https://dev.service-now.com", {}, "NonExistent SLA")
+        self.assertIsNone(result)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_name_lookup_request_exception(self, mock_req):
+        mock_req.side_effect = requests.exceptions.RequestException("timeout")
+        result = _resolve_sla_sys_id("https://dev.service-now.com", {}, "Priority 1 Response")
+        self.assertIsNone(result)
+
+
+# ---------------------------------------------------------------------------
+# create_sla
+# ---------------------------------------------------------------------------
+
+class TestCreateSLA(unittest.TestCase):
+    def _call(self, params):
+        config = _make_config()
+        auth_manager = _make_auth_manager()
+        return create_sla(config, auth_manager, params)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_create_success_minimal(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_SLA})
+        result = self._call({"name": FAKE_SLA_NAME})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sla"]["name"], FAKE_SLA_NAME)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_create_success_all_fields(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_SLA})
+        result = self._call({
+            "name": FAKE_SLA_NAME,
+            "description": "Test SLA",
+            "type": "SLA",
+            "duration": "1 0:00:00",
+            "active": True,
+            "table": "incident",
+            "condition": "priority=1",
+            "start_condition": "state=1",
+            "pause_condition": "state=3",
+            "stop_condition": "state=6",
+        })
+        self.assertTrue(result["success"])
+        call_kwargs = mock_req.call_args
+        body = call_kwargs[1].get("json") or call_kwargs[0][2] if len(call_kwargs[0]) > 2 else call_kwargs[1].get("json", {})
+        self.assertIsNotNone(body)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_create_active_false(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_SLA})
+        result = self._call({"name": "Test SLA", "active": False})
+        self.assertTrue(result["success"])
+        body = mock_req.call_args[1].get("json", {})
+        self.assertEqual(body.get("active"), "false")
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_create_active_true(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_SLA})
+        result = self._call({"name": "Test SLA", "active": True})
+        self.assertTrue(result["success"])
+        body = mock_req.call_args[1].get("json", {})
+        self.assertEqual(body.get("active"), "true")
+
+    def test_create_missing_name(self):
+        result = self._call({"description": "no name"})
+        self.assertFalse(result["success"])
+        self.assertIn("name", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_create_http_error(self, mock_req):
+        mock_req.return_value = _make_response(500, {})
+        result = self._call({"name": "Test SLA"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error creating SLA", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_create_request_exception(self, mock_req):
+        mock_req.side_effect = requests.exceptions.RequestException("network error")
+        result = self._call({"name": "Test SLA"})
+        self.assertFalse(result["success"])
+
+    def test_create_no_instance_url(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.instance_url = None
+        auth_manager.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        config = MagicMock()
+        config.instance_url = None
+        result = create_sla(auth_manager, config, {"name": "Test SLA"})
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
+
+    def test_create_no_headers(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.instance_url = "https://dev.service-now.com"
+        del auth_manager.get_headers
+        config = MagicMock()
+        config.instance_url = "https://dev.service-now.com"
+        if hasattr(config, "get_headers"):
+            del config.get_headers
+        result = create_sla(auth_manager, config, {"name": "Test SLA"})
+        self.assertFalse(result["success"])
+        self.assertIn("get_headers", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# update_sla
+# ---------------------------------------------------------------------------
+
+class TestUpdateSLA(unittest.TestCase):
+    def _call(self, params):
+        config = _make_config()
+        auth_manager = _make_auth_manager()
+        return update_sla(config, auth_manager, params)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_update_by_sys_id(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_SLA})
+        result = self._call({"sla_id": FAKE_SYS_ID, "description": "Updated desc"})
+        self.assertTrue(result["success"])
+        self.assertEqual(result["sla"]["name"], FAKE_SLA_NAME)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_update_by_name(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(200, {"result": FAKE_SLA}),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME, "active": False})
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_update_all_optional_fields(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": FAKE_SLA})
+        result = self._call({
+            "sla_id": FAKE_SYS_ID,
+            "name": "Renamed SLA",
+            "description": "New desc",
+            "type": "OLA",
+            "duration": "2 0:00:00",
+            "active": True,
+            "table": "change_request",
+            "condition": "priority=2",
+            "start_condition": "state=1",
+            "pause_condition": "state=3",
+            "stop_condition": "state=7",
+        })
+        self.assertTrue(result["success"])
+
+    def test_update_missing_sla_id(self):
+        result = self._call({"name": "New Name"})
+        self.assertFalse(result["success"])
+        self.assertIn("sla_id", result["message"].lower())
+
+    def test_update_no_fields(self):
+        result = self._call({"sla_id": FAKE_SYS_ID})
+        self.assertFalse(result["success"])
+        self.assertIn("No fields", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_update_not_found_by_name(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = self._call({"sla_id": "NonExistent", "description": "x"})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_update_404(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(404, {}),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME, "description": "x"})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_update_http_error(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(500, {}),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME, "description": "x"})
+        self.assertFalse(result["success"])
+        self.assertIn("Error updating SLA", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_update_request_exception(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            requests.exceptions.RequestException("timeout"),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME, "description": "x"})
+        self.assertFalse(result["success"])
+
+
+# ---------------------------------------------------------------------------
+# delete_sla
+# ---------------------------------------------------------------------------
+
+class TestDeleteSLA(unittest.TestCase):
+    def _call(self, params):
+        config = _make_config()
+        auth_manager = _make_auth_manager()
+        return delete_sla(config, auth_manager, params)
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_delete_by_sys_id(self, mock_req):
+        mock_req.return_value = _make_response(204, {})
+        result = self._call({"sla_id": FAKE_SYS_ID})
+        self.assertTrue(result["success"])
+        self.assertIn(FAKE_SYS_ID, result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_delete_by_name(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(204, {}),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME})
+        self.assertTrue(result["success"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_delete_200_response(self, mock_req):
+        mock_req.return_value = _make_response(200, {})
+        result = self._call({"sla_id": FAKE_SYS_ID})
+        self.assertTrue(result["success"])
+
+    def test_delete_missing_sla_id(self):
+        result = self._call({})
+        self.assertFalse(result["success"])
+        self.assertIn("sla_id", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_delete_not_found_by_name(self, mock_req):
+        mock_req.return_value = _make_response(200, {"result": []})
+        result = self._call({"sla_id": "NonExistent SLA"})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_delete_404(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(404, {}),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"].lower())
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_delete_http_error(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            _make_response(500, {}),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME})
+        self.assertFalse(result["success"])
+        self.assertIn("Error deleting SLA", result["message"])
+
+    @patch("servicenow_mcp.tools.sla_tools._make_request")
+    def test_delete_request_exception(self, mock_req):
+        mock_req.side_effect = [
+            _make_response(200, {"result": [{"sys_id": FAKE_SYS_ID}]}),
+            requests.exceptions.RequestException("network error"),
+        ]
+        result = self._call({"sla_id": FAKE_SLA_NAME})
+        self.assertFalse(result["success"])
+
+    def test_delete_no_instance_url(self):
+        auth_manager = MagicMock(spec=AuthManager)
+        auth_manager.instance_url = None
+        auth_manager.get_headers.return_value = {"Authorization": "Bearer FAKE"}
+        config = MagicMock()
+        config.instance_url = None
+        result = delete_sla(auth_manager, config, {"sla_id": FAKE_SYS_ID})
+        self.assertFalse(result["success"])
+        self.assertIn("instance_url", result["message"])
 
 
 if __name__ == "__main__":

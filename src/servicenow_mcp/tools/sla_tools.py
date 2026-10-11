@@ -851,3 +851,240 @@ def get_incident_sla(
             "success": False,
             "message": f"Error retrieving incident SLA record: {_format_http_error(e)}",
         }
+
+
+# ---------------------------------------------------------------------------
+# SLA definition CRUD (create / update / delete on contract_sla)
+# ---------------------------------------------------------------------------
+
+
+class CreateSLAParams(BaseModel):
+    """Parameters for creating an SLA definition."""
+
+    name: str = Field(..., description="Name of the SLA definition")
+    description: Optional[str] = Field(None, description="Human-readable description")
+    type: Optional[str] = Field(
+        None,
+        description="SLA type: 'SLA', 'OLA', or 'UC' (underpinning contract)",
+    )
+    duration: Optional[str] = Field(
+        None,
+        description="Duration string in ServiceNow format, e.g. '1 0:00:00' for 1 day",
+    )
+    active: Optional[bool] = Field(None, description="Whether the SLA is active (default True)")
+    table: Optional[str] = Field(
+        None,
+        description="Target table the SLA applies to, e.g. 'incident'",
+    )
+    condition: Optional[str] = Field(None, description="Encoded query condition for the SLA")
+    start_condition: Optional[str] = Field(None, description="Condition that starts the SLA timer")
+    pause_condition: Optional[str] = Field(None, description="Condition that pauses the SLA timer")
+    stop_condition: Optional[str] = Field(None, description="Condition that stops the SLA timer")
+
+
+class UpdateSLAParams(BaseModel):
+    """Parameters for updating an SLA definition."""
+
+    sla_id: str = Field(
+        ...,
+        description="SLA sys_id (32-char hex) or exact name to identify the record",
+    )
+    name: Optional[str] = Field(None, description="New name for the SLA")
+    description: Optional[str] = Field(None, description="Updated description")
+    type: Optional[str] = Field(None, description="SLA type: 'SLA', 'OLA', or 'UC'")
+    duration: Optional[str] = Field(None, description="Updated duration string")
+    active: Optional[bool] = Field(None, description="Enable or disable the SLA")
+    table: Optional[str] = Field(None, description="Updated target table")
+    condition: Optional[str] = Field(None, description="Updated condition")
+    start_condition: Optional[str] = Field(None, description="Updated start condition")
+    pause_condition: Optional[str] = Field(None, description="Updated pause condition")
+    stop_condition: Optional[str] = Field(None, description="Updated stop condition")
+
+
+class DeleteSLAParams(BaseModel):
+    """Parameters for deleting an SLA definition."""
+
+    sla_id: str = Field(
+        ...,
+        description="SLA sys_id (32-char hex) or exact name of the record to delete",
+    )
+
+
+def _resolve_sla_sys_id(
+    instance_url: str,
+    headers: dict,
+    sla_id: str,
+) -> Optional[str]:
+    """Return the sys_id for an SLA name, or passthrough if already a sys_id."""
+    if len(sla_id) == 32 and all(c in "0123456789abcdef" for c in sla_id):
+        return sla_id
+    url = f"{instance_url}{SLA_TABLE}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"name={sla_id}",
+                "sysparm_fields": "sys_id",
+                "sysparm_limit": 1,
+            },
+        )
+        response.raise_for_status()
+        results = response.json().get("result", [])
+        if results:
+            return results[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        pass
+    return None
+
+
+def create_sla(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: dict,
+) -> dict:
+    """Create a new SLA definition in the contract_sla table.
+
+    Args:
+        auth_manager: Authentication manager (or ServerConfig when args are swapped).
+        server_config: Server configuration (or AuthManager when args are swapped).
+        params: Parameters matching CreateSLAParams.
+
+    Returns:
+        Dictionary with ``success`` and ``sla`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, CreateSLAParams, required_fields=["name"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    body: dict = {"name": validated.name}
+    for field in (
+        "description", "type", "duration", "table",
+        "condition", "start_condition", "pause_condition", "stop_condition",
+    ):
+        value = getattr(validated, field)
+        if value is not None:
+            body[field] = value
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+
+    url = f"{instance_url}{SLA_TABLE}"
+    try:
+        response = _make_request("POST", url, headers=headers, json=body)
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "sla": _format_sla(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error creating SLA: {e}")
+        return {"success": False, "message": f"Error creating SLA: {_format_http_error(e)}"}
+
+
+def update_sla(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: dict,
+) -> dict:
+    """Update an existing SLA definition via PATCH.
+
+    Args:
+        auth_manager: Authentication manager (or ServerConfig when args are swapped).
+        server_config: Server configuration (or AuthManager when args are swapped).
+        params: Parameters matching UpdateSLAParams.
+
+    Returns:
+        Dictionary with ``success`` and ``sla`` keys on success.
+    """
+    result = _unwrap_and_validate_params(params, UpdateSLAParams, required_fields=["sla_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_sla_sys_id(instance_url, headers, validated.sla_id)
+    if not sys_id:
+        return {"success": False, "message": f"SLA not found: {validated.sla_id}"}
+
+    body: dict = {}
+    for field in (
+        "name", "description", "type", "duration", "table",
+        "condition", "start_condition", "pause_condition", "stop_condition",
+    ):
+        value = getattr(validated, field)
+        if value is not None:
+            body[field] = value
+    if validated.active is not None:
+        body["active"] = "true" if validated.active else "false"
+
+    if not body:
+        return {"success": False, "message": "No fields provided for update"}
+
+    url = f"{instance_url}{SLA_TABLE}/{sys_id}"
+    try:
+        response = _make_request("PATCH", url, headers=headers, json=body)
+        if response.status_code == 404:
+            return {"success": False, "message": f"SLA not found: {validated.sla_id}"}
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        return {"success": True, "sla": _format_sla(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error updating SLA: {e}")
+        return {"success": False, "message": f"Error updating SLA: {_format_http_error(e)}"}
+
+
+def delete_sla(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: dict,
+) -> dict:
+    """Delete an SLA definition from the contract_sla table.
+
+    Args:
+        auth_manager: Authentication manager (or ServerConfig when args are swapped).
+        server_config: Server configuration (or AuthManager when args are swapped).
+        params: Parameters matching DeleteSLAParams.
+
+    Returns:
+        Dictionary with ``success`` key on success.
+    """
+    result = _unwrap_and_validate_params(params, DeleteSLAParams, required_fields=["sla_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    sys_id = _resolve_sla_sys_id(instance_url, headers, validated.sla_id)
+    if not sys_id:
+        return {"success": False, "message": f"SLA not found: {validated.sla_id}"}
+
+    url = f"{instance_url}{SLA_TABLE}/{sys_id}"
+    try:
+        response = _make_request("DELETE", url, headers=headers)
+        if response.status_code == 404:
+            return {"success": False, "message": f"SLA not found: {validated.sla_id}"}
+        if response.status_code not in (200, 204):
+            response.raise_for_status()
+        return {"success": True, "message": f"SLA {sys_id} deleted successfully"}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error deleting SLA: {e}")
+        return {"success": False, "message": f"Error deleting SLA: {_format_http_error(e)}"}

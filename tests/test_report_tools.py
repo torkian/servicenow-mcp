@@ -4,9 +4,6 @@ import pytest
 from unittest.mock import MagicMock, patch
 
 from servicenow_mcp.tools.report_tools import (
-    GetReportParams,
-    ListReportsParams,
-    RunReportParams,
     _format_report,
     _normalise_ref,
     _resolve_report_sys_id,

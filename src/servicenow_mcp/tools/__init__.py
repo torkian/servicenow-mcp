@@ -295,6 +295,8 @@ from servicenow_mcp.tools.sctask_tools import (
     update_sctask,
 )
 from servicenow_mcp.tools.sla_tools import (
+    create_sla,
+    delete_sla,
     get_incident_sla,
     get_sla,
     get_sla_breach,
@@ -303,6 +305,7 @@ from servicenow_mcp.tools.sla_tools import (
     list_sla_breaches,
     list_slas,
     resolve_sla_breach,
+    update_sla,
 )
 from servicenow_mcp.tools.sla_notification_tools import (
     create_sla_breach_notification,
@@ -763,6 +766,9 @@ __all__ = [
     # SLA management tools
     "list_slas",
     "get_sla",
+    "create_sla",
+    "update_sla",
+    "delete_sla",
     "list_sla_breach_definitions",
     "list_sla_breaches",
     "list_incident_slas",

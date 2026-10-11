@@ -1,7 +1,16 @@
 # Daily Improvement Backlog
 
 ## Queue
-(empty)
+1. Add SLA schedule tools (list_sla_schedules, get_sla_schedule linked to contract_sla via schedule field)
+2. Add list_sla_exceptions tool (cmn_schedule_span with type=on blackout windows for SLA)
+3. Improve sla_tools.py test coverage to 100% (currently ~91% after new tools)
+4. Add list_problem_related_cis tool (link problem records to affected CIs via problem_task or cmdb_ci)
+5. Add portal catalog request tools (sc_portal and sp_portal tables)
+6. Add knowledge base article version history tool (kb_knowledge_version table)
+7. Add catalog item approval policy tools (sc_cat_item_delivery_plan)
+8. Add event rule management tools (sysevent_rule table)
+9. Add transform map tools (sys_transform_map for data import)
+10. Add data source tools (sys_data_source for import sets)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -191,3 +200,4 @@
 185. 2026-10-08 — Add list_problem_task_comments tool (sys_journal_field scoped to name=problem_task; PTASK number/sys_id resolver; optional entry_type filter for comments vs work_notes; pagination with has_more/next_offset; registered in service_desk, change_coordinator, and full packages; 18 new tests; 4268 total tests; 96% total coverage)
 186. 2026-10-09 — Add list_request_comments tool (sys_journal_field scoped to name=sc_request; REQ number/sys_id resolver; optional entry_type filter for comments vs work_notes; pagination with has_more/next_offset; registered in service_desk and full packages; 18 new tests; 4286 total tests; 96% total coverage)
 187. 2026-10-10 — Add report_tools.py (list_reports, get_report, run_report); sys_report table; titleSTARTSWITH resolver; run_report executes source table query in json mode or returns download_url for csv/pdf/excel; registered in system_administrator and full packages; 45 new tests; 100% report_tools.py coverage; 4331 total tests; 96% total coverage
+188. 2026-10-11 — Add create_sla, update_sla, delete_sla tools (complete CRUD for contract_sla table; name/sys_id resolver; empty-body guard on update; 404 guards; active serialised as string; registered in system_administrator and full packages; 31 new tests; 4362 total tests; 96% total coverage)

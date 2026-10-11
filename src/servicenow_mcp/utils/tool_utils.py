@@ -981,6 +981,8 @@ from servicenow_mcp.tools.sctask_tools import (
     update_sctask as update_sctask_tool,
 )
 from servicenow_mcp.tools.sla_tools import (
+    CreateSLAParams,
+    DeleteSLAParams,
     GetIncidentSLAParams,
     GetSLABreachParams,
     GetSLAParams,
@@ -989,6 +991,13 @@ from servicenow_mcp.tools.sla_tools import (
     ListSLABreachesParams,
     ListSLAsParams,
     ResolveSLABreachParams,
+    UpdateSLAParams,
+)
+from servicenow_mcp.tools.sla_tools import (
+    create_sla as create_sla_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    delete_sla as delete_sla_tool,
 )
 from servicenow_mcp.tools.sla_tools import (
     get_incident_sla as get_incident_sla_tool,
@@ -1013,6 +1022,9 @@ from servicenow_mcp.tools.sla_tools import (
 )
 from servicenow_mcp.tools.sla_tools import (
     resolve_sla_breach as resolve_sla_breach_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    update_sla as update_sla_tool,
 )
 from servicenow_mcp.tools.sla_notification_tools import (
     CreateSLABreachNotificationParams,
@@ -3955,6 +3967,42 @@ def get_tool_definitions(
             (
                 "Retrieve a single SLA definition by sys_id (32-char hex) or "
                 "exact name from the contract_sla table."
+            ),
+            "raw_dict",
+        ),
+        "create_sla": (
+            create_sla_tool,
+            CreateSLAParams,
+            Dict[str, Any],
+            (
+                "Create a new SLA definition in the contract_sla table. "
+                "Required: name. Optional: description, type (SLA/OLA/UC), duration "
+                "(e.g. '1 0:00:00' for 1 day), active, table (e.g. 'incident'), "
+                "condition, start_condition, pause_condition, stop_condition."
+            ),
+            "raw_dict",
+        ),
+        "update_sla": (
+            update_sla_tool,
+            UpdateSLAParams,
+            Dict[str, Any],
+            (
+                "Update an existing SLA definition via PATCH. "
+                "Required: sla_id (sys_id or exact name). Optional updatable fields: "
+                "name, description, type, duration, active, table, condition, "
+                "start_condition, pause_condition, stop_condition. "
+                "Returns error if no fields provided or record not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_sla": (
+            delete_sla_tool,
+            DeleteSLAParams,
+            Dict[str, Any],
+            (
+                "Delete an SLA definition from the contract_sla table. "
+                "Required: sla_id (sys_id or exact name). "
+                "Returns a structured error when the record does not exist."
             ),
             "raw_dict",
         ),

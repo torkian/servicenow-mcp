@@ -448,6 +448,9 @@ system_administrator:
   - list_sla_breach_definitions
   - list_slas
   - get_sla
+  - create_sla
+  - update_sla
+  - delete_sla
   - list_sla_breaches
   - list_incident_slas
   - get_incident_sla
@@ -850,6 +853,9 @@ full:
   - list_sla_breach_definitions
   - list_slas
   - get_sla
+  - create_sla
+  - update_sla
+  - delete_sla
   - list_sla_breaches
   - list_incident_slas
   - get_incident_sla
