@@ -986,9 +986,11 @@ from servicenow_mcp.tools.sla_tools import (
     GetIncidentSLAParams,
     GetSLABreachParams,
     GetSLAParams,
+    GetSLAScheduleParams,
     ListIncidentSLAsParams,
     ListSLABreachDefinitionsParams,
     ListSLABreachesParams,
+    ListSLASchedulesParams,
     ListSLAsParams,
     ResolveSLABreachParams,
     UpdateSLAParams,
@@ -1025,6 +1027,10 @@ from servicenow_mcp.tools.sla_tools import (
 )
 from servicenow_mcp.tools.sla_tools import (
     update_sla as update_sla_tool,
+)
+from servicenow_mcp.tools.sla_tools import (
+    get_sla_schedule as get_sla_schedule_tool,
+    list_sla_schedules as list_sla_schedules_tool,
 )
 from servicenow_mcp.tools.sla_notification_tools import (
     CreateSLABreachNotificationParams,
@@ -4107,6 +4113,32 @@ def get_tool_definitions(
                 "('ready', 'processed', 'error'), source, limit, offset. Useful for auditing "
                 "which breach notifications have been fired and whether they were successfully "
                 "processed by the notification engine."
+            ),
+            "raw_dict",
+        ),
+        "list_sla_schedules": (
+            list_sla_schedules_tool,
+            ListSLASchedulesParams,
+            Dict[str, Any],
+            (
+                "List cmn_schedule records linked to SLA definitions. When sla_id is given "
+                "(contract_sla sys_id or name) the result is scoped to the single schedule "
+                "assigned to that SLA via the schedule reference field. Without sla_id returns "
+                "all cmn_schedule records with optional name_query, active, and time_zone filters. "
+                "Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_sla_schedule": (
+            get_sla_schedule_tool,
+            GetSLAScheduleParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single cmn_schedule record linked to an SLA definition. "
+                "Supply either schedule_id (cmn_schedule sys_id or exact name for a direct "
+                "lookup) or sla_id (contract_sla sys_id or name, resolves to that SLA's "
+                "schedule field). Exactly one of the two parameters must be provided. "
+                "Returns 404-style failure when no schedule is assigned to the given SLA."
             ),
             "raw_dict",
         ),

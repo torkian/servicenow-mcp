@@ -300,9 +300,11 @@ from servicenow_mcp.tools.sla_tools import (
     get_incident_sla,
     get_sla,
     get_sla_breach,
+    get_sla_schedule,
     list_incident_slas,
     list_sla_breach_definitions,
     list_sla_breaches,
+    list_sla_schedules,
     list_slas,
     resolve_sla_breach,
     update_sla,
@@ -778,6 +780,8 @@ __all__ = [
     "list_at_risk_slas",
     "create_sla_breach_notification",
     "list_sla_breach_events",
+    "list_sla_schedules",
+    "get_sla_schedule",
 
     # User email lookup
     "get_user_by_email",

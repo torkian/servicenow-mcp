@@ -98,6 +98,8 @@ service_desk:
   - list_at_risk_slas
   - create_sla_breach_notification
   - list_sla_breach_events
+  - list_sla_schedules
+  - get_sla_schedule
   # Notifications
   - list_notifications
   - get_notification
@@ -459,6 +461,8 @@ system_administrator:
   - list_at_risk_slas
   - create_sla_breach_notification
   - list_sla_breach_events
+  - list_sla_schedules
+  - get_sla_schedule
   # Generic Table CRUD
   - list_records
   - get_record
@@ -864,6 +868,8 @@ full:
   - list_at_risk_slas
   - create_sla_breach_notification
   - list_sla_breach_events
+  - list_sla_schedules
+  - get_sla_schedule
   # Notification Tools
   - list_notifications
   - get_notification

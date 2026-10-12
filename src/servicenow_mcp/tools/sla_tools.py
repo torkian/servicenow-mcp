@@ -11,6 +11,10 @@ sys_id lookup, has_breached flag, and stage filters.
 
 Also provides get_incident_sla — fetches a single task_sla record by
 sys_id and validates it belongs to table_name=incident.
+
+Also provides list_sla_schedules and get_sla_schedule — tools for
+working with the cmn_schedule records linked to contract_sla via the
+schedule field.
 """
 
 import logging
@@ -1088,3 +1092,323 @@ def delete_sla(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error deleting SLA: {e}")
         return {"success": False, "message": f"Error deleting SLA: {_format_http_error(e)}"}
+
+
+# ---------------------------------------------------------------------------
+# SLA schedule tools — cmn_schedule records linked via contract_sla.schedule
+# ---------------------------------------------------------------------------
+
+SLA_SCHEDULE_TABLE = "/api/now/table/cmn_schedule"
+
+SLA_SCHEDULE_FIELDS = [
+    "sys_id",
+    "name",
+    "description",
+    "type",
+    "time_zone",
+    "active",
+    "parent",
+    "sys_created_by",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+SLA_SCHEDULE_LINK_FIELDS = SLA_FIELDS + ["schedule"]
+
+
+def _format_sla_schedule(record: Dict) -> Dict:
+    """Normalise a raw cmn_schedule record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "name": record.get("name"),
+        "description": record.get("description"),
+        "type": _display(record.get("type")),
+        "time_zone": record.get("time_zone"),
+        "active": record.get("active"),
+        "parent": _display(record.get("parent")),
+        "created_by": record.get("sys_created_by"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def _resolve_sla_schedule_sys_id(
+    instance_url: str,
+    headers: dict,
+    sla_id: str,
+) -> Optional[str]:
+    """Return the cmn_schedule sys_id linked to an SLA, resolving by name if needed."""
+    # Resolve the SLA first (sys_id passthrough or name lookup)
+    sla_sys_id = _resolve_sla_sys_id(instance_url, headers, sla_id)
+    if not sla_sys_id:
+        return None
+
+    url = f"{instance_url}{SLA_TABLE}/{sla_sys_id}"
+    try:
+        response = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_fields": "schedule",
+                "sysparm_display_value": "false",
+                "sysparm_exclude_reference_link": "true",
+            },
+        )
+        if response.status_code == 404:
+            return None
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        schedule = record.get("schedule")
+        if isinstance(schedule, dict):
+            return schedule.get("value")
+        return schedule or None
+    except requests.exceptions.RequestException:
+        return None
+
+
+class ListSLASchedulesParams(BaseModel):
+    """Parameters for listing cmn_schedule records linked to SLA definitions."""
+
+    sla_id: Optional[str] = Field(
+        None,
+        description=(
+            "SLA sys_id (32-char hex) or exact name. When provided, only the "
+            "schedule assigned to that SLA is returned."
+        ),
+    )
+    name_query: Optional[str] = Field(
+        None,
+        description="Substring search on the schedule name (case-insensitive LIKE match).",
+    )
+    active: Optional[bool] = Field(
+        None,
+        description="When True, return only active schedules; False for inactive only.",
+    )
+    time_zone: Optional[str] = Field(
+        None,
+        description="Filter by exact time_zone value (e.g. 'US/Eastern', 'UTC').",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+
+
+def list_sla_schedules(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List cmn_schedule records linked to SLA definitions.
+
+    When ``sla_id`` is supplied the result is scoped to the single schedule
+    assigned to that SLA definition (via the ``schedule`` reference field on
+    ``contract_sla``).  Without ``sla_id`` the tool returns all cmn_schedule
+    records, optionally filtered by ``name_query``, ``active``, and
+    ``time_zone``.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListSLASchedulesParams.
+
+    Returns:
+        Dictionary with ``success``, ``sla_schedules`` (list), ``count``, and
+        pagination keys (``has_more``, ``next_offset``).
+    """
+    result = _unwrap_and_validate_params(params, ListSLASchedulesParams)
+    if not result["success"]:
+        return result
+    validated: ListSLASchedulesParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    filters: list = []
+
+    if validated.sla_id:
+        schedule_sys_id = _resolve_sla_schedule_sys_id(
+            instance_url, headers, validated.sla_id
+        )
+        if schedule_sys_id is None:
+            return {
+                "success": False,
+                "message": (
+                    f"SLA not found or has no schedule assigned: {validated.sla_id}"
+                ),
+            }
+        filters.append(f"sys_id={schedule_sys_id}")
+
+    if validated.name_query:
+        filters.append(f"nameLIKE{validated.name_query}")
+    if validated.active is not None:
+        filters.append(f"active={'true' if validated.active else 'false'}")
+    if validated.time_zone:
+        filters.append(f"time_zone={validated.time_zone}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters) if filters else None,
+        exclude_reference_link=True,
+        fields=",".join(SLA_SCHEDULE_FIELDS),
+    )
+
+    url = f"{instance_url}{SLA_SCHEDULE_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        schedules = [_format_sla_schedule(r) for r in response.json().get("result", [])]
+        return _paginated_list_response(
+            schedules, validated.limit, validated.offset, "sla_schedules"
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing SLA schedules: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing SLA schedules: {_format_http_error(e)}",
+        }
+
+
+class GetSLAScheduleParams(BaseModel):
+    """Parameters for retrieving a single cmn_schedule linked to an SLA."""
+
+    schedule_id: Optional[str] = Field(
+        None,
+        description=(
+            "cmn_schedule sys_id (32-char hex) or exact schedule name to fetch directly."
+        ),
+    )
+    sla_id: Optional[str] = Field(
+        None,
+        description=(
+            "SLA sys_id (32-char hex) or exact name. When provided, the schedule "
+            "assigned to that SLA definition is returned. Requires the SLA to have "
+            "a schedule field set."
+        ),
+    )
+
+
+def get_sla_schedule(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single cmn_schedule record linked to an SLA definition.
+
+    Accepts either a direct ``schedule_id`` (cmn_schedule sys_id or name) or
+    an ``sla_id`` (contract_sla sys_id or name).  When ``sla_id`` is given the
+    tool first resolves the SLA to read its ``schedule`` reference field, then
+    fetches that cmn_schedule record.  Exactly one of the two parameters must
+    be supplied.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetSLAScheduleParams.
+
+    Returns:
+        Dictionary with ``success`` and ``sla_schedule`` keys.
+    """
+    result = _unwrap_and_validate_params(params, GetSLAScheduleParams)
+    if not result["success"]:
+        return result
+    validated: GetSLAScheduleParams = result["params"]
+
+    if not validated.schedule_id and not validated.sla_id:
+        return {
+            "success": False,
+            "message": "Either schedule_id or sla_id must be provided",
+        }
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    schedule_sys_id: Optional[str] = None
+
+    if validated.sla_id:
+        schedule_sys_id = _resolve_sla_schedule_sys_id(
+            instance_url, headers, validated.sla_id
+        )
+        if schedule_sys_id is None:
+            return {
+                "success": False,
+                "message": (
+                    f"SLA not found or has no schedule assigned: {validated.sla_id}"
+                ),
+            }
+    else:
+        # schedule_id may be a sys_id or a name
+        sid = validated.schedule_id
+        if sid and len(sid) == 32 and all(c in "0123456789abcdef" for c in sid):
+            schedule_sys_id = sid
+        else:
+            # Name lookup
+            url = f"{instance_url}{SLA_SCHEDULE_TABLE}"
+            try:
+                resp = _make_request(
+                    "GET",
+                    url,
+                    headers=headers,
+                    params={
+                        "sysparm_query": f"name={sid}",
+                        "sysparm_fields": "sys_id",
+                        "sysparm_limit": 1,
+                        "sysparm_exclude_reference_link": "true",
+                    },
+                )
+                resp.raise_for_status()
+                records = resp.json().get("result", [])
+                if not records:
+                    return {
+                        "success": False,
+                        "message": f"Schedule not found: {sid}",
+                    }
+                schedule_sys_id = records[0].get("sys_id")
+            except requests.exceptions.RequestException as e:
+                logger.error(f"Error looking up schedule: {e}")
+                return {
+                    "success": False,
+                    "message": f"Error looking up schedule: {_format_http_error(e)}",
+                }
+
+    fetch_params = {
+        "sysparm_display_value": "true",
+        "sysparm_exclude_reference_link": "true",
+        "sysparm_fields": ",".join(SLA_SCHEDULE_FIELDS),
+    }
+    url = f"{instance_url}{SLA_SCHEDULE_TABLE}/{schedule_sys_id}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=fetch_params)
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"Schedule not found: {schedule_sys_id}",
+            }
+        response.raise_for_status()
+        record = response.json().get("result", {})
+        if not record:
+            return {
+                "success": False,
+                "message": f"Schedule not found: {schedule_sys_id}",
+            }
+        return {"success": True, "sla_schedule": _format_sla_schedule(record)}
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving SLA schedule: {e}")
+        return {
+            "success": False,
+            "message": f"Error retrieving SLA schedule: {_format_http_error(e)}",
+        }
