@@ -100,6 +100,7 @@ service_desk:
   - list_sla_breach_events
   - list_sla_schedules
   - get_sla_schedule
+  - list_sla_exceptions
   # Notifications
   - list_notifications
   - get_notification
@@ -463,6 +464,7 @@ system_administrator:
   - list_sla_breach_events
   - list_sla_schedules
   - get_sla_schedule
+  - list_sla_exceptions
   # Generic Table CRUD
   - list_records
   - get_record
@@ -870,6 +872,7 @@ full:
   - list_sla_breach_events
   - list_sla_schedules
   - get_sla_schedule
+  - list_sla_exceptions
   # Notification Tools
   - list_notifications
   - get_notification

@@ -15,6 +15,9 @@ sys_id and validates it belongs to table_name=incident.
 Also provides list_sla_schedules and get_sla_schedule — tools for
 working with the cmn_schedule records linked to contract_sla via the
 schedule field.
+
+Also provides list_sla_exceptions — lists cmn_schedule_span records
+with type=on (blackout / exception windows) for an SLA schedule.
 """
 
 import logging
@@ -1411,4 +1414,221 @@ def get_sla_schedule(
         return {
             "success": False,
             "message": f"Error retrieving SLA schedule: {_format_http_error(e)}",
+        }
+
+
+# ---------------------------------------------------------------------------
+# list_sla_exceptions — cmn_schedule_span records with type=on (blackout windows)
+# ---------------------------------------------------------------------------
+
+SLA_SCHEDULE_SPAN_TABLE = "/api/now/table/cmn_schedule_span"
+
+SLA_EXCEPTION_FIELDS = [
+    "sys_id",
+    "name",
+    "schedule",
+    "type",
+    "repeat_type",
+    "day_of_week",
+    "start_date_time",
+    "end_date_time",
+    "all_day",
+    "repeat_until",
+    "sys_created_on",
+    "sys_updated_on",
+]
+
+_EXCEPTION_DAY_LABELS = {
+    "0": "Sunday",
+    "1": "Monday",
+    "2": "Tuesday",
+    "3": "Wednesday",
+    "4": "Thursday",
+    "5": "Friday",
+    "6": "Saturday",
+}
+
+
+def _format_sla_exception(record: Dict) -> Dict:
+    """Normalise a raw cmn_schedule_span (type=on) record into a clean dict."""
+
+    def _display(val):
+        if isinstance(val, dict):
+            return val.get("display_value") or val.get("value")
+        return val
+
+    raw_dow = record.get("day_of_week")
+    if isinstance(raw_dow, dict):
+        raw_dow = raw_dow.get("value") or raw_dow.get("display_value")
+
+    return {
+        "sys_id": record.get("sys_id"),
+        "name": record.get("name"),
+        "schedule": _display(record.get("schedule")),
+        "type": _display(record.get("type")),
+        "repeat_type": _display(record.get("repeat_type")),
+        "day_of_week": raw_dow,
+        "day_of_week_label": _EXCEPTION_DAY_LABELS.get(str(raw_dow), raw_dow)
+        if raw_dow is not None
+        else None,
+        "start_date_time": record.get("start_date_time"),
+        "end_date_time": record.get("end_date_time"),
+        "all_day": record.get("all_day"),
+        "repeat_until": record.get("repeat_until"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+    }
+
+
+def _resolve_schedule_sys_id(
+    instance_url: str,
+    headers: Dict[str, str],
+    schedule_id: str,
+) -> Optional[str]:
+    """Return the cmn_schedule sys_id for a name or passthrough for a sys_id."""
+    if len(schedule_id) == 32 and all(c in "0123456789abcdef" for c in schedule_id):
+        return schedule_id
+    url = f"{instance_url}{SLA_SCHEDULE_TABLE}"
+    try:
+        resp = _make_request(
+            "GET",
+            url,
+            headers=headers,
+            params={
+                "sysparm_query": f"name={schedule_id}",
+                "sysparm_fields": "sys_id",
+                "sysparm_limit": 1,
+                "sysparm_exclude_reference_link": "true",
+            },
+        )
+        resp.raise_for_status()
+        records = resp.json().get("result", [])
+        if records:
+            return records[0].get("sys_id")
+    except requests.exceptions.RequestException:
+        pass
+    return None
+
+
+class ListSLAExceptionsParams(BaseModel):
+    """Parameters for listing SLA schedule exception (blackout) windows."""
+
+    sla_id: Optional[str] = Field(
+        None,
+        description=(
+            "SLA sys_id (32-char hex) or exact name. When provided, exceptions "
+            "are scoped to the schedule linked to that SLA definition."
+        ),
+    )
+    schedule_id: Optional[str] = Field(
+        None,
+        description=(
+            "cmn_schedule sys_id (32-char hex) or exact schedule name. When "
+            "provided, exceptions are scoped to that specific schedule."
+        ),
+    )
+    name_query: Optional[str] = Field(
+        None,
+        description="Substring search on the exception window name (LIKE match).",
+    )
+    repeat_type: Optional[str] = Field(
+        None,
+        description="Filter by repeat type: 'none', 'daily', 'weekly', 'monthly', 'yearly'.",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+
+
+def list_sla_exceptions(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List SLA schedule exception (blackout) windows from cmn_schedule_span.
+
+    Queries ``cmn_schedule_span`` records where ``type=on``, which in
+    ServiceNow represent blackout / exception windows that pause or block
+    SLA timers during the specified time ranges.
+
+    Scope options (mutually independent — provide at most one):
+    - ``sla_id`` — resolves the SLA's linked ``cmn_schedule`` then filters spans
+      to that schedule.
+    - ``schedule_id`` — filters spans directly to the given ``cmn_schedule``.
+    - Neither — returns all ``type=on`` spans across all schedules.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListSLAExceptionsParams.
+
+    Returns:
+        Dictionary with ``success``, ``sla_exceptions`` (list), ``count``, and
+        pagination keys (``has_more``, ``next_offset``).
+    """
+    result = _unwrap_and_validate_params(params, ListSLAExceptionsParams)
+    if not result["success"]:
+        return result
+    validated: ListSLAExceptionsParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Always restrict to exception (blackout) windows
+    filters = ["type=on"]
+
+    if validated.sla_id:
+        schedule_sys_id = _resolve_sla_schedule_sys_id(
+            instance_url, headers, validated.sla_id
+        )
+        if schedule_sys_id is None:
+            return {
+                "success": False,
+                "message": (
+                    f"SLA not found or has no schedule assigned: {validated.sla_id}"
+                ),
+            }
+        filters.append(f"schedule={schedule_sys_id}")
+    elif validated.schedule_id:
+        schedule_sys_id = _resolve_schedule_sys_id(
+            instance_url, headers, validated.schedule_id
+        )
+        if schedule_sys_id is None:
+            return {
+                "success": False,
+                "message": f"Schedule not found: {validated.schedule_id}",
+            }
+        filters.append(f"schedule={schedule_sys_id}")
+
+    if validated.name_query:
+        filters.append(f"nameLIKE{validated.name_query}")
+    if validated.repeat_type:
+        filters.append(f"repeat_type={validated.repeat_type}")
+
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(filters),
+        exclude_reference_link=True,
+        fields=",".join(SLA_EXCEPTION_FIELDS),
+    )
+
+    url = f"{instance_url}{SLA_SCHEDULE_SPAN_TABLE}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=query_params)
+        response.raise_for_status()
+        exceptions = [
+            _format_sla_exception(r) for r in response.json().get("result", [])
+        ]
+        return _paginated_list_response(
+            exceptions, validated.limit, validated.offset, "sla_exceptions"
+        )
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing SLA exceptions: {e}")
+        return {
+            "success": False,
+            "message": f"Error listing SLA exceptions: {_format_http_error(e)}",
         }

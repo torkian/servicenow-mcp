@@ -990,6 +990,7 @@ from servicenow_mcp.tools.sla_tools import (
     ListIncidentSLAsParams,
     ListSLABreachDefinitionsParams,
     ListSLABreachesParams,
+    ListSLAExceptionsParams,
     ListSLASchedulesParams,
     ListSLAsParams,
     ResolveSLABreachParams,
@@ -1030,6 +1031,7 @@ from servicenow_mcp.tools.sla_tools import (
 )
 from servicenow_mcp.tools.sla_tools import (
     get_sla_schedule as get_sla_schedule_tool,
+    list_sla_exceptions as list_sla_exceptions_tool,
     list_sla_schedules as list_sla_schedules_tool,
 )
 from servicenow_mcp.tools.sla_notification_tools import (
@@ -4139,6 +4141,20 @@ def get_tool_definitions(
                 "lookup) or sla_id (contract_sla sys_id or name, resolves to that SLA's "
                 "schedule field). Exactly one of the two parameters must be provided. "
                 "Returns 404-style failure when no schedule is assigned to the given SLA."
+            ),
+            "raw_dict",
+        ),
+        "list_sla_exceptions": (
+            list_sla_exceptions_tool,
+            ListSLAExceptionsParams,
+            Dict[str, Any],
+            (
+                "List SLA schedule exception (blackout) windows from cmn_schedule_span "
+                "(type=on records). These are the time ranges during which the SLA timer "
+                "is paused or blocked. Scope to a specific SLA via sla_id (resolves the "
+                "SLA's linked schedule), or directly to a schedule via schedule_id. "
+                "Without either parameter returns all type=on spans. Optional name_query "
+                "and repeat_type filters. Supports pagination."
             ),
             "raw_dict",
         ),
