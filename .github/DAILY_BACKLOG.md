@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Improve sla_tools.py test coverage to 100% (currently ~95% after new tools)
-2. Add list_problem_related_cis tool (link problem records to affected CIs via problem_task or cmdb_ci)
+1. Add list_problem_related_cis tool (link problem records to affected CIs via problem_task or cmdb_ci)
 4. Add portal catalog request tools (sc_portal and sp_portal tables)
 5. Add knowledge base article version history tool (kb_knowledge_version table)
 6. Add catalog item approval policy tools (sc_cat_item_delivery_plan)
@@ -201,3 +200,4 @@
 188. 2026-10-11 — Add create_sla, update_sla, delete_sla tools (complete CRUD for contract_sla table; name/sys_id resolver; empty-body guard on update; 404 guards; active serialised as string; registered in system_administrator and full packages; 31 new tests; 4362 total tests; 96% total coverage)
 189. 2026-10-12 — Add list_sla_schedules and get_sla_schedule tools (cmn_schedule records linked via contract_sla.schedule field; list supports sla_id scoping plus name_query/active/time_zone filters; get accepts schedule_id direct or sla_id auto-resolved; 29 new tests; 4391 total tests; 96% total coverage)
 190. 2026-10-13 — Add list_sla_exceptions tool (cmn_schedule_span type=on blackout windows; sla_id scoping via schedule field resolver; direct schedule_id scoping with name→sys_id lookup; name_query/repeat_type filters; day_of_week labels; pagination; registered in service_desk, system_administrator, full packages; 21 new tests; 4412 total tests; 95% sla_tools.py coverage)
+191. 2026-10-14 — Improve sla_tools.py test coverage to 100%; 60 new tests in test_sla_tools_coverage.py covering all no_instance_url/no_headers paths, validation-failure early-exits, _format_sla_schedule dict branch, _resolve_sla_schedule_sys_id 404+exception paths, complete list_sla_schedules and get_sla_schedule function coverage; 4472 total tests; 97% total coverage
