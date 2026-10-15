@@ -36,6 +36,7 @@ service_desk:
   - get_problem_root_cause
   - link_incident_to_problem
   - list_problem_related_incidents
+  - list_problem_related_cis
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks
@@ -209,6 +210,7 @@ change_coordinator:
   - get_problem_root_cause
   - link_incident_to_problem
   - list_problem_related_incidents
+  - list_problem_related_cis
   # Bulk Operations
   - bulk_delete_incidents
   - bulk_update_incidents
@@ -805,6 +807,7 @@ full:
   - get_problem_root_cause
   - link_incident_to_problem
   - list_problem_related_incidents
+  - list_problem_related_cis
   # Problem Tasks
   - create_problem_task
   - list_problem_tasks

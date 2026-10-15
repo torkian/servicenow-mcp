@@ -28,6 +28,8 @@ logger = logging.getLogger(__name__)
 
 PROBLEM_TABLE = "/api/now/table/problem"
 INCIDENT_TABLE = "/api/now/table/incident"
+PROBLEM_TASK_TABLE = "/api/now/table/problem_task"
+CMDB_CI_TABLE = "/api/now/table/cmdb_ci"
 
 PROBLEM_FIELDS = [
     "sys_id",
@@ -214,6 +216,28 @@ class ListProblemRelatedIncidentsParams(BaseModel):
     limit: Optional[int] = Field(20, description="Maximum number of records to return (default 20)")
     offset: Optional[int] = Field(0, description="Pagination offset")
     state: Optional[str] = Field(None, description="Filter by incident state value")
+
+
+class ListProblemRelatedCIsParams(BaseModel):
+    """Parameters for listing CIs affected by a problem."""
+
+    problem_id: str = Field(
+        ...,
+        description="Problem number (e.g. PRB0001234) or sys_id (32-char hex)",
+    )
+    include_problem_tasks: Optional[bool] = Field(
+        True,
+        description=(
+            "If True (default), also collect CIs referenced by problem_task records "
+            "linked to this problem. If False, only the problem's own cmdb_ci field is included."
+        ),
+    )
+    ci_class: Optional[str] = Field(
+        None,
+        description="Filter CIs by sys_class_name (e.g. 'cmdb_ci_server')",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of CI records to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
 
 
 def _format_problem(record: Dict) -> Dict:
@@ -1164,3 +1188,181 @@ def list_problem_related_incidents(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error listing problem related incidents: {e}")
         return {"success": False, "message": f"Error listing problem related incidents: {_format_http_error(e)}"}
+
+
+def list_problem_related_cis(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List configuration items affected by a problem record.
+
+    Collects CI sys_ids from the problem's own ``cmdb_ci`` field and,
+    optionally, from all ``problem_task`` records linked to that problem.
+    The union is de-duplicated, then the full CI details are fetched from
+    the ``cmdb_ci`` table and returned.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListProblemRelatedCIsParams.
+
+    Returns:
+        Dictionary with ``success``, ``cis`` (list), ``total``, ``has_more``,
+        ``next_offset``, and ``source_count`` (total unique CIs found before
+        pagination).
+    """
+    result = _unwrap_and_validate_params(
+        params, ListProblemRelatedCIsParams, required_fields=["problem_id"]
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    # Resolve problem sys_id
+    prob_resolve = _resolve_problem_sys_id(validated.problem_id, instance_url, headers)
+    if not prob_resolve["success"]:
+        return prob_resolve
+    problem_sys_id = prob_resolve["sys_id"]
+
+    ci_sys_ids: set = set()
+
+    # Step 1: get the problem's own cmdb_ci field
+    prob_url = f"{instance_url}{PROBLEM_TABLE}/{problem_sys_id}"
+    try:
+        response = _make_request(
+            "GET",
+            prob_url,
+            headers=headers,
+            params={"sysparm_fields": "cmdb_ci", "sysparm_display_value": "false"},
+        )
+        if response.status_code == 404:
+            return {"success": False, "message": f"Problem not found: {validated.problem_id}"}
+        response.raise_for_status()
+        prob_record = response.json().get("result", {})
+        cmdb_ci = prob_record.get("cmdb_ci")
+        if cmdb_ci:
+            if isinstance(cmdb_ci, dict):
+                ci_val = cmdb_ci.get("value") or ""
+            else:
+                ci_val = cmdb_ci or ""
+            if ci_val and len(ci_val) == 32:
+                ci_sys_ids.add(ci_val)
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching problem cmdb_ci: {e}")
+        return {"success": False, "message": f"Error fetching problem: {_format_http_error(e)}"}
+
+    # Step 2: collect CIs from linked problem_task records
+    if validated.include_problem_tasks:
+        task_url = f"{instance_url}{PROBLEM_TASK_TABLE}"
+        try:
+            task_response = _make_request(
+                "GET",
+                task_url,
+                headers=headers,
+                params={
+                    "sysparm_query": f"problem={problem_sys_id}^cmdb_ciISNOTEMPTY",
+                    "sysparm_fields": "cmdb_ci",
+                    "sysparm_limit": 100,
+                    "sysparm_display_value": "false",
+                    "sysparm_exclude_reference_link": "true",
+                },
+            )
+            task_response.raise_for_status()
+            for task in task_response.json().get("result", []):
+                cmdb_ci = task.get("cmdb_ci")
+                if cmdb_ci:
+                    if isinstance(cmdb_ci, dict):
+                        ci_val = cmdb_ci.get("value") or ""
+                    else:
+                        ci_val = str(cmdb_ci)
+                    if ci_val and len(ci_val) == 32:
+                        ci_sys_ids.add(ci_val)
+        except requests.exceptions.RequestException as e:
+            logger.error(f"Error fetching problem_task CIs: {e}")
+            return {
+                "success": False,
+                "message": f"Error fetching problem task CIs: {_format_http_error(e)}",
+            }
+
+    if not ci_sys_ids:
+        return {
+            "success": True,
+            "cis": [],
+            "total": 0,
+            "has_more": False,
+            "next_offset": 0,
+            "source_count": 0,
+        }
+
+    # Step 3: fetch CI records
+    all_ci_ids = sorted(ci_sys_ids)
+    source_count = len(all_ci_ids)
+
+    query_parts = [f"sys_idIN{','.join(all_ci_ids)}"]
+    if validated.ci_class:
+        query_parts.append(f"sys_class_name={validated.ci_class}")
+
+    ci_url = f"{instance_url}{CMDB_CI_TABLE}"
+    query_params = _build_sysparm_params(
+        validated.limit,
+        validated.offset,
+        query=_join_query_parts(query_parts),
+        exclude_reference_link=True,
+        display_value="true",
+        fields=(
+            "sys_id,name,sys_class_name,category,operational_status,environment,"
+            "short_description,ip_address,serial_number,asset_tag,install_status,"
+            "managed_by,owned_by,location,company,sys_created_on,sys_updated_on"
+        ),
+    )
+
+    try:
+        ci_response = _make_request("GET", ci_url, headers=headers, params=query_params)
+        ci_response.raise_for_status()
+
+        def _display(val):
+            if isinstance(val, dict):
+                return val.get("display_value") or val.get("value") or ""
+            return val or ""
+
+        cis = [
+            {
+                "sys_id": r.get("sys_id"),
+                "name": _display(r.get("name")),
+                "ci_class": _display(r.get("sys_class_name")),
+                "category": _display(r.get("category")),
+                "operational_status": _display(r.get("operational_status")),
+                "environment": _display(r.get("environment")),
+                "short_description": _display(r.get("short_description")),
+                "ip_address": _display(r.get("ip_address")),
+                "serial_number": _display(r.get("serial_number")),
+                "asset_tag": _display(r.get("asset_tag")),
+                "install_status": _display(r.get("install_status")),
+                "managed_by": _display(r.get("managed_by")),
+                "owned_by": _display(r.get("owned_by")),
+                "location": _display(r.get("location")),
+                "company": _display(r.get("company")),
+                "created_on": _display(r.get("sys_created_on")),
+                "updated_on": _display(r.get("sys_updated_on")),
+            }
+            for r in ci_response.json().get("result", [])
+        ]
+
+        paginated = _paginated_list_response(cis, validated.limit, validated.offset, result_key="cis")
+        paginated["source_count"] = source_count
+        return paginated
+
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error fetching CI records for problem: {e}")
+        return {
+            "success": False,
+            "message": f"Error fetching CI records: {_format_http_error(e)}",
+        }

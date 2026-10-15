@@ -799,6 +799,7 @@ from servicenow_mcp.tools.problem_tools import (
     GetProblemRootCauseParams,
     GetProblemWorkaroundParams,
     LinkIncidentToProblemParams,
+    ListProblemRelatedCIsParams,
     ListProblemRelatedIncidentsParams,
     ListProblemsParams,
     SetProblemRootCauseParams,
@@ -824,6 +825,9 @@ from servicenow_mcp.tools.problem_tools import (
 )
 from servicenow_mcp.tools.problem_tools import (
     link_incident_to_problem as link_incident_to_problem_tool,
+)
+from servicenow_mcp.tools.problem_tools import (
+    list_problem_related_cis as list_problem_related_cis_tool,
 )
 from servicenow_mcp.tools.problem_tools import (
     list_problem_related_incidents as list_problem_related_incidents_tool,
@@ -4282,6 +4286,21 @@ def get_tool_definitions(
                 "Queries incidents whose problem_id field references the given problem. "
                 "Accepts problem number (e.g. PRB0001234) or sys_id. "
                 "Supports state filter and pagination with has_more/next_offset."
+            ),
+            "raw_dict",
+        ),
+        "list_problem_related_cis": (
+            list_problem_related_cis_tool,
+            ListProblemRelatedCIsParams,
+            Dict[str, Any],
+            (
+                "List configuration items (CIs) affected by a ServiceNow problem record. "
+                "Collects CI sys_ids from the problem's own cmdb_ci field and, optionally, "
+                "from all problem_task records linked to that problem. "
+                "Returns de-duplicated CI details from cmdb_ci table. "
+                "Accepts problem number (e.g. PRB0001234) or sys_id. "
+                "Supports ci_class filter and pagination with has_more/next_offset. "
+                "Response includes source_count (total unique CIs found before pagination)."
             ),
             "raw_dict",
         ),
