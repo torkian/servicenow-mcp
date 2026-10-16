@@ -505,6 +505,32 @@ from servicenow_mcp.tools.location_tools import (
 from servicenow_mcp.tools.location_tools import (
     update_location as update_location_tool,
 )
+from servicenow_mcp.tools.portal_tools import (
+    GetCatalogPortalParams,
+    GetPortalPageParams,
+    GetServicePortalParams,
+    ListCatalogPortalsParams,
+    ListPortalPagesParams,
+    ListServicePortalsParams,
+)
+from servicenow_mcp.tools.portal_tools import (
+    get_catalog_portal as get_catalog_portal_tool,
+)
+from servicenow_mcp.tools.portal_tools import (
+    get_portal_page as get_portal_page_tool,
+)
+from servicenow_mcp.tools.portal_tools import (
+    get_service_portal as get_service_portal_tool,
+)
+from servicenow_mcp.tools.portal_tools import (
+    list_catalog_portals as list_catalog_portals_tool,
+)
+from servicenow_mcp.tools.portal_tools import (
+    list_portal_pages as list_portal_pages_tool,
+)
+from servicenow_mcp.tools.portal_tools import (
+    list_service_portals as list_service_portals_tool,
+)
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     CreateCIRelationshipParams,
     DeleteCIRelationshipParams,
@@ -3409,6 +3435,74 @@ def get_tool_definitions(
                 "Delete a location record from the cmn_location table. "
                 "Required: location_id (sys_id or exact name). "
                 "Returns a structured error when the record does not exist."
+            ),
+            "raw_dict",
+        ),
+        "list_service_portals": (
+            list_service_portals_tool,
+            ListServicePortalsParams,
+            Dict[str, Any],
+            (
+                "List Service Portal records from the sp_portal table. Service Portals are "
+                "the modern ServiceNow end-user interface. Returns title, url_suffix, "
+                "homepage, login_page, and theme reference. Filters: title (substring), "
+                "url_suffix (exact). Supports pagination with limit/offset."
+            ),
+            "raw_dict",
+        ),
+        "get_service_portal": (
+            get_service_portal_tool,
+            GetServicePortalParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Service Portal record from the sp_portal table by sys_id "
+                "or exact title. Returns full portal configuration including homepage, "
+                "login page, theme, and CSS variables. Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "list_catalog_portals": (
+            list_catalog_portals_tool,
+            ListCatalogPortalsParams,
+            Dict[str, Any],
+            (
+                "List classic Service Catalog Portal records from the sc_portal table. "
+                "Returns title, url_suffix, linked catalog, and homepage reference. "
+                "Filters: title (substring), url_suffix (exact). Supports pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_catalog_portal": (
+            get_catalog_portal_tool,
+            GetCatalogPortalParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single classic Catalog Portal record from the sc_portal table "
+                "by sys_id or exact title. Returns portal configuration including the linked "
+                "service catalog and homepage. Returns 404-style error when not found."
+            ),
+            "raw_dict",
+        ),
+        "list_portal_pages": (
+            list_portal_pages_tool,
+            ListPortalPagesParams,
+            Dict[str, Any],
+            (
+                "List Service Portal page records from the sp_page table. Pages are the "
+                "individual screens within a Service Portal. Supports scoping by portal_id "
+                "(sys_id or title), filtering by title (substring) or page_id (URL suffix). "
+                "Draft pages are excluded by default; set include_drafts=true to include them."
+            ),
+            "raw_dict",
+        ),
+        "get_portal_page": (
+            get_portal_page_tool,
+            GetPortalPageParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single Service Portal page from the sp_page table. Accepts a "
+                "sys_id, URL id (e.g. 'index'), or page title. An optional portal_id narrows "
+                "the lookup. Returns 404-style error when the page is not found."
             ),
             "raw_dict",
         ),

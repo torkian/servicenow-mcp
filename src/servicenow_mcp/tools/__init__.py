@@ -150,6 +150,14 @@ from servicenow_mcp.tools.location_tools import (
     list_locations as list_locations,
     update_location as update_location,
 )
+from servicenow_mcp.tools.portal_tools import (
+    get_catalog_portal as get_catalog_portal,
+    get_portal_page as get_portal_page,
+    get_service_portal as get_service_portal,
+    list_catalog_portals as list_catalog_portals,
+    list_portal_pages as list_portal_pages,
+    list_service_portals as list_service_portals,
+)
 from servicenow_mcp.tools.cmdb_relationship_tools import (
     create_ci_relationship,
     delete_ci_relationship,

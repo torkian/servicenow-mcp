@@ -156,6 +156,13 @@ catalog_builder:
   - create_user_criteria
   - create_user_criteria_condition
   - list_catalog_item_user_criteria
+  # Portal Tools
+  - list_service_portals
+  - get_service_portal
+  - list_catalog_portals
+  - get_catalog_portal
+  - list_portal_pages
+  - get_portal_page
   # Optimization
   - get_optimization_recommendations
 
@@ -431,6 +438,13 @@ system_administrator:
   - create_location
   - update_location
   - delete_location
+  # Portal Tools
+  - list_service_portals
+  - get_service_portal
+  - list_catalog_portals
+  - get_catalog_portal
+  - list_portal_pages
+  - get_portal_page
   # Incident Management (destructive)
   - delete_incident
   # Asset Management
@@ -773,6 +787,13 @@ full:
   - create_location
   - update_location
   - delete_location
+  # Portal Tools
+  - list_service_portals
+  - get_service_portal
+  - list_catalog_portals
+  - get_catalog_portal
+  - list_portal_pages
+  - get_portal_page
   # Asset Management
   - create_asset
   - delete_asset

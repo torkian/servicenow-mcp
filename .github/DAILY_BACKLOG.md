@@ -1,12 +1,11 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add portal catalog request tools (sc_portal and sp_portal tables)
-5. Add knowledge base article version history tool (kb_knowledge_version table)
-6. Add catalog item approval policy tools (sc_cat_item_delivery_plan)
-7. Add event rule management tools (sysevent_rule table)
-8. Add transform map tools (sys_transform_map for data import)
-9. Add data source tools (sys_data_source for import sets)
+1. Add knowledge base article version history tool (kb_knowledge_version table)
+2. Add catalog item approval policy tools (sc_cat_item_delivery_plan)
+3. Add event rule management tools (sysevent_rule table)
+4. Add transform map tools (sys_transform_map for data import)
+5. Add data source tools (sys_data_source for import sets)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -201,3 +200,4 @@
 190. 2026-10-13 — Add list_sla_exceptions tool (cmn_schedule_span type=on blackout windows; sla_id scoping via schedule field resolver; direct schedule_id scoping with name→sys_id lookup; name_query/repeat_type filters; day_of_week labels; pagination; registered in service_desk, system_administrator, full packages; 21 new tests; 4412 total tests; 95% sla_tools.py coverage)
 191. 2026-10-14 — Improve sla_tools.py test coverage to 100%; 60 new tests in test_sla_tools_coverage.py covering all no_instance_url/no_headers paths, validation-failure early-exits, _format_sla_schedule dict branch, _resolve_sla_schedule_sys_id 404+exception paths, complete list_sla_schedules and get_sla_schedule function coverage; 4472 total tests; 97% total coverage
 192. 2026-10-15 — Add list_problem_related_cis tool (union of problem.cmdb_ci field and problem_task.cmdb_ci fields; deduplication; full CI details from cmdb_ci table; ci_class filter; include_problem_tasks toggle; source_count in response; registered in service_desk, change_coordinator, full packages; 22 new tests; 4494 total tests; 97% total coverage)
+193. 2026-10-16 — Add portal catalog request tools (list_service_portals, get_service_portal, list_catalog_portals, get_catalog_portal, list_portal_pages, get_portal_page); portal_tools.py covers sp_portal/sc_portal/sp_page tables; title/url_suffix filters; portal_id scoping on list_portal_pages; draft exclusion default; sys_id/title resolvers on get tools; registered in catalog_builder, system_administrator, and full packages; 54 new tests; 4543 total tests; 100% portal_tools.py coverage; 97% total coverage
