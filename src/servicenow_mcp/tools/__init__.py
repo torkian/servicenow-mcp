@@ -222,10 +222,12 @@ from servicenow_mcp.tools.knowledge_base import (
     create_knowledge_article,
     create_knowledge_base,
     get_article,
+    get_kb_article_version,
     get_kb_category,
     list_articles,
     list_articles_by_category,
     list_categories,
+    list_kb_article_versions,
     list_knowledge_bases,
     publish_article,
     update_article,
@@ -625,6 +627,8 @@ __all__ = [
     "list_articles",
     "list_articles_by_category",
     "get_article",
+    "list_kb_article_versions",
+    "get_kb_article_version",
     
     # User management tools
     "create_user",

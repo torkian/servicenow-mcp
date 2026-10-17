@@ -774,6 +774,12 @@ from servicenow_mcp.tools.knowledge_base import (
     archive_knowledge_article as archive_knowledge_article_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
+    GetKBArticleVersionParams,
+    ListKBArticleVersionsParams,
+    get_kb_article_version as get_kb_article_version_tool,
+    list_kb_article_versions as list_kb_article_versions_tool,
+)
+from servicenow_mcp.tools.knowledge_base import (
     publish_article as publish_article_tool,
 )
 from servicenow_mcp.tools.knowledge_base import (
@@ -2478,6 +2484,30 @@ def get_tool_definitions(
             Dict[str, Any],  # Expects dict
             "Get a specific knowledge article by ID",
             "raw_dict",  # Tool returns raw dict
+        ),
+        "list_kb_article_versions": (
+            list_kb_article_versions_tool,
+            ListKBArticleVersionsParams,
+            Dict[str, Any],
+            (
+                "List the version history of a knowledge article from the kb_knowledge_version "
+                "table. Requires the article sys_id. Returns version number, workflow_state, "
+                "author, size, timestamps, and a short_description snapshot for each version. "
+                "Results are ordered newest-first. Supports workflow_state filter and pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_kb_article_version": (
+            get_kb_article_version_tool,
+            GetKBArticleVersionParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single knowledge article version record from kb_knowledge_version "
+                "by its sys_id. Returns version number, workflow_state, author, size, "
+                "timestamps, and a short_description snapshot. Returns a 404-style error "
+                "when the version record is not found."
+            ),
+            "raw_dict",
         ),
         # Use the passed-in implementations for aliased KB category tools
         "list_categories": (

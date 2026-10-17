@@ -67,6 +67,8 @@ service_desk:
   - list_articles
   - list_articles_by_category
   - get_kb_category
+  - list_kb_article_versions
+  - get_kb_article_version
   # Asset Lookup & Provisioning
   - list_assets
   - list_software_assets
@@ -247,6 +249,9 @@ knowledge_author:
   - list_articles
   - list_articles_by_category
   - get_article
+  # Article Version History
+  - list_kb_article_versions
+  - get_kb_article_version
 
 platform_developer:
   # Script Includes
@@ -673,6 +678,8 @@ full:
   - list_articles
   - list_articles_by_category
   - get_article
+  - list_kb_article_versions
+  - get_kb_article_version
   # User Management
   - create_user
   - update_user

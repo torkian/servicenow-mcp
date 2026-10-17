@@ -1488,6 +1488,220 @@ def get_kb_category(
         }
 
 
+class ListKBArticleVersionsParams(BaseModel):
+    """Parameters for listing version history of a knowledge article."""
+
+    article_id: str = Field(
+        ...,
+        description="sys_id of the knowledge article to retrieve version history for",
+    )
+    limit: int = Field(20, description="Maximum number of versions to return")
+    offset: int = Field(0, description="Pagination offset")
+    workflow_state: Optional[str] = Field(
+        None,
+        description="Filter by workflow state (e.g. 'published', 'draft', 'retired')",
+    )
+
+
+class GetKBArticleVersionParams(BaseModel):
+    """Parameters for retrieving a specific version of a knowledge article."""
+
+    version_id: str = Field(
+        ...,
+        description="sys_id of the kb_knowledge_version record to retrieve",
+    )
+
+
+def list_kb_article_versions(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: ListKBArticleVersionsParams,
+) -> Dict[str, Any]:
+    """List version history for a knowledge article from the kb_knowledge_version table.
+
+    Queries kb_knowledge_version filtered by article sys_id. Returns version
+    number, workflow state, author, size, created/updated timestamps, and a
+    short_description snapshot for each version. Supports pagination.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required article sys_id.
+
+    Returns:
+        Dictionary with versions list, pagination metadata, and article info.
+    """
+    if not config.instance_url:
+        return {"success": False, "message": "instance_url is not configured", "versions": []}
+
+    headers = auth_manager.get_headers()
+    if not headers:
+        return {"success": False, "message": "Failed to get authentication headers", "versions": []}
+
+    api_url = f"{config.api_url}/table/kb_knowledge_version"
+
+    query_parts = [f"article={params.article_id}"]
+    if params.workflow_state:
+        query_parts.append(f"workflow_state={params.workflow_state}")
+
+    query_params: Dict[str, Any] = {
+        "sysparm_query": "^".join(query_parts) + "^ORDERBYDESCsys_created_on",
+        "sysparm_limit": params.limit,
+        "sysparm_offset": params.offset,
+        "sysparm_display_value": "all",
+        "sysparm_fields": (
+            "sys_id,article,version,short_description,workflow_state,"
+            "author,size,sys_created_on,sys_updated_on,sys_created_by"
+        ),
+    }
+
+    def _dv(field) -> str:
+        if isinstance(field, dict):
+            return field.get("display_value", "")
+        return field or ""
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params=query_params,
+            headers=headers,
+            timeout=config.timeout,
+        )
+        response.raise_for_status()
+
+        json_response = response.json()
+        if not isinstance(json_response, dict) or "result" not in json_response:
+            return {
+                "success": False,
+                "message": "Unexpected response format from ServiceNow",
+                "versions": [],
+            }
+
+        versions = []
+        for item in json_response.get("result", []):
+            if not isinstance(item, dict):
+                continue
+            versions.append({
+                "sys_id": item.get("sys_id", ""),
+                "article_sys_id": _dv(item.get("article")),
+                "version": _dv(item.get("version")),
+                "short_description": _dv(item.get("short_description")),
+                "workflow_state": _dv(item.get("workflow_state")),
+                "author": _dv(item.get("author")),
+                "size": _dv(item.get("size")),
+                "created": item.get("sys_created_on", ""),
+                "updated": item.get("sys_updated_on", ""),
+                "created_by": _dv(item.get("sys_created_by")),
+            })
+
+        return _paginated_list_response(
+            versions,
+            params.limit,
+            params.offset,
+            "versions",
+            extra={
+                "message": f"Found {len(versions)} versions for article '{params.article_id}'",
+                "article_sys_id": params.article_id,
+            },
+        )
+
+    except requests.RequestException as e:
+        logger.error("Failed to list KB article versions: %s", e)
+        return {
+            "success": False,
+            "message": f"Failed to list KB article versions: {_format_http_error(e)}",
+            "versions": [],
+        }
+
+
+def get_kb_article_version(
+    config: ServerConfig,
+    auth_manager: AuthManager,
+    params: GetKBArticleVersionParams,
+) -> Dict[str, Any]:
+    """Retrieve a specific version record from kb_knowledge_version by sys_id.
+
+    Returns the full version detail including version number, workflow state,
+    author, size, timestamps, and a short_description snapshot.
+
+    Args:
+        config: Server configuration.
+        auth_manager: Authentication manager.
+        params: Parameters including the required version sys_id.
+
+    Returns:
+        Dictionary with version details or an error response.
+    """
+    if not config.instance_url:
+        return {"success": False, "message": "instance_url is not configured"}
+
+    headers = auth_manager.get_headers()
+    if not headers:
+        return {"success": False, "message": "Failed to get authentication headers"}
+
+    api_url = f"{config.api_url}/table/kb_knowledge_version/{params.version_id}"
+    query_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+    }
+
+    def _dv(field) -> str:
+        if isinstance(field, dict):
+            return field.get("display_value", "")
+        return field or ""
+
+    try:
+        response = _make_request(
+            "GET",
+            api_url,
+            params=query_params,
+            headers=headers,
+            timeout=config.timeout,
+        )
+
+        if response.status_code == 404:
+            return {
+                "success": False,
+                "message": f"KB article version '{params.version_id}' not found",
+            }
+
+        response.raise_for_status()
+
+        result = response.json().get("result", {})
+        if not result or not isinstance(result, dict):
+            return {
+                "success": False,
+                "message": f"KB article version '{params.version_id}' not found",
+            }
+
+        version = {
+            "sys_id": result.get("sys_id", ""),
+            "article_sys_id": _dv(result.get("article")),
+            "version": _dv(result.get("version")),
+            "short_description": _dv(result.get("short_description")),
+            "workflow_state": _dv(result.get("workflow_state")),
+            "author": _dv(result.get("author")),
+            "size": _dv(result.get("size")),
+            "created": result.get("sys_created_on", ""),
+            "updated": result.get("sys_updated_on", ""),
+            "created_by": _dv(result.get("sys_created_by")),
+        }
+
+        return {
+            "success": True,
+            "message": f"Retrieved KB article version '{version['version']}'",
+            "version": version,
+        }
+
+    except requests.RequestException as e:
+        logger.error("Failed to get KB article version: %s", e)
+        return {
+            "success": False,
+            "message": f"Failed to get KB article version: {_format_http_error(e)}",
+        }
+
+
 def create_kb_category(
     config: ServerConfig,
     auth_manager: AuthManager,
