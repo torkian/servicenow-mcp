@@ -1186,6 +1186,24 @@ from servicenow_mcp.tools.report_tools import (
     list_reports as list_reports_tool,
     run_report as run_report_tool,
 )
+from servicenow_mcp.tools.delivery_plan_tools import (
+    CreateDeliveryPlanParams,
+    CreateDeliveryTaskParams,
+    DeleteDeliveryPlanParams,
+    GetDeliveryPlanParams,
+    ListDeliveryPlansParams,
+    ListDeliveryTasksParams,
+    UpdateDeliveryPlanParams,
+)
+from servicenow_mcp.tools.delivery_plan_tools import (
+    create_delivery_plan as create_delivery_plan_tool,
+    create_delivery_task as create_delivery_task_tool,
+    delete_delivery_plan as delete_delivery_plan_tool,
+    get_delivery_plan as get_delivery_plan_tool,
+    list_delivery_plans as list_delivery_plans_tool,
+    list_delivery_tasks as list_delivery_tasks_tool,
+    update_delivery_plan as update_delivery_plan_tool,
+)
 from servicenow_mcp.tools.user_preference_tools import (
     DeleteUserPreferenceParams,
     GetUserPreferenceParams,
@@ -5305,6 +5323,91 @@ def get_tool_definitions(
                 "For output_format='csv', 'pdf', or 'excel', the tool returns a download_url "
                 "pattern to retrieve the file from ServiceNow. "
                 "report_id can be a sys_id (32-char hex) or report title (auto-resolved)."
+            ),
+            "raw_dict",
+        ),
+        # Delivery Plan tools
+        "list_delivery_plans": (
+            list_delivery_plans_tool,
+            ListDeliveryPlansParams,
+            Dict[str, Any],
+            (
+                "List catalog item delivery plan records from sc_cat_item_delivery_plan. "
+                "Delivery plans define the approval and task workflow attached to a catalog item. "
+                "Supports filtering by name (substring), cat_item_id (sys_id or name, "
+                "auto-resolved), and active state. Returns paginated records with has_more "
+                "and next_offset."
+            ),
+            "raw_dict",
+        ),
+        "get_delivery_plan": (
+            get_delivery_plan_tool,
+            GetDeliveryPlanParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single catalog item delivery plan by sys_id or exact name. "
+                "A 32-character hex string is treated as a sys_id; anything else triggers a "
+                "name= lookup. Returns 404 error when the plan is not found."
+            ),
+            "raw_dict",
+        ),
+        "create_delivery_plan": (
+            create_delivery_plan_tool,
+            CreateDeliveryPlanParams,
+            Dict[str, Any],
+            (
+                "Create a new catalog item delivery plan in sc_cat_item_delivery_plan. "
+                "Required: name, cat_item_id (sys_id or catalog item name, auto-resolved). "
+                "Optional: description, workflow (sys_id of an existing workflow), active (default true). "
+                "Returns the created plan record."
+            ),
+            "raw_dict",
+        ),
+        "update_delivery_plan": (
+            update_delivery_plan_tool,
+            UpdateDeliveryPlanParams,
+            Dict[str, Any],
+            (
+                "Update an existing catalog item delivery plan. "
+                "Required: plan_id (sys_id or exact name, auto-resolved). "
+                "Optional updatable fields: name, description, workflow, active. "
+                "Issues PATCH with only the supplied fields. Returns 404 error when not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_delivery_plan": (
+            delete_delivery_plan_tool,
+            DeleteDeliveryPlanParams,
+            Dict[str, Any],
+            (
+                "Delete a catalog item delivery plan by sys_id or name. "
+                "Deleting a plan also removes its associated delivery tasks via ServiceNow cascade. "
+                "Returns 404 error when the plan is not found."
+            ),
+            "raw_dict",
+        ),
+        "list_delivery_tasks": (
+            list_delivery_tasks_tool,
+            ListDeliveryTasksParams,
+            Dict[str, Any],
+            (
+                "List tasks belonging to a catalog item delivery plan (sc_cat_item_delivery_task). "
+                "Required: plan_id (sys_id or name, auto-resolved). "
+                "Optional: active filter. Tasks are ordered by their execution order field. "
+                "Returns paginated records with has_more and next_offset."
+            ),
+            "raw_dict",
+        ),
+        "create_delivery_task": (
+            create_delivery_task_tool,
+            CreateDeliveryTaskParams,
+            Dict[str, Any],
+            (
+                "Create a task within a catalog item delivery plan (sc_cat_item_delivery_task). "
+                "Required: plan_id (sys_id or name, auto-resolved), name. "
+                "Optional: description, order (controls execution sequence), approval_group "
+                "(sys_id), assigned_to (sys_id), mandatory (default true), active (default true). "
+                "Returns the created task record."
             ),
             "raw_dict",
         ),

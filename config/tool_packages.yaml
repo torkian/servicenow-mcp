@@ -167,6 +167,14 @@ catalog_builder:
   - get_portal_page
   # Optimization
   - get_optimization_recommendations
+  # Delivery Plans
+  - list_delivery_plans
+  - get_delivery_plan
+  - create_delivery_plan
+  - update_delivery_plan
+  - delete_delivery_plan
+  - list_delivery_tasks
+  - create_delivery_task
 
 change_coordinator:
   # Change Lifecycle
@@ -973,3 +981,11 @@ full:
   - list_reports
   - get_report
   - run_report
+  # Delivery Plan Tools
+  - list_delivery_plans
+  - get_delivery_plan
+  - create_delivery_plan
+  - update_delivery_plan
+  - delete_delivery_plan
+  - list_delivery_tasks
+  - create_delivery_task

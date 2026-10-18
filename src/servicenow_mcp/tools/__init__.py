@@ -381,6 +381,15 @@ from servicenow_mcp.tools.metric_tools import (
     list_metric_definitions,
     list_metric_values,
 )
+from servicenow_mcp.tools.delivery_plan_tools import (
+    create_delivery_plan,
+    create_delivery_task,
+    delete_delivery_plan,
+    get_delivery_plan,
+    list_delivery_plans,
+    list_delivery_tasks,
+    update_delivery_plan,
+)
 from servicenow_mcp.tools.report_tools import (
     get_report,
     list_reports,
@@ -930,4 +939,13 @@ __all__ = [
     "list_reports",
     "get_report",
     "run_report",
+
+    # Delivery Plan tools
+    "list_delivery_plans",
+    "get_delivery_plan",
+    "create_delivery_plan",
+    "update_delivery_plan",
+    "delete_delivery_plan",
+    "list_delivery_tasks",
+    "create_delivery_task",
 ]
