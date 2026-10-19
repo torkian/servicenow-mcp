@@ -373,6 +373,12 @@ system_administrator:
   - list_events
   - get_event
   - create_event
+  # Event Rule Management
+  - list_event_rules
+  - get_event_rule
+  - create_event_rule
+  - update_event_rule
+  - delete_event_rule
   # On-call Rotations
   - create_on_call_rotation
   - create_on_call_rotation_member
@@ -717,6 +723,12 @@ full:
   - list_events
   - get_event
   - create_event
+  # Event Rule Management
+  - list_event_rules
+  - get_event_rule
+  - create_event_rule
+  - update_event_rule
+  - delete_event_rule
   # On-call Rotations
   - create_on_call_rotation
   - create_on_call_rotation_member

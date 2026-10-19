@@ -358,6 +358,13 @@ from servicenow_mcp.tools.event_tools import (
     get_event,
     list_events,
 )
+from servicenow_mcp.tools.event_rule_tools import (
+    create_event_rule,
+    delete_event_rule,
+    get_event_rule,
+    list_event_rules,
+    update_event_rule,
+)
 from servicenow_mcp.tools.generic_table_tools import (
     create_record,
     delete_record,
@@ -694,6 +701,13 @@ __all__ = [
     "list_events",
     "get_event",
     "create_event",
+
+    # Event Rule tools
+    "list_event_rules",
+    "get_event_rule",
+    "create_event_rule",
+    "update_event_rule",
+    "delete_event_rule",
 
     # Syslog tools
     "list_syslog_entries",

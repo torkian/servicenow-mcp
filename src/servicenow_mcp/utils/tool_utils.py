@@ -1152,6 +1152,20 @@ from servicenow_mcp.tools.event_tools import (
     get_event as get_event_tool,
     list_events as list_events_tool,
 )
+from servicenow_mcp.tools.event_rule_tools import (
+    CreateEventRuleParams,
+    DeleteEventRuleParams,
+    GetEventRuleParams,
+    ListEventRulesParams,
+    UpdateEventRuleParams,
+)
+from servicenow_mcp.tools.event_rule_tools import (
+    create_event_rule as create_event_rule_tool,
+    delete_event_rule as delete_event_rule_tool,
+    get_event_rule as get_event_rule_tool,
+    list_event_rules as list_event_rules_tool,
+    update_event_rule as update_event_rule_tool,
+)
 from servicenow_mcp.tools.generic_table_tools import (
     CreateRecordParams,
     DeleteRecordParams,
@@ -2988,6 +3002,42 @@ def get_tool_definitions(
             CreateEventParams,
             str,
             "Create a new business event in the ServiceNow sysevent table to queue it for processing",
+            "json",
+        ),
+        # Event Rule Tools
+        "list_event_rules": (
+            list_event_rules_tool,
+            ListEventRulesParams,
+            str,
+            "List sysevent_rule records with optional filters for name, active state, queue, and application scope",
+            "json",
+        ),
+        "get_event_rule": (
+            get_event_rule_tool,
+            GetEventRuleParams,
+            str,
+            "Retrieve a single sysevent_rule record by sys_id or exact name",
+            "json",
+        ),
+        "create_event_rule": (
+            create_event_rule_tool,
+            CreateEventRuleParams,
+            str,
+            "Create a new sysevent_rule that fires a server-side script when a named business event is processed",
+            "json",
+        ),
+        "update_event_rule": (
+            update_event_rule_tool,
+            UpdateEventRuleParams,
+            str,
+            "Update an existing sysevent_rule record (name, script, active, order, condition, filter_fields, queue)",
+            "json",
+        ),
+        "delete_event_rule": (
+            delete_event_rule_tool,
+            DeleteEventRuleParams,
+            str,
+            "Delete a sysevent_rule record by sys_id or exact name",
             "json",
         ),
         # UI Policy Tools
