@@ -1218,6 +1218,22 @@ from servicenow_mcp.tools.delivery_plan_tools import (
     list_delivery_tasks as list_delivery_tasks_tool,
     update_delivery_plan as update_delivery_plan_tool,
 )
+from servicenow_mcp.tools.transform_map_tools import (
+    CreateTransformMapParams,
+    DeleteTransformMapParams,
+    GetTransformMapParams,
+    ListTransformMapsParams,
+    RunTransformParams,
+    UpdateTransformMapParams,
+)
+from servicenow_mcp.tools.transform_map_tools import (
+    create_transform_map as create_transform_map_tool,
+    delete_transform_map as delete_transform_map_tool,
+    get_transform_map as get_transform_map_tool,
+    list_transform_maps as list_transform_maps_tool,
+    run_transform as run_transform_tool,
+    update_transform_map as update_transform_map_tool,
+)
 from servicenow_mcp.tools.user_preference_tools import (
     DeleteUserPreferenceParams,
     GetUserPreferenceParams,
@@ -5458,6 +5474,77 @@ def get_tool_definitions(
                 "Optional: description, order (controls execution sequence), approval_group "
                 "(sys_id), assigned_to (sys_id), mandatory (default true), active (default true). "
                 "Returns the created task record."
+            ),
+            "raw_dict",
+        ),
+        # Transform Map tools
+        "list_transform_maps": (
+            list_transform_maps_tool,
+            ListTransformMapsParams,
+            Dict[str, Any],
+            (
+                "List transform map definitions from the sys_transform_map table. "
+                "Optional filters: name (LIKE), source_table (LIKE), target_table (LIKE), active. "
+                "Results ordered by name ascending. Returns paginated records with has_more and next_offset."
+            ),
+            "raw_dict",
+        ),
+        "get_transform_map": (
+            get_transform_map_tool,
+            GetTransformMapParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single sys_transform_map record by sys_id (32-char hex) or exact name. "
+                "Returns all map fields including source_table, target_table, active, run_business_rules, "
+                "enforce_mandatory_fields, copy_empty_fields, and order."
+            ),
+            "raw_dict",
+        ),
+        "create_transform_map": (
+            create_transform_map_tool,
+            CreateTransformMapParams,
+            Dict[str, Any],
+            (
+                "Create a new transform map in sys_transform_map. "
+                "Required: name, source_table (import set staging table), target_table. "
+                "Optional: active (default true), run_business_rules (default true), "
+                "enforce_mandatory_fields (default true), copy_empty_fields (default false), order. "
+                "Returns the created transform map record."
+            ),
+            "raw_dict",
+        ),
+        "update_transform_map": (
+            update_transform_map_tool,
+            UpdateTransformMapParams,
+            Dict[str, Any],
+            (
+                "Update an existing sys_transform_map by sys_id or exact name (PATCH). "
+                "Required: map_id. Optional updatable fields: name, source_table, target_table, "
+                "active, run_business_rules, enforce_mandatory_fields, copy_empty_fields, order. "
+                "Issues PATCH with only the supplied fields. Returns 404 error when not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_transform_map": (
+            delete_transform_map_tool,
+            DeleteTransformMapParams,
+            Dict[str, Any],
+            (
+                "Delete a sys_transform_map record by sys_id or exact name. "
+                "Returns 404 error when the transform map is not found."
+            ),
+            "raw_dict",
+        ),
+        "run_transform": (
+            run_transform_tool,
+            RunTransformParams,
+            Dict[str, Any],
+            (
+                "Insert a row into an import set staging table and trigger its transform map. "
+                "Uses the ServiceNow Import API (POST /api/now/import/{tableName}). "
+                "Required: staging_table (import set table name), data (key/value field payload). "
+                "ServiceNow automatically runs every active transform map whose source_table matches. "
+                "Returns import_set details and per-map transform_results."
             ),
             "raw_dict",
         ),

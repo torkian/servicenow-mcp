@@ -557,6 +557,13 @@ system_administrator:
   - list_reports
   - get_report
   - run_report
+  # Transform Map Tools
+  - list_transform_maps
+  - get_transform_map
+  - create_transform_map
+  - update_transform_map
+  - delete_transform_map
+  - run_transform
 
 full:
   # Incident Management
@@ -1001,3 +1008,10 @@ full:
   - delete_delivery_plan
   - list_delivery_tasks
   - create_delivery_task
+  # Transform Map Tools
+  - list_transform_maps
+  - get_transform_map
+  - create_transform_map
+  - update_transform_map
+  - delete_transform_map
+  - run_transform

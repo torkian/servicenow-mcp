@@ -397,6 +397,14 @@ from servicenow_mcp.tools.delivery_plan_tools import (
     list_delivery_tasks,
     update_delivery_plan,
 )
+from servicenow_mcp.tools.transform_map_tools import (
+    create_transform_map,
+    delete_transform_map,
+    get_transform_map,
+    list_transform_maps,
+    run_transform,
+    update_transform_map,
+)
 from servicenow_mcp.tools.report_tools import (
     get_report,
     list_reports,
@@ -962,4 +970,12 @@ __all__ = [
     "delete_delivery_plan",
     "list_delivery_tasks",
     "create_delivery_task",
+
+    # Transform Map tools
+    "list_transform_maps",
+    "get_transform_map",
+    "create_transform_map",
+    "update_transform_map",
+    "delete_transform_map",
+    "run_transform",
 ]

@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add transform map tools (sys_transform_map for data import)
-2. Add data source tools (sys_data_source for import sets)
+1. Add data source tools (sys_data_source for import sets)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -201,3 +200,4 @@
 194. 2026-10-17 — Add KB article version history tools (list_kb_article_versions, get_kb_article_version on kb_knowledge_version table); article sys_id scoping; workflow_state filter; newest-first ordering; 404 and empty-result guards on get; registered in knowledge_author, service_desk, and full packages; 17 new tests; 4565 total tests; 97% total coverage
 195. 2026-10-18 — Add catalog item delivery plan tools (list_delivery_plans, get_delivery_plan, create_delivery_plan, update_delivery_plan, delete_delivery_plan, list_delivery_tasks, create_delivery_task); delivery_plan_tools.py covers sc_cat_item_delivery_plan and sc_cat_item_delivery_task tables; cat_item_id/plan_id name-to-sys_id resolvers; empty-body guard on update; 404 guards; boolean fields serialised as strings; registered in catalog_builder and full packages; 45 new tests; 4610 total tests
 196. 2026-10-19 — Add event rule management tools (list_event_rules, get_event_rule, create_event_rule, update_event_rule, delete_event_rule); event_rule_tools.py covers sysevent_rule table; name/sys_id resolver; active/queue/application/name filters on list; empty-body guard on update; 404 guards; active serialised as string; boolean field normalised on read; registered in system_administrator and full packages; 51 new tests; 4661 total tests; 97% total coverage
+197. 2026-10-20 — Add transform map tools (list_transform_maps, get_transform_map, create_transform_map, update_transform_map, delete_transform_map, run_transform); transform_map_tools.py covers sys_transform_map table plus /api/now/import trigger; name/sys_id resolver; active/source_table/target_table/name filters on list; empty-body guard on update; 404 guards; boolean flags serialised as strings; run_transform normalises list and dict result shapes; registered in system_administrator and full packages; 47 new tests; 4708 total tests; 97% total coverage
