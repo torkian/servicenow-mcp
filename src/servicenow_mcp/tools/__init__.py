@@ -405,6 +405,14 @@ from servicenow_mcp.tools.transform_map_tools import (
     run_transform,
     update_transform_map,
 )
+from servicenow_mcp.tools.data_source_tools import (
+    create_data_source,
+    delete_data_source,
+    get_data_source,
+    list_data_sources,
+    load_data_source,
+    update_data_source,
+)
 from servicenow_mcp.tools.report_tools import (
     get_report,
     list_reports,
@@ -978,4 +986,12 @@ __all__ = [
     "update_transform_map",
     "delete_transform_map",
     "run_transform",
+
+    # Data Source tools
+    "list_data_sources",
+    "get_data_source",
+    "create_data_source",
+    "update_data_source",
+    "delete_data_source",
+    "load_data_source",
 ]

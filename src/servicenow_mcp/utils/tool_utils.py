@@ -1234,6 +1234,22 @@ from servicenow_mcp.tools.transform_map_tools import (
     run_transform as run_transform_tool,
     update_transform_map as update_transform_map_tool,
 )
+from servicenow_mcp.tools.data_source_tools import (
+    CreateDataSourceParams,
+    DeleteDataSourceParams,
+    GetDataSourceParams,
+    ListDataSourcesParams,
+    LoadDataSourceParams,
+    UpdateDataSourceParams,
+)
+from servicenow_mcp.tools.data_source_tools import (
+    create_data_source as create_data_source_tool,
+    delete_data_source as delete_data_source_tool,
+    get_data_source as get_data_source_tool,
+    list_data_sources as list_data_sources_tool,
+    load_data_source as load_data_source_tool,
+    update_data_source as update_data_source_tool,
+)
 from servicenow_mcp.tools.user_preference_tools import (
     DeleteUserPreferenceParams,
     GetUserPreferenceParams,
@@ -5545,6 +5561,76 @@ def get_tool_definitions(
                 "Required: staging_table (import set table name), data (key/value field payload). "
                 "ServiceNow automatically runs every active transform map whose source_table matches. "
                 "Returns import_set details and per-map transform_results."
+            ),
+            "raw_dict",
+        ),
+        # Data Source tools
+        "list_data_sources": (
+            list_data_sources_tool,
+            ListDataSourcesParams,
+            Dict[str, Any],
+            (
+                "List data source definitions from the sys_data_source table. "
+                "Optional filters: name (LIKE), format (csv/xml/json/jdbc), "
+                "file_retrieval_method (http/ftp/attachment), active (bool). "
+                "Supports limit/offset pagination. Returns data_sources list with has_more/next_offset."
+            ),
+            "raw_dict",
+        ),
+        "get_data_source": (
+            get_data_source_tool,
+            GetDataSourceParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single sys_data_source record by sys_id (32-char hex) or exact name. "
+                "Required: source_id. Returns data_source with all configuration fields."
+            ),
+            "raw_dict",
+        ),
+        "create_data_source": (
+            create_data_source_tool,
+            CreateDataSourceParams,
+            Dict[str, Any],
+            (
+                "Create a new data source in sys_data_source. "
+                "Required: name, import_set_table_name (staging table to load into). "
+                "Optional: format (default csv), file_retrieval_method, source (URL/path), "
+                "header_row, comma_separated, csv_separator, active. "
+                "Returns the created data_source record."
+            ),
+            "raw_dict",
+        ),
+        "update_data_source": (
+            update_data_source_tool,
+            UpdateDataSourceParams,
+            Dict[str, Any],
+            (
+                "Update an existing sys_data_source by sys_id or exact name (PATCH). "
+                "Required: source_id. Optional fields: name, import_set_table_name, format, "
+                "file_retrieval_method, source, header_row, comma_separated, csv_separator, active. "
+                "Returns the updated data_source record."
+            ),
+            "raw_dict",
+        ),
+        "delete_data_source": (
+            delete_data_source_tool,
+            DeleteDataSourceParams,
+            Dict[str, Any],
+            (
+                "Delete a sys_data_source record by sys_id or exact name. "
+                "Required: source_id. Returns success message."
+            ),
+            "raw_dict",
+        ),
+        "load_data_source": (
+            load_data_source_tool,
+            LoadDataSourceParams,
+            Dict[str, Any],
+            (
+                "Trigger a data source load to populate its import set staging table. "
+                "Posts to sys_import_set_run to execute the data source. "
+                "Required: source_id (sys_id or exact name of the data source). "
+                "Returns import_set details including state."
             ),
             "raw_dict",
         ),

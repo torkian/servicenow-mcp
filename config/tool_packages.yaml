@@ -564,6 +564,13 @@ system_administrator:
   - update_transform_map
   - delete_transform_map
   - run_transform
+  # Data Source Tools
+  - list_data_sources
+  - get_data_source
+  - create_data_source
+  - update_data_source
+  - delete_data_source
+  - load_data_source
 
 full:
   # Incident Management
@@ -1015,3 +1022,10 @@ full:
   - update_transform_map
   - delete_transform_map
   - run_transform
+  # Data Source Tools
+  - list_data_sources
+  - get_data_source
+  - create_data_source
+  - update_data_source
+  - delete_data_source
+  - load_data_source
