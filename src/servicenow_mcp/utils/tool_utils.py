@@ -1250,6 +1250,16 @@ from servicenow_mcp.tools.data_source_tools import (
     load_data_source as load_data_source_tool,
     update_data_source as update_data_source_tool,
 )
+from servicenow_mcp.tools.import_set_tools import (
+    CleanupImportSetParams,
+    GetImportSetParams,
+    ListImportSetsParams,
+)
+from servicenow_mcp.tools.import_set_tools import (
+    cleanup_import_set as cleanup_import_set_tool,
+    get_import_set as get_import_set_tool,
+    list_import_sets as list_import_sets_tool,
+)
 from servicenow_mcp.tools.user_preference_tools import (
     DeleteUserPreferenceParams,
     GetUserPreferenceParams,
@@ -5631,6 +5641,40 @@ def get_tool_definitions(
                 "Posts to sys_import_set_run to execute the data source. "
                 "Required: source_id (sys_id or exact name of the data source). "
                 "Returns import_set details including state."
+            ),
+            "raw_dict",
+        ),
+        "list_import_sets": (
+            list_import_sets_tool,
+            ListImportSetsParams,
+            Dict[str, Any],
+            (
+                "List import set records from the sys_import_set table. "
+                "Optional filters: label (LIKE match), table_name (exact staging table), "
+                "state (e.g. loaded, complete, error), data_source (name LIKE match). "
+                "Supports limit/offset pagination. Returns import_sets list with has_more/next_offset."
+            ),
+            "raw_dict",
+        ),
+        "get_import_set": (
+            get_import_set_tool,
+            GetImportSetParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single sys_import_set record by sys_id (32-char hex) or exact label. "
+                "Required: import_set_id. Returns import_set with all fields including "
+                "state, import_count, error_count, skip_count, and data_source reference."
+            ),
+            "raw_dict",
+        ),
+        "cleanup_import_set": (
+            cleanup_import_set_tool,
+            CleanupImportSetParams,
+            Dict[str, Any],
+            (
+                "Delete (clean up) a sys_import_set record and its staging data. "
+                "This permanently removes the import set and frees storage used by its raw rows. "
+                "Required: import_set_id (sys_id or exact label). Returns success message."
             ),
             "raw_dict",
         ),

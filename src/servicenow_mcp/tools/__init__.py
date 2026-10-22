@@ -413,6 +413,11 @@ from servicenow_mcp.tools.data_source_tools import (
     load_data_source,
     update_data_source,
 )
+from servicenow_mcp.tools.import_set_tools import (
+    cleanup_import_set,
+    get_import_set,
+    list_import_sets,
+)
 from servicenow_mcp.tools.report_tools import (
     get_report,
     list_reports,
@@ -994,4 +999,7 @@ __all__ = [
     "update_data_source",
     "delete_data_source",
     "load_data_source",
+    "list_import_sets",
+    "get_import_set",
+    "cleanup_import_set",
 ]

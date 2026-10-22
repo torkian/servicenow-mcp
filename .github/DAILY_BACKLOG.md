@@ -1,8 +1,7 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add import set management tools (list_import_sets, get_import_set, cleanup_import_set on sys_import_set)
-2. Add transform entry tools (list_transform_entries, create_transform_entry, update_transform_entry on sys_transform_entry)
+1. Add transform entry tools (list_transform_entries, create_transform_entry, update_transform_entry on sys_transform_entry)
 3. Add import set row tools (list_import_set_rows, get_import_set_row on import staging tables)
 4. Add sys_property tools (list_properties, get_property, set_property, delete_property)
 5. Add sys_dictionary tools (list_table_fields, get_field_definition for schema inspection)
@@ -208,3 +207,4 @@
 196. 2026-10-19 — Add event rule management tools (list_event_rules, get_event_rule, create_event_rule, update_event_rule, delete_event_rule); event_rule_tools.py covers sysevent_rule table; name/sys_id resolver; active/queue/application/name filters on list; empty-body guard on update; 404 guards; active serialised as string; boolean field normalised on read; registered in system_administrator and full packages; 51 new tests; 4661 total tests; 97% total coverage
 197. 2026-10-20 — Add transform map tools
 198. 2026-10-21 — Add data source tools (list_data_sources, get_data_source, create_data_source, update_data_source, delete_data_source, load_data_source on sys_data_source; name/sys_id resolver; all registered in system_administrator and full packages; 44 new tests; 97% total coverage) (list_transform_maps, get_transform_map, create_transform_map, update_transform_map, delete_transform_map, run_transform); transform_map_tools.py covers sys_transform_map table plus /api/now/import trigger; name/sys_id resolver; active/source_table/target_table/name filters on list; empty-body guard on update; 404 guards; boolean flags serialised as strings; run_transform normalises list and dict result shapes; registered in system_administrator and full packages; 47 new tests; 4708 total tests; 97% total coverage
+199. 2026-10-22 — Add import set management tools (list_import_sets, get_import_set, cleanup_import_set on sys_import_set); list supports label/table_name/state/data_source filters with pagination; get resolves by sys_id or exact label; cleanup deletes staging data permanently; 37 new tests; 4789 total tests; 97% total coverage

@@ -571,6 +571,10 @@ system_administrator:
   - update_data_source
   - delete_data_source
   - load_data_source
+  # Import Set Tools
+  - list_import_sets
+  - get_import_set
+  - cleanup_import_set
 
 full:
   # Incident Management
@@ -1029,3 +1033,7 @@ full:
   - update_data_source
   - delete_data_source
   - load_data_source
+  # Import Set Tools
+  - list_import_sets
+  - get_import_set
+  - cleanup_import_set
