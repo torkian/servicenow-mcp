@@ -418,6 +418,12 @@ from servicenow_mcp.tools.import_set_tools import (
     get_import_set,
     list_import_sets,
 )
+from servicenow_mcp.tools.transform_entry_tools import (
+    create_transform_entry,
+    get_transform_entry,
+    list_transform_entries,
+    update_transform_entry,
+)
 from servicenow_mcp.tools.report_tools import (
     get_report,
     list_reports,

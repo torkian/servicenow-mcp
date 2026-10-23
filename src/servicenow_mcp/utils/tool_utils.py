@@ -1260,6 +1260,18 @@ from servicenow_mcp.tools.import_set_tools import (
     get_import_set as get_import_set_tool,
     list_import_sets as list_import_sets_tool,
 )
+from servicenow_mcp.tools.transform_entry_tools import (
+    CreateTransformEntryParams,
+    GetTransformEntryParams,
+    ListTransformEntriesParams,
+    UpdateTransformEntryParams,
+)
+from servicenow_mcp.tools.transform_entry_tools import (
+    create_transform_entry as create_transform_entry_tool,
+    get_transform_entry as get_transform_entry_tool,
+    list_transform_entries as list_transform_entries_tool,
+    update_transform_entry as update_transform_entry_tool,
+)
 from servicenow_mcp.tools.user_preference_tools import (
     DeleteUserPreferenceParams,
     GetUserPreferenceParams,
@@ -5675,6 +5687,61 @@ def get_tool_definitions(
                 "Delete (clean up) a sys_import_set record and its staging data. "
                 "This permanently removes the import set and frees storage used by its raw rows. "
                 "Required: import_set_id (sys_id or exact label). Returns success message."
+            ),
+            "raw_dict",
+        ),
+        # Transform Entry tools
+        "list_transform_entries": (
+            list_transform_entries_tool,
+            ListTransformEntriesParams,
+            Dict[str, Any],
+            (
+                "List field mapping entries from the sys_transform_entry table. "
+                "Optionally scope results to a specific transform map with map_id (sys_id or exact name). "
+                "Supports filtering by source_field (LIKE), target_field (LIKE), active, and coalesce flag. "
+                "Results are ordered by the entry order field. "
+                "Returns transform_entries list with has_more/next_offset pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_transform_entry": (
+            get_transform_entry_tool,
+            GetTransformEntryParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single sys_transform_entry record by its sys_id (32-char hex). "
+                "Returns all entry fields including source_field, target_field, coalesce, "
+                "coalesce_empty_fields, active, default_value, type, value, script, and order. "
+                "Returns 404 error when the entry is not found."
+            ),
+            "raw_dict",
+        ),
+        "create_transform_entry": (
+            create_transform_entry_tool,
+            CreateTransformEntryParams,
+            Dict[str, Any],
+            (
+                "Create a new field mapping entry in a transform map (sys_transform_entry). "
+                "Required: map_id (sys_id or exact name of parent transform map), "
+                "source_field (staging table column), target_field (target table column). "
+                "Optional: active (default true), coalesce (use as key field, default false), "
+                "coalesce_empty_fields, default_value, type (field/script/use_source_script), "
+                "value, script, order. "
+                "Returns the created transform_entry record."
+            ),
+            "raw_dict",
+        ),
+        "update_transform_entry": (
+            update_transform_entry_tool,
+            UpdateTransformEntryParams,
+            Dict[str, Any],
+            (
+                "Update an existing sys_transform_entry by sys_id (PATCH). "
+                "Required: entry_id (sys_id of the entry to update). "
+                "Optional updatable fields: source_field, target_field, active, coalesce, "
+                "coalesce_empty_fields, default_value, type, value, script, order. "
+                "At least one optional field must be supplied. "
+                "Returns 404 error when the entry is not found."
             ),
             "raw_dict",
         ),

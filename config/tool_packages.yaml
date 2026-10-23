@@ -575,6 +575,11 @@ system_administrator:
   - list_import_sets
   - get_import_set
   - cleanup_import_set
+  # Transform Entry Tools
+  - list_transform_entries
+  - get_transform_entry
+  - create_transform_entry
+  - update_transform_entry
 
 full:
   # Incident Management
@@ -1037,3 +1042,8 @@ full:
   - list_import_sets
   - get_import_set
   - cleanup_import_set
+  # Transform Entry Tools
+  - list_transform_entries
+  - get_transform_entry
+  - create_transform_entry
+  - update_transform_entry
