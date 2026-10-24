@@ -575,6 +575,8 @@ system_administrator:
   - list_import_sets
   - get_import_set
   - cleanup_import_set
+  - list_import_set_rows
+  - get_import_set_row
   # Transform Entry Tools
   - list_transform_entries
   - get_transform_entry
@@ -1042,6 +1044,8 @@ full:
   - list_import_sets
   - get_import_set
   - cleanup_import_set
+  - list_import_set_rows
+  - get_import_set_row
   # Transform Entry Tools
   - list_transform_entries
   - get_transform_entry

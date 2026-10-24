@@ -8,9 +8,13 @@ import requests as req
 from servicenow_mcp.auth.auth_manager import AuthManager
 from servicenow_mcp.tools.import_set_tools import (
     _format_import_set,
+    _format_import_set_row,
+    _get_staging_table,
     _resolve_import_set_sys_id,
     cleanup_import_set,
     get_import_set,
+    get_import_set_row,
+    list_import_set_rows,
     list_import_sets,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, BasicAuthConfig, ServerConfig
@@ -374,6 +378,273 @@ class TestCleanupImportSet(unittest.TestCase):
         mock_req.return_value = resp
         result = cleanup_import_set(self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID}})
         self.assertTrue(result["success"])
+
+
+FAKE_ROW_SYS_ID = "d" * 32
+STAGING_TABLE = "u_import_users"
+
+FAKE_ROW = {
+    "sys_id": FAKE_ROW_SYS_ID,
+    "sys_import_set": {"display_value": "ISET0010001", "value": FAKE_SYS_ID},
+    "sys_transform_map": {"display_value": "User Import Map", "value": "e" * 32},
+    "sys_import_state": "inserted",
+    "sys_import_state_message": "",
+    "sys_row_error": "",
+    "sys_transform_count": "1",
+    "sys_created_on": "2026-10-24 09:00:00",
+    "sys_updated_on": "2026-10-24 09:01:00",
+    "sys_created_by": "admin",
+}
+
+
+# ---------------------------------------------------------------------------
+# _format_import_set_row
+# ---------------------------------------------------------------------------
+class TestFormatImportSetRow(unittest.TestCase):
+    def test_basic_fields(self):
+        result = _format_import_set_row(FAKE_ROW)
+        self.assertEqual(result["sys_id"], FAKE_ROW_SYS_ID)
+        self.assertEqual(result["state"], "inserted")
+        self.assertEqual(result["transform_count"], "1")
+        self.assertEqual(result["created_by"], "admin")
+
+    def test_import_set_dict_normalised(self):
+        result = _format_import_set_row(FAKE_ROW)
+        self.assertEqual(result["sys_import_set"], "ISET0010001")
+
+    def test_transform_map_dict_normalised(self):
+        result = _format_import_set_row(FAKE_ROW)
+        self.assertEqual(result["sys_transform_map"], "User Import Map")
+
+    def test_import_set_string_passthrough(self):
+        row = dict(FAKE_ROW, sys_import_set="plain")
+        result = _format_import_set_row(row)
+        self.assertEqual(result["sys_import_set"], "plain")
+
+    def test_transform_map_string_passthrough(self):
+        row = dict(FAKE_ROW, sys_transform_map="plain")
+        result = _format_import_set_row(row)
+        self.assertEqual(result["sys_transform_map"], "plain")
+
+    def test_dict_no_display_value_falls_back_to_value(self):
+        row = dict(FAKE_ROW, sys_import_set={"display_value": None, "value": "fallback"})
+        result = _format_import_set_row(row)
+        self.assertEqual(result["sys_import_set"], "fallback")
+
+
+# ---------------------------------------------------------------------------
+# _get_staging_table
+# ---------------------------------------------------------------------------
+class TestGetStagingTable(unittest.TestCase):
+    @patch("servicenow_mcp.tools.import_set_tools._resolve_import_set_sys_id", return_value=None)
+    def test_returns_none_when_not_found(self, _res):
+        result = _get_staging_table("ISET0010001", INSTANCE_URL, {})
+        self.assertIsNone(result)
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._resolve_import_set_sys_id", return_value=FAKE_SYS_ID)
+    def test_returns_table_name(self, _res, mock_req):
+        mock_req.return_value = _mock_resp(200, {"result": {"table_name": STAGING_TABLE}})
+        result = _get_staging_table(FAKE_SYS_ID, INSTANCE_URL, {})
+        self.assertEqual(result, STAGING_TABLE)
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._resolve_import_set_sys_id", return_value=FAKE_SYS_ID)
+    def test_returns_none_on_empty_result(self, _res, mock_req):
+        mock_req.return_value = _mock_resp(200, {"result": None})
+        result = _get_staging_table(FAKE_SYS_ID, INSTANCE_URL, {})
+        self.assertIsNone(result)
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._resolve_import_set_sys_id", return_value=FAKE_SYS_ID)
+    def test_returns_none_on_exception(self, _res, mock_req):
+        mock_req.side_effect = req.exceptions.ConnectionError("timeout")
+        result = _get_staging_table(FAKE_SYS_ID, INSTANCE_URL, {})
+        self.assertIsNone(result)
+
+
+# ---------------------------------------------------------------------------
+# list_import_set_rows
+# ---------------------------------------------------------------------------
+class TestListImportSetRows(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth()
+        self.config = _make_config()
+
+    def test_missing_import_set_id(self):
+        result = list_import_set_rows(self.auth, self.config, {})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=None)
+    def test_no_instance_url(self, _):
+        result = list_import_set_rows(self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID}})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value=None)
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_no_headers(self, _iu, _h):
+        result = list_import_set_rows(self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID}})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=None)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_import_set_not_found(self, _iu, _h, _st):
+        result = list_import_set_rows(self.auth, self.config, {"params": {"import_set_id": "ISET0010001"}})
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_returns_rows(self, _iu, _h, _st, mock_req):
+        mock_req.return_value = _mock_resp(200, {"result": [FAKE_ROW]})
+        result = list_import_set_rows(self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID}})
+        self.assertTrue(result["success"])
+        self.assertEqual(len(result["rows"]), 1)
+        self.assertEqual(result["staging_table"], STAGING_TABLE)
+        self.assertFalse(result["has_more"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_filter_state(self, _iu, _h, _st, mock_req):
+        mock_req.return_value = _mock_resp(200, {"result": []})
+        result = list_import_set_rows(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "state": "error"}}
+        )
+        self.assertTrue(result["success"])
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("sys_import_state=error", call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_filter_error_message(self, _iu, _h, _st, mock_req):
+        mock_req.return_value = _mock_resp(200, {"result": []})
+        result = list_import_set_rows(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "error_message": "duplicate"}}
+        )
+        self.assertTrue(result["success"])
+        call_params = mock_req.call_args[1]["params"]
+        self.assertIn("sys_row_errorLIKEduplicate", call_params["sysparm_query"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_has_more_when_full_page(self, _iu, _h, _st, mock_req):
+        rows = [dict(FAKE_ROW, sys_id=f"{i:032x}") for i in range(20)]
+        mock_req.return_value = _mock_resp(200, {"result": rows})
+        result = list_import_set_rows(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "limit": 20}}
+        )
+        self.assertTrue(result["has_more"])
+        self.assertEqual(result["next_offset"], 20)
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_request_exception(self, _iu, _h, _st, mock_req):
+        mock_req.side_effect = req.exceptions.ConnectionError("timeout")
+        result = list_import_set_rows(self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID}})
+        self.assertFalse(result["success"])
+        self.assertIn("Error listing import set rows", result["message"])
+
+
+# ---------------------------------------------------------------------------
+# get_import_set_row
+# ---------------------------------------------------------------------------
+class TestGetImportSetRow(unittest.TestCase):
+    def setUp(self):
+        self.auth = _make_auth()
+        self.config = _make_config()
+
+    def test_missing_import_set_id(self):
+        result = get_import_set_row(self.auth, self.config, {"params": {"row_sys_id": FAKE_ROW_SYS_ID}})
+        self.assertFalse(result["success"])
+
+    def test_missing_row_sys_id(self):
+        result = get_import_set_row(self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID}})
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=None)
+    def test_no_instance_url(self, _):
+        result = get_import_set_row(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "row_sys_id": FAKE_ROW_SYS_ID}}
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value=None)
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_no_headers(self, _iu, _h):
+        result = get_import_set_row(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "row_sys_id": FAKE_ROW_SYS_ID}}
+        )
+        self.assertFalse(result["success"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=None)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_import_set_not_found(self, _iu, _h, _st):
+        result = get_import_set_row(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "row_sys_id": FAKE_ROW_SYS_ID}}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_success(self, _iu, _h, _st, mock_req):
+        mock_req.return_value = _mock_resp(200, {"result": FAKE_ROW})
+        result = get_import_set_row(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "row_sys_id": FAKE_ROW_SYS_ID}}
+        )
+        self.assertTrue(result["success"])
+        self.assertEqual(result["row"]["sys_id"], FAKE_ROW_SYS_ID)
+        self.assertEqual(result["staging_table"], STAGING_TABLE)
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_404_response(self, _iu, _h, _st, mock_req):
+        mock_req.return_value = _mock_resp(404)
+        result = get_import_set_row(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "row_sys_id": FAKE_ROW_SYS_ID}}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_empty_result(self, _iu, _h, _st, mock_req):
+        mock_req.return_value = _mock_resp(200, {"result": None})
+        result = get_import_set_row(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "row_sys_id": FAKE_ROW_SYS_ID}}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("not found", result["message"])
+
+    @patch("servicenow_mcp.tools.import_set_tools._make_request")
+    @patch("servicenow_mcp.tools.import_set_tools._get_staging_table", return_value=STAGING_TABLE)
+    @patch("servicenow_mcp.tools.import_set_tools._get_headers", return_value={"Authorization": "Bearer FAKE"})
+    @patch("servicenow_mcp.tools.import_set_tools._get_instance_url", return_value=INSTANCE_URL)
+    def test_request_exception(self, _iu, _h, _st, mock_req):
+        mock_req.side_effect = req.exceptions.ConnectionError("timeout")
+        result = get_import_set_row(
+            self.auth, self.config, {"params": {"import_set_id": FAKE_SYS_ID, "row_sys_id": FAKE_ROW_SYS_ID}}
+        )
+        self.assertFalse(result["success"])
+        self.assertIn("Error retrieving import set row", result["message"])
 
 
 if __name__ == "__main__":

@@ -1,7 +1,8 @@
 """
 Import set management tools for the ServiceNow MCP server.
 
-Provides tools for listing, retrieving, and cleaning up sys_import_set records.
+Provides tools for listing, retrieving, and cleaning up sys_import_set records,
+and for querying the staging rows within an import set's staging table.
 Import sets are staging collections created when a data source is loaded;
 each import set groups the raw rows that will be processed by a transform map.
 """
@@ -123,6 +124,36 @@ class CleanupImportSetParams(BaseModel):
     """Parameters for deleting (cleaning up) a sys_import_set record."""
 
     import_set_id: str = Field(..., description="sys_id (32-char hex) or exact label of the import set to delete")
+
+
+class ListImportSetRowsParams(BaseModel):
+    """Parameters for listing rows from an import set's staging table."""
+
+    import_set_id: str = Field(
+        ...,
+        description="sys_id (32-char hex) or exact label of the import set whose staging rows to list",
+    )
+    limit: Optional[int] = Field(20, description="Maximum number of rows to return (default 20)")
+    offset: Optional[int] = Field(0, description="Pagination offset")
+    state: Optional[str] = Field(
+        None,
+        description="Filter by row state (e.g. inserted, updated, ignored, error)",
+    )
+    error_message: Optional[str] = Field(
+        None, description="Filter rows whose error_message contains this string (LIKE match)"
+    )
+
+
+class GetImportSetRowParams(BaseModel):
+    """Parameters for retrieving a single staging row from an import set's staging table."""
+
+    import_set_id: str = Field(
+        ...,
+        description="sys_id (32-char hex) or exact label of the parent import set",
+    )
+    row_sys_id: str = Field(
+        ..., description="sys_id (32-char hex) of the specific staging row"
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -294,3 +325,176 @@ def cleanup_import_set(
     except requests.exceptions.RequestException as e:
         logger.error(f"Error deleting import set: {e}")
         return {"success": False, "message": f"Error deleting import set: {_format_http_error(e)}"}
+
+
+def _get_staging_table(import_set_id: str, instance_url: str, headers: Dict) -> Optional[str]:
+    """Return the staging table name for an import set, or None if not found."""
+    sys_id = _resolve_import_set_sys_id(import_set_id, instance_url, headers)
+    if not sys_id:
+        return None
+    url = f"{instance_url}/api/now/table/{IMPORT_SET_TABLE}/{sys_id}"
+    params: Dict[str, Any] = {
+        "sysparm_fields": "table_name",
+        "sysparm_exclude_reference_link": "true",
+    }
+    try:
+        resp = _make_request("GET", url, headers=headers, params=params)
+        resp.raise_for_status()
+        result = resp.json().get("result")
+        if not result:
+            return None
+        return result.get("table_name") or None
+    except requests.exceptions.RequestException:
+        return None
+
+
+def _format_import_set_row(record: Dict) -> Dict:
+    """Normalise a raw staging row record."""
+    import_set = record.get("sys_import_set")
+    if isinstance(import_set, dict):
+        import_set = import_set.get("display_value") or import_set.get("value")
+    transform_map = record.get("sys_transform_map")
+    if isinstance(transform_map, dict):
+        transform_map = transform_map.get("display_value") or transform_map.get("value")
+    return {
+        "sys_id": record.get("sys_id"),
+        "sys_import_set": import_set,
+        "sys_transform_map": transform_map,
+        "state": record.get("sys_import_state"),
+        "state_message": record.get("sys_import_state_message"),
+        "error_message": record.get("sys_row_error"),
+        "transform_count": record.get("sys_transform_count"),
+        "created_on": record.get("sys_created_on"),
+        "updated_on": record.get("sys_updated_on"),
+        "created_by": record.get("sys_created_by"),
+    }
+
+
+def list_import_set_rows(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """List staging rows from an import set's staging table.
+
+    Each import set writes its raw source rows into a staging table named in
+    the import set's ``table_name`` field (e.g. ``u_import_users``).  This tool
+    queries that staging table and returns the individual row records, including
+    their transform state and any error messages.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching ListImportSetRowsParams.
+
+    Returns:
+        Dictionary with ``success``, ``rows``, ``staging_table``, ``has_more``,
+        and ``next_offset`` keys.
+    """
+    result = _unwrap_and_validate_params(params, ListImportSetRowsParams, required_fields=["import_set_id"])
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    staging_table = _get_staging_table(validated.import_set_id, instance_url, headers)
+    if not staging_table:
+        return {
+            "success": False,
+            "message": f"Import set not found or has no staging table: {validated.import_set_id}",
+        }
+
+    query_parts = []
+    if validated.state:
+        query_parts.append(f"sys_import_state={validated.state}")
+    if validated.error_message:
+        query_parts.append(f"sys_row_errorLIKE{validated.error_message}")
+
+    sysparm_query = _join_query_parts(query_parts)
+    api_params = _build_sysparm_params(
+        limit=validated.limit,
+        offset=validated.offset,
+        query=sysparm_query,
+    )
+    api_params["sysparm_display_value"] = "all"
+    api_params["sysparm_exclude_reference_link"] = "true"
+
+    url = f"{instance_url}/api/now/table/{staging_table}"
+    try:
+        response = _make_request("GET", url, headers=headers, params=api_params)
+        response.raise_for_status()
+        raw_records = response.json().get("result", [])
+        rows = [_format_import_set_row(r) for r in raw_records]
+        response_data = _paginated_list_response(rows, validated.limit, validated.offset, "rows")
+        response_data["staging_table"] = staging_table
+        return response_data
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error listing import set rows: {e}")
+        return {"success": False, "message": f"Error listing import set rows: {_format_http_error(e)}"}
+
+
+def get_import_set_row(
+    auth_manager: AuthManager,
+    server_config: ServerConfig,
+    params: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Retrieve a single staging row from an import set's staging table.
+
+    Args:
+        auth_manager: Authentication manager.
+        server_config: Server configuration.
+        params: Parameters matching GetImportSetRowParams.
+
+    Returns:
+        Dictionary with ``success``, ``row``, and ``staging_table`` keys.
+    """
+    result = _unwrap_and_validate_params(
+        params,
+        GetImportSetRowParams,
+        required_fields=["import_set_id", "row_sys_id"],
+    )
+    if not result["success"]:
+        return result
+    validated = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"success": False, "message": "Cannot find instance_url"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"success": False, "message": "Cannot find get_headers method"}
+
+    staging_table = _get_staging_table(validated.import_set_id, instance_url, headers)
+    if not staging_table:
+        return {
+            "success": False,
+            "message": f"Import set not found or has no staging table: {validated.import_set_id}",
+        }
+
+    url = f"{instance_url}/api/now/table/{staging_table}/{validated.row_sys_id}"
+    api_params: Dict[str, Any] = {
+        "sysparm_display_value": "all",
+        "sysparm_exclude_reference_link": "true",
+    }
+    try:
+        response = _make_request("GET", url, headers=headers, params=api_params)
+        if response.status_code == 404:
+            return {"success": False, "message": f"Import set row not found: {validated.row_sys_id}"}
+        response.raise_for_status()
+        record = response.json().get("result")
+        if not record:
+            return {"success": False, "message": f"Import set row not found: {validated.row_sys_id}"}
+        return {
+            "success": True,
+            "staging_table": staging_table,
+            "row": _format_import_set_row(record),
+        }
+    except requests.exceptions.RequestException as e:
+        logger.error(f"Error retrieving import set row: {e}")
+        return {"success": False, "message": f"Error retrieving import set row: {_format_http_error(e)}"}

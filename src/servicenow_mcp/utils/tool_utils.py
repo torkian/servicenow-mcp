@@ -1253,11 +1253,15 @@ from servicenow_mcp.tools.data_source_tools import (
 from servicenow_mcp.tools.import_set_tools import (
     CleanupImportSetParams,
     GetImportSetParams,
+    GetImportSetRowParams,
+    ListImportSetRowsParams,
     ListImportSetsParams,
 )
 from servicenow_mcp.tools.import_set_tools import (
     cleanup_import_set as cleanup_import_set_tool,
     get_import_set as get_import_set_tool,
+    get_import_set_row as get_import_set_row_tool,
+    list_import_set_rows as list_import_set_rows_tool,
     list_import_sets as list_import_sets_tool,
 )
 from servicenow_mcp.tools.transform_entry_tools import (
@@ -5687,6 +5691,31 @@ def get_tool_definitions(
                 "Delete (clean up) a sys_import_set record and its staging data. "
                 "This permanently removes the import set and frees storage used by its raw rows. "
                 "Required: import_set_id (sys_id or exact label). Returns success message."
+            ),
+            "raw_dict",
+        ),
+        "list_import_set_rows": (
+            list_import_set_rows_tool,
+            ListImportSetRowsParams,
+            Dict[str, Any],
+            (
+                "List staging rows from an import set's staging table. "
+                "Each import set writes its raw source data into a staging table; "
+                "this tool queries those rows including their transform state and error messages. "
+                "Required: import_set_id. Optional: state (inserted/updated/ignored/error), "
+                "error_message (LIKE filter), limit, offset. "
+                "Returns rows list with staging_table name and has_more/next_offset pagination."
+            ),
+            "raw_dict",
+        ),
+        "get_import_set_row": (
+            get_import_set_row_tool,
+            GetImportSetRowParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single staging row from an import set's staging table by row sys_id. "
+                "Required: import_set_id (sys_id or exact label), row_sys_id (32-char hex). "
+                "Returns row with state, error_message, transform_map, and staging_table name."
             ),
             "raw_dict",
         ),

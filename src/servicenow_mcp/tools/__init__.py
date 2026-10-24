@@ -416,6 +416,8 @@ from servicenow_mcp.tools.data_source_tools import (
 from servicenow_mcp.tools.import_set_tools import (
     cleanup_import_set,
     get_import_set,
+    get_import_set_row,
+    list_import_set_rows,
     list_import_sets,
 )
 from servicenow_mcp.tools.transform_entry_tools import (
@@ -1008,4 +1010,6 @@ __all__ = [
     "list_import_sets",
     "get_import_set",
     "cleanup_import_set",
+    "list_import_set_rows",
+    "get_import_set_row",
 ]
