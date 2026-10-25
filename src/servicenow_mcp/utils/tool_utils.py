@@ -1288,6 +1288,18 @@ from servicenow_mcp.tools.user_preference_tools import (
     list_user_preferences as list_user_preferences_tool,
     set_user_preference as set_user_preference_tool,
 )
+from servicenow_mcp.tools.sys_property_tools import (
+    DeletePropertyParams,
+    GetPropertyParams,
+    ListPropertiesParams,
+    SetPropertyParams,
+)
+from servicenow_mcp.tools.sys_property_tools import (
+    delete_property as delete_property_tool,
+    get_property as get_property_tool,
+    list_properties as list_properties_tool,
+    set_property as set_property_tool,
+)
 from servicenow_mcp.tools.assessment_tools import (
     CreateAssessmentInstanceParams,
     DeleteAssessmentInstanceParams,
@@ -4900,6 +4912,52 @@ def get_tool_definitions(
                 "Optionally filter by user (sys_id or user_name) and/or preference name (substring match). "
                 "When user_id is omitted, all preferences are returned (requires admin access). "
                 "Supports pagination via limit/offset."
+            ),
+            "raw_dict",
+        ),
+        # System property tools
+        "list_properties": (
+            list_properties_tool,
+            ListPropertiesParams,
+            Dict[str, Any],
+            (
+                "List system properties from the ServiceNow sys_properties table. "
+                "Supports filtering by name (substring match), category (exact match), and type. "
+                "Pagination via limit/offset. Returns property name, value, type, category, and metadata."
+            ),
+            "raw_dict",
+        ),
+        "get_property": (
+            get_property_tool,
+            GetPropertyParams,
+            Dict[str, Any],
+            (
+                "Retrieve a single system property from sys_properties by name or sys_id. "
+                "A 32-character hex string is treated as a sys_id; otherwise an exact name lookup is performed. "
+                "Returns the property value, type, category, roles, and all metadata fields."
+            ),
+            "raw_dict",
+        ),
+        "set_property": (
+            set_property_tool,
+            SetPropertyParams,
+            Dict[str, Any],
+            (
+                "Create or update a system property in sys_properties (upsert by name). "
+                "If a property with the given name already exists it is updated (PATCH); "
+                "otherwise a new record is created (POST). Supports type, category, private, "
+                "encrypt, read_roles, and write_roles fields. Returns the saved property and the action taken."
+            ),
+            "raw_dict",
+        ),
+        "delete_property": (
+            delete_property_tool,
+            DeletePropertyParams,
+            Dict[str, Any],
+            (
+                "Delete a system property from sys_properties by name or sys_id. "
+                "A 32-character hex string is treated as a sys_id; otherwise an exact name lookup is used. "
+                "Returns success/failure with a descriptive message."
             ),
             "raw_dict",
         ),

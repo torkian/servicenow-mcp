@@ -466,6 +466,12 @@ from servicenow_mcp.tools.user_preference_tools import (
     list_user_preferences,
     set_user_preference,
 )
+from servicenow_mcp.tools.sys_property_tools import (
+    delete_property,
+    get_property,
+    list_properties,
+    set_property,
+)
 from servicenow_mcp.tools.syslog_tools import (
     get_syslog_entry,
     list_syslog_entries,
@@ -917,6 +923,12 @@ __all__ = [
     "set_user_preference",
     "delete_user_preference",
     "list_user_preferences",
+
+    # System property tools
+    "list_properties",
+    "get_property",
+    "set_property",
+    "delete_property",
 
     # Assessment / Survey tools
     "list_assessment_instances",
