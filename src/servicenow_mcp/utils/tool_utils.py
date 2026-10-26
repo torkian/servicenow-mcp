@@ -1288,6 +1288,14 @@ from servicenow_mcp.tools.user_preference_tools import (
     list_user_preferences as list_user_preferences_tool,
     set_user_preference as set_user_preference_tool,
 )
+from servicenow_mcp.tools.sys_dictionary_tools import (
+    GetFieldDefinitionParams,
+    ListTableFieldsParams,
+)
+from servicenow_mcp.tools.sys_dictionary_tools import (
+    get_field_definition as get_field_definition_tool,
+    list_table_fields as list_table_fields_tool,
+)
 from servicenow_mcp.tools.sys_property_tools import (
     DeletePropertyParams,
     GetPropertyParams,
@@ -5829,6 +5837,36 @@ def get_tool_definitions(
                 "coalesce_empty_fields, default_value, type, value, script, order. "
                 "At least one optional field must be supplied. "
                 "Returns 404 error when the entry is not found."
+            ),
+            "raw_dict",
+        ),
+        # System Dictionary tools
+        "list_table_fields": (
+            list_table_fields_tool,
+            ListTableFieldsParams,
+            Dict[str, Any],
+            (
+                "List field definitions for a ServiceNow table from the sys_dictionary table. "
+                "Required: table_name (e.g. 'incident', 'change_request'). "
+                "Optional: include_inherited (default false, set true to include parent-table fields), "
+                "field_type (substring filter on internal_type, e.g. 'string', 'reference'), "
+                "mandatory_only (return only mandatory fields), limit, offset. "
+                "Returns fields list with has_more/next_offset pagination. "
+                "Each field includes field_name, label, field_type, mandatory, read_only, "
+                "max_length, default_value, reference_table (for reference fields), and active."
+            ),
+            "raw_dict",
+        ),
+        "get_field_definition": (
+            get_field_definition_tool,
+            GetFieldDefinitionParams,
+            Dict[str, Any],
+            (
+                "Retrieve the sys_dictionary definition for a specific field on a table. "
+                "Required: table_name (e.g. 'incident'), field_name (exact column name, e.g. 'priority'). "
+                "Returns full field metadata including type, label, mandatory, read_only, max_length, "
+                "default_value, reference_table (for reference fields), reference_qualifier, and choice info. "
+                "Returns an error when the field is not found on the table."
             ),
             "raw_dict",
         ),

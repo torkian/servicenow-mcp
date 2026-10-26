@@ -1,9 +1,8 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add sys_dictionary tools (list_table_fields, get_field_definition for schema inspection)
-2. Add sys_choice tools (list_field_choices, create_field_choice for picklist management)
-3. Add sys_db_object tools (list_tables, get_table_definition for table metadata)
+1. Add sys_choice tools (list_field_choices, create_field_choice for picklist management)
+2. Add sys_db_object tools (list_tables, get_table_definition for table metadata)
 
 ## Completed
 1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
@@ -208,3 +207,4 @@
 200. 2026-10-23 — Add transform entry tools (list_transform_entries, get_transform_entry, create_transform_entry, update_transform_entry on sys_transform_entry); field-level mappings within a transform map; list scoped by map_id/source_field/target_field/active/coalesce; coalesce key support; script transform type; empty-body guard on update; 404 guards; registered in system_administrator and full packages; 29 new tests; 4818 total tests; 97% total coverage
 201. 2026-10-24 — Add import set row tools (list_import_set_rows, get_import_set_row on staging tables); _get_staging_table resolves table_name from import set; state/error_message filters; staging_table name in response; 28 new tests; 4846 total tests; 97% total coverage
 202. 2026-10-25 — Add sys_property tools (list_properties, get_property, set_property, delete_property on sys_properties table); set_property upserts by name; name resolver accepts sys_id or exact name; name/category/type filters on list; private/encrypt boolean fields serialised as strings; registered in system_administrator and full packages; 39 new tests; 4885 total tests; 97% total coverage
+203. 2026-10-26 — Add sys_dictionary tools (list_table_fields, get_field_definition); schema inspection via sys_dictionary table; list supports field_type substring filter, mandatory_only flag, include_inherited toggle, and pagination; get returns full field metadata with reference_table and reference_qualifier for reference fields; both registered in system_administrator and full packages; 33 new tests; 4918 total tests; 97% total coverage; sys_dictionary_tools.py 100% coverage

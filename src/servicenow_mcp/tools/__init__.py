@@ -466,6 +466,10 @@ from servicenow_mcp.tools.user_preference_tools import (
     list_user_preferences,
     set_user_preference,
 )
+from servicenow_mcp.tools.sys_dictionary_tools import (
+    get_field_definition,
+    list_table_fields,
+)
 from servicenow_mcp.tools.sys_property_tools import (
     delete_property,
     get_property,
@@ -1024,4 +1028,14 @@ __all__ = [
     "cleanup_import_set",
     "list_import_set_rows",
     "get_import_set_row",
+
+    # Transform Entry tools
+    "list_transform_entries",
+    "get_transform_entry",
+    "create_transform_entry",
+    "update_transform_entry",
+
+    # System Dictionary tools
+    "list_table_fields",
+    "get_field_definition",
 ]

@@ -520,6 +520,9 @@ system_administrator:
   - get_property
   - set_property
   - delete_property
+  # System Dictionary Tools
+  - list_table_fields
+  - get_field_definition
   # Assessment / Survey Tools
   - list_assessment_instances
   - get_assessment_instance
@@ -986,6 +989,9 @@ full:
   - get_property
   - set_property
   - delete_property
+  # System Dictionary Tools
+  - list_table_fields
+  - get_field_definition
   # Assessment / Survey Tools
   - list_assessment_instances
   - get_assessment_instance
