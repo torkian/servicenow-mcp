@@ -523,6 +523,9 @@ system_administrator:
   # System Dictionary Tools
   - list_table_fields
   - get_field_definition
+  # sys_choice / Picklist Tools
+  - list_field_choices
+  - create_field_choice
   # Assessment / Survey Tools
   - list_assessment_instances
   - get_assessment_instance
@@ -992,6 +995,9 @@ full:
   # System Dictionary Tools
   - list_table_fields
   - get_field_definition
+  # sys_choice / Picklist Tools
+  - list_field_choices
+  - create_field_choice
   # Assessment / Survey Tools
   - list_assessment_instances
   - get_assessment_instance

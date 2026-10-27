@@ -466,6 +466,10 @@ from servicenow_mcp.tools.user_preference_tools import (
     list_user_preferences,
     set_user_preference,
 )
+from servicenow_mcp.tools.sys_choice_tools import (
+    create_field_choice,
+    list_field_choices,
+)
 from servicenow_mcp.tools.sys_dictionary_tools import (
     get_field_definition,
     list_table_fields,
@@ -1038,4 +1042,8 @@ __all__ = [
     # System Dictionary tools
     "list_table_fields",
     "get_field_definition",
+
+    # sys_choice / Picklist tools
+    "list_field_choices",
+    "create_field_choice",
 ]

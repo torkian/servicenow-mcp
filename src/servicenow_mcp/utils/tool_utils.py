@@ -1288,6 +1288,14 @@ from servicenow_mcp.tools.user_preference_tools import (
     list_user_preferences as list_user_preferences_tool,
     set_user_preference as set_user_preference_tool,
 )
+from servicenow_mcp.tools.sys_choice_tools import (
+    CreateFieldChoiceParams,
+    ListFieldChoicesParams,
+)
+from servicenow_mcp.tools.sys_choice_tools import (
+    create_field_choice as create_field_choice_tool,
+    list_field_choices as list_field_choices_tool,
+)
 from servicenow_mcp.tools.sys_dictionary_tools import (
     GetFieldDefinitionParams,
     ListTableFieldsParams,
@@ -5867,6 +5875,36 @@ def get_tool_definitions(
                 "Returns full field metadata including type, label, mandatory, read_only, max_length, "
                 "default_value, reference_table (for reference fields), reference_qualifier, and choice info. "
                 "Returns an error when the field is not found on the table."
+            ),
+            "raw_dict",
+        ),
+        # sys_choice / Picklist tools
+        "list_field_choices": (
+            list_field_choices_tool,
+            ListFieldChoicesParams,
+            Dict[str, Any],
+            (
+                "List all picklist choices for a choice-type field on a ServiceNow table "
+                "from the sys_choice table. "
+                "Required: table_name (e.g. 'incident', 'change_request'). "
+                "Optional: field_name (e.g. 'state', 'priority') — omit to get all choice fields on the table; "
+                "language (e.g. 'en', 'fr'); include_inactive (default false); limit, offset for pagination. "
+                "Results are ordered by sequence. Each choice includes value (stored code), label (display text), "
+                "sequence, language, inactive, hint, and dependent_value (for dependent choice fields)."
+            ),
+            "raw_dict",
+        ),
+        "create_field_choice": (
+            create_field_choice_tool,
+            CreateFieldChoiceParams,
+            Dict[str, Any],
+            (
+                "Create a new picklist choice in sys_choice for a choice-type field. "
+                "Required: table_name (e.g. 'incident'), field_name (e.g. 'state'), "
+                "value (stored code, e.g. '5'), label (display text, e.g. 'Pending'). "
+                "Optional: sequence (display order), language (default 'en'), hint (tooltip text), "
+                "inactive (default false), dependent_value (for dependent choice fields). "
+                "Returns the created choice record including its sys_id."
             ),
             "raw_dict",
         ),
