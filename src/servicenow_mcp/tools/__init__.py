@@ -470,6 +470,10 @@ from servicenow_mcp.tools.sys_choice_tools import (
     create_field_choice,
     list_field_choices,
 )
+from servicenow_mcp.tools.sys_db_object_tools import (
+    get_table_definition,
+    list_tables,
+)
 from servicenow_mcp.tools.sys_dictionary_tools import (
     get_field_definition,
     list_table_fields,
@@ -1042,6 +1046,10 @@ __all__ = [
     # System Dictionary tools
     "list_table_fields",
     "get_field_definition",
+
+    # sys_db_object / Table Metadata tools
+    "list_tables",
+    "get_table_definition",
 
     # sys_choice / Picklist tools
     "list_field_choices",

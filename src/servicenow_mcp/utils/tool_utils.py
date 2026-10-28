@@ -1296,6 +1296,14 @@ from servicenow_mcp.tools.sys_choice_tools import (
     create_field_choice as create_field_choice_tool,
     list_field_choices as list_field_choices_tool,
 )
+from servicenow_mcp.tools.sys_db_object_tools import (
+    GetTableDefinitionParams,
+    ListTablesParams,
+)
+from servicenow_mcp.tools.sys_db_object_tools import (
+    get_table_definition as get_table_definition_tool,
+    list_tables as list_tables_tool,
+)
 from servicenow_mcp.tools.sys_dictionary_tools import (
     GetFieldDefinitionParams,
     ListTableFieldsParams,
@@ -5875,6 +5883,38 @@ def get_tool_definitions(
                 "Returns full field metadata including type, label, mandatory, read_only, max_length, "
                 "default_value, reference_table (for reference fields), reference_qualifier, and choice info. "
                 "Returns an error when the field is not found on the table."
+            ),
+            "raw_dict",
+        ),
+        # sys_db_object / Table Metadata tools
+        "list_tables": (
+            list_tables_tool,
+            ListTablesParams,
+            Dict[str, Any],
+            (
+                "List table definitions from the ServiceNow sys_db_object table. "
+                "All parameters are optional. "
+                "Optional: name_query (substring on internal table name, e.g. 'incident'), "
+                "label_query (substring on display label, e.g. 'Change'), "
+                "scope (application scope name, e.g. 'global'), "
+                "is_extendable (true returns only extendable/parent tables), "
+                "limit (default 50), offset for pagination. "
+                "Each table includes name, label, super_class, scope, access flags "
+                "(create/read/write/delete), and is_extendable."
+            ),
+            "raw_dict",
+        ),
+        "get_table_definition": (
+            get_table_definition_tool,
+            GetTableDefinitionParams,
+            Dict[str, Any],
+            (
+                "Retrieve the sys_db_object definition for a specific ServiceNow table. "
+                "Required: table_name (exact internal table name e.g. 'incident', 'change_request', "
+                "or a 32-character sys_id). "
+                "Returns table metadata including name, label, super_class (parent table), "
+                "scope (application), is_extendable, and access flags (create/read/write/delete). "
+                "Returns an error when the table is not found."
             ),
             "raw_dict",
         ),

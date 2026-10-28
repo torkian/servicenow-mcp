@@ -1,10 +1,11 @@
 # Daily Improvement Backlog
 
 ## Queue
-1. Add sys_db_object tools (list_tables, get_table_definition for table metadata)
+(all backlog items completed — add new items here)
 
 ## Completed
-1. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
+1. 2026-10-28 — Add sys_db_object tools (list_tables, get_table_definition for table metadata; name/label/scope/is_extendable filters; sys_id or name resolver on get; 36 new tests; 88% sys_db_object_tools.py coverage; 4987 total tests; 97% total coverage)
+2. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
 2. 2026-04-08 — Implement list_syslog_entries tool (sys_log table, with filters for level/source/message/date range)
 3. 2026-04-08 — Implement get_syslog_entry tool (fetch single entry by sys_id)
 4. 2026-04-09 — Implement delete_catalog_item_variable tool (DELETE item_option_new/{sys_id})
