@@ -1,9 +1,10 @@
 # Daily Improvement Backlog
 
 ## Queue
-(all backlog items completed — add new items here)
+1. Add update_field_definition and delete_field_definition tools for sys_dictionary (complete CRUD for field schema management)
 
 ## Completed
+205. 2026-10-29 — Add update_field_choice and delete_field_choice tools (complete CRUD for sys_choice picklist table; PATCH accepts label/sequence/hint/inactive/dependent_value with empty-body guard; DELETE with 404 guard; 19 new tests; sys_choice_tools.py 100% coverage; 5006 total tests; 97% total coverage)
 1. 2026-10-28 — Add sys_db_object tools (list_tables, get_table_definition for table metadata; name/label/scope/is_extendable filters; sys_id or name resolver on get; 36 new tests; 88% sys_db_object_tools.py coverage; 4987 total tests; 97% total coverage)
 2. 2026-04-08 — Extract duplicated helpers (_get_instance_url, _get_headers, _unwrap_and_validate_params) from 8 tool files into src/servicenow_mcp/utils/helpers.py
 2. 2026-04-08 — Implement list_syslog_entries tool (sys_log table, with filters for level/source/message/date range)

@@ -468,7 +468,9 @@ from servicenow_mcp.tools.user_preference_tools import (
 )
 from servicenow_mcp.tools.sys_choice_tools import (
     create_field_choice,
+    delete_field_choice,
     list_field_choices,
+    update_field_choice,
 )
 from servicenow_mcp.tools.sys_db_object_tools import (
     get_table_definition,
@@ -1054,4 +1056,6 @@ __all__ = [
     # sys_choice / Picklist tools
     "list_field_choices",
     "create_field_choice",
+    "update_field_choice",
+    "delete_field_choice",
 ]

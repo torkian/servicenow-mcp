@@ -1,4 +1,4 @@
-"""Tests for sys_choice tools (list_field_choices, create_field_choice)."""
+"""Tests for sys_choice tools (list_field_choices, create_field_choice, update_field_choice, delete_field_choice)."""
 
 from unittest.mock import MagicMock, patch
 
@@ -8,7 +8,9 @@ import requests
 from servicenow_mcp.tools.sys_choice_tools import (
     _format_choice,
     create_field_choice,
+    delete_field_choice,
     list_field_choices,
+    update_field_choice,
 )
 from servicenow_mcp.utils.config import AuthConfig, AuthType, ServerConfig
 
@@ -475,4 +477,226 @@ def test_create_field_choice_missing_table_name(config, auth_manager):
         config,
         auth_manager,
     )
+    assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# update_field_choice tests
+# ---------------------------------------------------------------------------
+
+
+def test_update_field_choice_success(config, auth_manager):
+    updated = _make_choice_record({"label": "Updated Label", "sequence": "200"})
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_req.return_value = _mock_response(updated)
+        result = update_field_choice(
+            {"sys_id": "abc123", "label": "Updated Label", "sequence": 200},
+            config,
+            auth_manager,
+        )
+
+    assert result["success"] is True
+    assert "choice" in result
+    assert result["choice"]["label"] == "Updated Label"
+    assert "abc123" in result["message"]
+
+
+def test_update_field_choice_body_fields(config, auth_manager):
+    updated = _make_choice_record()
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_req.return_value = _mock_response(updated)
+        update_field_choice(
+            {
+                "sys_id": "abc123",
+                "label": "New Label",
+                "sequence": 300,
+                "hint": "A tooltip",
+                "inactive": True,
+                "dependent_value": "hw",
+            },
+            config,
+            auth_manager,
+        )
+
+    body = mock_req.call_args[1]["json"]
+    assert body["label"] == "New Label"
+    assert body["sequence"] == "300"
+    assert body["hint"] == "A tooltip"
+    assert body["inactive"] == "true"
+    assert body["dependent_value"] == "hw"
+
+
+def test_update_field_choice_inactive_false(config, auth_manager):
+    updated = _make_choice_record({"inactive": "false"})
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_req.return_value = _mock_response(updated)
+        update_field_choice({"sys_id": "abc123", "inactive": False}, config, auth_manager)
+
+    body = mock_req.call_args[1]["json"]
+    assert body["inactive"] == "false"
+
+
+def test_update_field_choice_uses_patch_method(config, auth_manager):
+    updated = _make_choice_record()
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_req.return_value = _mock_response(updated)
+        update_field_choice({"sys_id": "abc123", "label": "X"}, config, auth_manager)
+
+    assert mock_req.call_args[1]["method"] == "PATCH"
+    assert "abc123" in mock_req.call_args[1]["url"]
+
+
+def test_update_field_choice_empty_body_error(config, auth_manager):
+    result = update_field_choice({"sys_id": "abc123"}, config, auth_manager)
+    assert "error" in result
+    assert "No fields to update" in result["error"]
+
+
+def test_update_field_choice_missing_sys_id(config, auth_manager):
+    result = update_field_choice({"label": "New"}, config, auth_manager)
+    assert "error" in result
+
+
+def test_update_field_choice_404(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_resp = MagicMock()
+        err_resp = MagicMock()
+        err_resp.status_code = 404
+        mock_resp.raise_for_status.side_effect = requests.HTTPError(response=err_resp)
+        mock_req.return_value = mock_resp
+        result = update_field_choice(
+            {"sys_id": "nonexistent", "label": "X"}, config, auth_manager
+        )
+
+    assert "error" in result
+    assert "not found" in result["error"]
+
+
+def test_update_field_choice_http_error(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_resp = MagicMock()
+        err_resp = MagicMock()
+        err_resp.status_code = 500
+        err_resp.json.return_value = {}
+        mock_resp.raise_for_status.side_effect = requests.HTTPError(response=err_resp)
+        mock_req.return_value = mock_resp
+        result = update_field_choice(
+            {"sys_id": "abc123", "label": "X"}, config, auth_manager
+        )
+
+    assert "error" in result
+
+
+def test_update_field_choice_request_exception(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_req.side_effect = requests.ConnectionError("network error")
+        result = update_field_choice(
+            {"sys_id": "abc123", "label": "X"}, config, auth_manager
+        )
+
+    assert "error" in result
+
+
+def test_update_field_choice_no_instance_url(auth_manager):
+    cfg = ServerConfig(
+        instance_url="",
+        auth=AuthConfig(type=AuthType.BASIC, username="u", password="p"),
+    )
+    auth_manager.instance_url = None
+    result = update_field_choice({"sys_id": "abc123", "label": "X"}, cfg, auth_manager)
+    assert "error" in result
+
+
+def test_update_field_choice_no_headers(config):
+    mgr = MagicMock()
+    mgr.get_headers.return_value = None
+    mgr.instance_url = None
+    result = update_field_choice({"sys_id": "abc123", "label": "X"}, config, mgr)
+    assert "error" in result
+
+
+# ---------------------------------------------------------------------------
+# delete_field_choice tests
+# ---------------------------------------------------------------------------
+
+
+def test_delete_field_choice_success(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_resp.raise_for_status = MagicMock()
+        mock_req.return_value = mock_resp
+        result = delete_field_choice({"sys_id": "abc123"}, config, auth_manager)
+
+    assert result["success"] is True
+    assert result["sys_id"] == "abc123"
+    assert "abc123" in result["message"]
+
+
+def test_delete_field_choice_uses_delete_method(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 204
+        mock_resp.raise_for_status = MagicMock()
+        mock_req.return_value = mock_resp
+        delete_field_choice({"sys_id": "abc123"}, config, auth_manager)
+
+    assert mock_req.call_args[1]["method"] == "DELETE"
+    assert "abc123" in mock_req.call_args[1]["url"]
+
+
+def test_delete_field_choice_404(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 404
+        mock_resp.raise_for_status = MagicMock()
+        mock_req.return_value = mock_resp
+        result = delete_field_choice({"sys_id": "nonexistent"}, config, auth_manager)
+
+    assert "error" in result
+    assert "not found" in result["error"]
+
+
+def test_delete_field_choice_http_error(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_resp = MagicMock()
+        mock_resp.status_code = 403
+        err_resp = MagicMock()
+        err_resp.status_code = 403
+        err_resp.json.return_value = {}
+        mock_resp.raise_for_status.side_effect = requests.HTTPError(response=err_resp)
+        mock_req.return_value = mock_resp
+        result = delete_field_choice({"sys_id": "abc123"}, config, auth_manager)
+
+    assert "error" in result
+
+
+def test_delete_field_choice_request_exception(config, auth_manager):
+    with patch("servicenow_mcp.tools.sys_choice_tools._make_request") as mock_req:
+        mock_req.side_effect = requests.Timeout("timed out")
+        result = delete_field_choice({"sys_id": "abc123"}, config, auth_manager)
+
+    assert "error" in result
+
+
+def test_delete_field_choice_missing_sys_id(config, auth_manager):
+    result = delete_field_choice({}, config, auth_manager)
+    assert "error" in result
+
+
+def test_delete_field_choice_no_instance_url(auth_manager):
+    cfg = ServerConfig(
+        instance_url="",
+        auth=AuthConfig(type=AuthType.BASIC, username="u", password="p"),
+    )
+    auth_manager.instance_url = None
+    result = delete_field_choice({"sys_id": "abc123"}, cfg, auth_manager)
+    assert "error" in result
+
+
+def test_delete_field_choice_no_headers(config):
+    mgr = MagicMock()
+    mgr.get_headers.return_value = None
+    mgr.instance_url = None
+    result = delete_field_choice({"sys_id": "abc123"}, config, mgr)
     assert "error" in result

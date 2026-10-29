@@ -124,6 +124,44 @@ class CreateFieldChoiceParams(BaseModel):
     )
 
 
+class UpdateFieldChoiceParams(BaseModel):
+    """Parameters for updating an existing picklist choice."""
+
+    sys_id: str = Field(
+        ...,
+        description="The sys_id of the sys_choice record to update.",
+    )
+    label: Optional[str] = Field(
+        None,
+        description="New display label shown to users.",
+    )
+    sequence: Optional[int] = Field(
+        None,
+        description="New display order; lower numbers appear first.",
+    )
+    hint: Optional[str] = Field(
+        None,
+        description="New tooltip text.",
+    )
+    inactive: Optional[bool] = Field(
+        None,
+        description="Set true to hide the choice from the picker, false to show it.",
+    )
+    dependent_value: Optional[str] = Field(
+        None,
+        description="New parent field value that makes this choice visible (for dependent fields).",
+    )
+
+
+class DeleteFieldChoiceParams(BaseModel):
+    """Parameters for deleting a picklist choice."""
+
+    sys_id: str = Field(
+        ...,
+        description="The sys_id of the sys_choice record to delete.",
+    )
+
+
 # ---------------------------------------------------------------------------
 # Helpers
 # ---------------------------------------------------------------------------
@@ -291,4 +329,109 @@ def create_field_choice(
             f"Choice '{p.label}' (value='{p.value}') created for "
             f"{p.table_name}.{p.field_name}"
         ),
+    }
+
+
+def update_field_choice(
+    params: Dict[str, Any],
+    server_config: ServerConfig,
+    auth_manager: AuthManager,
+) -> Dict[str, Any]:
+    """Update an existing picklist choice in sys_choice by sys_id."""
+
+    result = _unwrap_and_validate_params(
+        params, UpdateFieldChoiceParams, required_fields=["sys_id"]
+    )
+    if not result["success"]:
+        return {"error": result["message"]}
+    p: UpdateFieldChoiceParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"error": "No instance URL configured"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"error": "Failed to obtain authentication headers"}
+
+    body: Dict[str, Any] = {}
+    if p.label is not None:
+        body["label"] = p.label
+    if p.sequence is not None:
+        body["sequence"] = str(p.sequence)
+    if p.hint is not None:
+        body["hint"] = p.hint
+    if p.inactive is not None:
+        body["inactive"] = "true" if p.inactive else "false"
+    if p.dependent_value is not None:
+        body["dependent_value"] = p.dependent_value
+
+    if not body:
+        return {"error": "No fields to update — provide at least one of: label, sequence, hint, inactive, dependent_value"}
+
+    url = f"{instance_url}/api/now/table/{SYS_CHOICE_TABLE}/{p.sys_id}"
+
+    try:
+        resp = _make_request(
+            method="PATCH",
+            url=url,
+            headers=headers,
+            json=body,
+        )
+        resp.raise_for_status()
+    except requests.HTTPError as exc:
+        if exc.response is not None and exc.response.status_code == 404:
+            return {"error": f"Choice '{p.sys_id}' not found"}
+        return {"error": _format_http_error(exc)}
+    except requests.RequestException as exc:
+        return {"error": str(exc)}
+
+    updated = resp.json().get("result", {})
+    return {
+        "success": True,
+        "choice": _format_choice(updated),
+        "message": f"Choice '{p.sys_id}' updated successfully",
+    }
+
+
+def delete_field_choice(
+    params: Dict[str, Any],
+    server_config: ServerConfig,
+    auth_manager: AuthManager,
+) -> Dict[str, Any]:
+    """Delete a picklist choice from sys_choice by sys_id."""
+
+    result = _unwrap_and_validate_params(
+        params, DeleteFieldChoiceParams, required_fields=["sys_id"]
+    )
+    if not result["success"]:
+        return {"error": result["message"]}
+    p: DeleteFieldChoiceParams = result["params"]
+
+    instance_url = _get_instance_url(auth_manager, server_config)
+    if not instance_url:
+        return {"error": "No instance URL configured"}
+    headers = _get_headers(auth_manager, server_config)
+    if not headers:
+        return {"error": "Failed to obtain authentication headers"}
+
+    url = f"{instance_url}/api/now/table/{SYS_CHOICE_TABLE}/{p.sys_id}"
+
+    try:
+        resp = _make_request(
+            method="DELETE",
+            url=url,
+            headers=headers,
+        )
+        if resp.status_code == 404:
+            return {"error": f"Choice '{p.sys_id}' not found"}
+        resp.raise_for_status()
+    except requests.HTTPError as exc:
+        return {"error": _format_http_error(exc)}
+    except requests.RequestException as exc:
+        return {"error": str(exc)}
+
+    return {
+        "success": True,
+        "sys_id": p.sys_id,
+        "message": f"Choice '{p.sys_id}' deleted successfully",
     }

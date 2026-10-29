@@ -529,6 +529,8 @@ system_administrator:
   # sys_choice / Picklist Tools
   - list_field_choices
   - create_field_choice
+  - update_field_choice
+  - delete_field_choice
   # Assessment / Survey Tools
   - list_assessment_instances
   - get_assessment_instance
@@ -1004,6 +1006,8 @@ full:
   # sys_choice / Picklist Tools
   - list_field_choices
   - create_field_choice
+  - update_field_choice
+  - delete_field_choice
   # Assessment / Survey Tools
   - list_assessment_instances
   - get_assessment_instance

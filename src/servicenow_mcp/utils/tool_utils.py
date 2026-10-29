@@ -1290,11 +1290,15 @@ from servicenow_mcp.tools.user_preference_tools import (
 )
 from servicenow_mcp.tools.sys_choice_tools import (
     CreateFieldChoiceParams,
+    DeleteFieldChoiceParams,
     ListFieldChoicesParams,
+    UpdateFieldChoiceParams,
 )
 from servicenow_mcp.tools.sys_choice_tools import (
     create_field_choice as create_field_choice_tool,
+    delete_field_choice as delete_field_choice_tool,
     list_field_choices as list_field_choices_tool,
+    update_field_choice as update_field_choice_tool,
 )
 from servicenow_mcp.tools.sys_db_object_tools import (
     GetTableDefinitionParams,
@@ -5945,6 +5949,33 @@ def get_tool_definitions(
                 "Optional: sequence (display order), language (default 'en'), hint (tooltip text), "
                 "inactive (default false), dependent_value (for dependent choice fields). "
                 "Returns the created choice record including its sys_id."
+            ),
+            "raw_dict",
+        ),
+        "update_field_choice": (
+            update_field_choice_tool,
+            UpdateFieldChoiceParams,
+            Dict[str, Any],
+            (
+                "Update an existing picklist choice in sys_choice by its sys_id. "
+                "Required: sys_id (the sys_choice record's sys_id). "
+                "Optional: label (new display text), sequence (new display order), "
+                "hint (new tooltip), inactive (true to hide / false to show), "
+                "dependent_value (new parent value for dependent choice fields). "
+                "At least one optional field must be supplied. "
+                "Returns the updated choice record. Returns 404 error when the choice is not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_field_choice": (
+            delete_field_choice_tool,
+            DeleteFieldChoiceParams,
+            Dict[str, Any],
+            (
+                "Delete a picklist choice from sys_choice by its sys_id. "
+                "Required: sys_id (the sys_choice record's sys_id). "
+                "Returns 404 error when the choice is not found. "
+                "This permanently removes the choice from the picklist."
             ),
             "raw_dict",
         ),
