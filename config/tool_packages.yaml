@@ -523,6 +523,8 @@ system_administrator:
   # System Dictionary Tools
   - list_table_fields
   - get_field_definition
+  - update_field_definition
+  - delete_field_definition
   # sys_db_object / Table Metadata Tools
   - list_tables
   - get_table_definition
@@ -1000,6 +1002,8 @@ full:
   # System Dictionary Tools
   - list_table_fields
   - get_field_definition
+  - update_field_definition
+  - delete_field_definition
   # sys_db_object / Table Metadata Tools
   - list_tables
   - get_table_definition

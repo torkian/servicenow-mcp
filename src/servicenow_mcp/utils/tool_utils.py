@@ -1309,12 +1309,16 @@ from servicenow_mcp.tools.sys_db_object_tools import (
     list_tables as list_tables_tool,
 )
 from servicenow_mcp.tools.sys_dictionary_tools import (
+    DeleteFieldDefinitionParams,
     GetFieldDefinitionParams,
     ListTableFieldsParams,
+    UpdateFieldDefinitionParams,
 )
 from servicenow_mcp.tools.sys_dictionary_tools import (
+    delete_field_definition as delete_field_definition_tool,
     get_field_definition as get_field_definition_tool,
     list_table_fields as list_table_fields_tool,
+    update_field_definition as update_field_definition_tool,
 )
 from servicenow_mcp.tools.sys_property_tools import (
     DeletePropertyParams,
@@ -5887,6 +5891,32 @@ def get_tool_definitions(
                 "Returns full field metadata including type, label, mandatory, read_only, max_length, "
                 "default_value, reference_table (for reference fields), reference_qualifier, and choice info. "
                 "Returns an error when the field is not found on the table."
+            ),
+            "raw_dict",
+        ),
+        "update_field_definition": (
+            update_field_definition_tool,
+            UpdateFieldDefinitionParams,
+            Dict[str, Any],
+            (
+                "Update a sys_dictionary field definition record. "
+                "Identify the record by sys_id OR by both table_name and field_name. "
+                "Optional updatable fields: column_label, mandatory, read_only, default_value, "
+                "max_length, comments, active, reference_qual. "
+                "At least one updatable field must be supplied. "
+                "Returns the updated field definition. Returns 404 error when not found."
+            ),
+            "raw_dict",
+        ),
+        "delete_field_definition": (
+            delete_field_definition_tool,
+            DeleteFieldDefinitionParams,
+            Dict[str, Any],
+            (
+                "Delete a sys_dictionary field definition record. "
+                "Identify the record by sys_id OR by both table_name and field_name. "
+                "Returns 404 error when not found. "
+                "This permanently removes the field definition from the data dictionary."
             ),
             "raw_dict",
         ),

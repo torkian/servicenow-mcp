@@ -477,8 +477,10 @@ from servicenow_mcp.tools.sys_db_object_tools import (
     list_tables,
 )
 from servicenow_mcp.tools.sys_dictionary_tools import (
+    delete_field_definition,
     get_field_definition,
     list_table_fields,
+    update_field_definition,
 )
 from servicenow_mcp.tools.sys_property_tools import (
     delete_property,
@@ -1048,6 +1050,8 @@ __all__ = [
     # System Dictionary tools
     "list_table_fields",
     "get_field_definition",
+    "update_field_definition",
+    "delete_field_definition",
 
     # sys_db_object / Table Metadata tools
     "list_tables",
